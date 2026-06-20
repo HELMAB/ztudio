@@ -23,6 +23,8 @@ export const DEFAULT_STYLE = {
   strokeColor: '#000000',
   strokePct: 0.16,
   position: 'bottom',
+  offsetXPct: 0,
+  offsetYPct: 0,
   box: false,
   boxColor: 'rgba(0,0,0,0.55)',
   lineHeight: 1.34,

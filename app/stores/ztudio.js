@@ -3,6 +3,7 @@ import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { DEFAULT_STYLE, KHMER_FONT, MAX_AUDIO_SEC, PRESETS } from '@/lib/ztudio/config'
 import { KHMER_FONTS } from '@/lib/ztudio/khmer-fonts'
 import { captionAt, parseSRT } from '@/lib/ztudio/srt'
+import { drawFrame } from '@/lib/ztudio/renderer'
 import {
   decodeAudioFile,
   generateFast,
@@ -45,6 +46,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
     strokeColor: '#000000',
     strokePct: 0.16,
     position: 'bottom',
+    offsetXPct: 0,
+    offsetYPct: 0,
     box: false,
     imageFit: 'contain',
     animation: 'none',
@@ -114,6 +117,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
     strokeColor: controls.strokeColor,
     strokePct: controls.strokePct,
     position: controls.position,
+    offsetXPct: controls.offsetXPct,
+    offsetYPct: controls.offsetYPct,
     box: controls.box,
     animation: controls.animation,
   }))
@@ -148,6 +153,18 @@ export const useZtudioStore = defineStore('ztudio', () => {
     previewTick.value++
   }
 
+  const clampOffset = v => (v < -0.5 ? -0.5 : v > 0.5 ? 0.5 : v)
+
+  // Drag-to-reposition: offsets are fractions of frame width/height.
+  function setCaptionOffset(xPct, yPct) {
+    controls.offsetXPct = clampOffset(xPct)
+    controls.offsetYPct = clampOffset(yPct)
+  }
+
+  function resetCaptionOffset() {
+    setCaptionOffset(0, 0)
+  }
+
   function clampScrub() {
     if (scrub.value > previewDuration.value) {
       scrub.value = 0
@@ -172,6 +189,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
     controls.strokeColor = p.stroke
     controls.strokePct = p.strokew
     controls.position = p.pos
+    controls.offsetXPct = 0
+    controls.offsetYPct = 0
     controls.box = p.box
     redraw()
     nextTick(() => {
@@ -193,6 +212,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
       controls.strokeColor,
       controls.strokePct,
       controls.position,
+      controls.offsetXPct,
+      controls.offsetYPct,
       controls.box,
     ],
     () => {
@@ -517,6 +538,43 @@ export const useZtudioStore = defineStore('ztudio', () => {
     log('Cancel requested.')
   }
 
+  // Export the frame at the current playhead as a full-resolution PNG — a video
+  // cover/thumbnail. Same drawFrame the encoder uses, so it matches the output.
+  async function exportThumbnail() {
+    if (busy.value) {
+      return
+    }
+    pause()
+    try {
+      await ensureRenderFont()
+      const { w, h } = dimensions.value
+      const cv = document.createElement('canvas')
+      cv.width = w
+      cv.height = h
+      drawFrame(cv.getContext('2d'), w, h, scrub.value, {
+        imageBitmap: imageBitmap.value,
+        imageFit: controls.imageFit,
+        cues: cues.value,
+        style: style.value,
+      })
+      const blob = await new Promise(resolve => cv.toBlob(resolve, 'image/png'))
+      if (!blob) {
+        throw new Error('toBlob returned null')
+      }
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = t('result.thumbnailName')
+      a.click()
+      URL.revokeObjectURL(url)
+      log(`Thumbnail saved: ${w}×${h}, ${(blob.size / 1024).toFixed(0)} KB at ${timeLabel.value}.`)
+      setStatus('status.thumbnailSaved')
+    } catch (err) {
+      log('Thumbnail export failed: ' + (err?.message || err))
+      setStatus('status.thumbnailFailed')
+    }
+  }
+
   function stopPlaybackAudio() {
     if (playSource) {
       try {
@@ -696,6 +754,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
     srtPill,
     fontPill,
     redraw,
+    setCaptionOffset,
+    resetCaptionOffset,
     applyPreset,
     loadAudio,
     loadImage,
@@ -705,6 +765,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     clearCustomFonts,
     render,
     cancel,
+    exportThumbnail,
     play,
     pause,
     togglePlay,

@@ -13,7 +13,9 @@
     "stop": "បញ្ឈប់",
     "play": "ចាក់",
     "pause": "ផ្អាក",
-    "download": "ទាញយក {file}"
+    "download": "ទាញយក {file}",
+    "thumbnail": "ហ្វ្រេម",
+    "thumbnailHint": "រក្សាទុកហ្វ្រេមបច្ចុប្បន្នជារូបភាព PNG"
   },
   "media": {
     "heading": "មេឌៀ",
@@ -61,7 +63,8 @@
     "boxBehindText": "ប្រអប់ពីក្រោយអក្សរ"
   },
   "preview": {
-    "noCaption": "គ្មានអក្សររត់ត្រង់ចំណុចចាក់"
+    "noCaption": "គ្មានអក្សររត់ត្រង់ចំណុចចាក់",
+    "dragHint": "អូសដើម្បីផ្លាស់ទីអក្សររត់ · ចុចពីរដងដើម្បីកំណត់ឡើងវិញ"
   },
   "timeline": {
     "zoomOut": "បង្រួម",
@@ -75,7 +78,8 @@
     "complete": "នាំចេញរួចរាល់",
     "stats": "{size} MB · {dur}វិ · {ratio}× ល្បឿនពិត",
     "statsFrames": "{size} MB · {dur}វិ · {frames} ហ្វ្រេម · {ratio}× ល្បឿនពិត",
-    "downloadName": "caption-video.{ext}"
+    "downloadName": "caption-video.{ext}",
+    "thumbnailName": "caption-thumbnail.png"
   },
   "select": {
     "placeholder": "ជ្រើសរើស…",
@@ -146,7 +150,9 @@
     "rendered": "បានបង្ហាញរួច។",
     "stopped": "បានបញ្ឈប់។",
     "stopping": "កំពុងបញ្ឈប់…",
-    "renderFailed": "ការបង្ហាញបរាជ័យ — សូមមើលកំណត់ហេតុសកម្មភាព។"
+    "renderFailed": "ការបង្ហាញបរាជ័យ — សូមមើលកំណត់ហេតុសកម្មភាព។",
+    "thumbnailSaved": "បានរក្សាទុករូបភាពតូច។",
+    "thumbnailFailed": "ការនាំចេញរូបភាពតូចបរាជ័យ — សូមមើលកំណត់ហេតុសកម្មភាព។"
   },
   "env": {
     "checking": "កំពុងពិនិត្យការគាំទ្រការអ៊ិនកូដ…",

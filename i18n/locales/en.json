@@ -13,7 +13,9 @@
     "stop": "Stop",
     "play": "Play",
     "pause": "Pause",
-    "download": "Download {file}"
+    "download": "Download {file}",
+    "thumbnail": "Frame",
+    "thumbnailHint": "Save the current frame as a PNG image"
   },
   "media": {
     "heading": "Media",
@@ -61,7 +63,8 @@
     "boxBehindText": "Box behind text"
   },
   "preview": {
-    "noCaption": "no caption at playhead"
+    "noCaption": "no caption at playhead",
+    "dragHint": "Drag to reposition the caption · double-click to reset"
   },
   "timeline": {
     "zoomOut": "Zoom out",
@@ -75,7 +78,8 @@
     "complete": "Export complete",
     "stats": "{size} MB · {dur}s · {ratio}× realtime",
     "statsFrames": "{size} MB · {dur}s · {frames} frames · {ratio}× realtime",
-    "downloadName": "caption-video.{ext}"
+    "downloadName": "caption-video.{ext}",
+    "thumbnailName": "caption-thumbnail.png"
   },
   "select": {
     "placeholder": "Select…",
@@ -146,7 +150,9 @@
     "rendered": "Rendered.",
     "stopped": "Stopped.",
     "stopping": "Stopping…",
-    "renderFailed": "Render failed — see activity log."
+    "renderFailed": "Render failed — see activity log.",
+    "thumbnailSaved": "Thumbnail saved.",
+    "thumbnailFailed": "Thumbnail export failed — see activity log."
   },
   "env": {
     "checking": "Checking encoder support…",

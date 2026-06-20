@@ -48,18 +48,10 @@ function drawPlaceholder(ctx, w, h) {
   ctx.fillText('IMAGE', w / 2, h / 2)
 }
 
-function drawCaption(ctx, w, h, text, style, anim) {
-  if (!text) {
-    return
-  }
-
+// Block geometry for the caption, BEFORE the user reposition offset is applied
+// (the offset is applied via a canvas translate in drawCaption).
+function captionLayout(w, h, lines, style) {
   const fontPx = Math.round(h * style.fontSizePct)
-  ctx.font = `${style.fontWeight} ${fontPx}px ${style.fontFamily}`
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.lineJoin = 'round'
-
-  const lines = text.split('\n')
   const lineH = fontPx * style.lineHeight
   const blockH = lines.length * lineH
   const topM = h * style.topMarginPct
@@ -73,11 +65,44 @@ function drawCaption(ctx, w, h, text, style, anim) {
   } else {
     first = h - botM - blockH + lineH / 2
   }
+  return { fontPx, lineH, blockH, first }
+}
+
+// Centre point of the rendered caption block (offset included), or null when
+// there is no text. Used by the preview to draw alignment guides.
+export function captionCenter(w, h, text, style) {
+  if (!text) {
+    return null
+  }
+  const lines = text.split('\n')
+  const { lineH, blockH, first } = captionLayout(w, h, lines, style)
+  return {
+    cx: w / 2 + w * (style.offsetXPct || 0),
+    cy: first - lineH / 2 + blockH / 2 + h * (style.offsetYPct || 0),
+    blockH,
+  }
+}
+
+function drawCaption(ctx, w, h, text, style, anim) {
+  if (!text) {
+    return
+  }
+
+  const lines = text.split('\n')
+  const { fontPx, lineH, blockH, first } = captionLayout(w, h, lines, style)
+  ctx.font = `${style.fontWeight} ${fontPx}px ${style.fontFamily}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.lineJoin = 'round'
 
   const isReveal = anim && (anim.type === 'typewriter' || anim.type === 'wordByWord')
   const displayLines = isReveal ? revealLines(lines, anim.type, anim.reveal) : lines
 
   ctx.save()
+
+  // User repositioning: shift the whole block (box, stroke, fill, and the
+  // animation pivot move together) by a fraction of the frame size.
+  ctx.translate(w * (style.offsetXPct || 0), h * (style.offsetYPct || 0))
 
   // Transform/opacity effects pivot around the caption block centre.
   if (anim && !isReveal) {
