@@ -6,7 +6,7 @@ import {
   WEIGHT_OPTIONS,
 } from '@/lib/greenroom/config'
 
-const store = useGreenroom()
+const store = useGreenroomStore()
 
 function onFont(event) {
   store.loadFont(event.target.files[0])

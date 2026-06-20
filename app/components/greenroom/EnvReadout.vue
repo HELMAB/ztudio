@@ -1,5 +1,5 @@
 <script setup>
-const store = useGreenroom()
+const store = useGreenroomStore()
 
 const DOT_CLASS = {
   pending: 'bg-muted-foreground',

@@ -1,7 +1,7 @@
 <script setup>
 import { RESOLUTION_OPTIONS } from '@/lib/greenroom/config'
 
-const store = useGreenroom()
+const store = useGreenroomStore()
 
 async function onAudio(event) {
   const ok = await store.loadAudio(event.target.files[0])

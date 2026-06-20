@@ -1,4 +1,5 @@
-import { computed, inject, nextTick, provide, reactive, ref, watch } from 'vue'
+import { defineStore } from 'pinia'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { DEFAULT_STYLE, KHMER_FONT, MAX_AUDIO_SEC, PRESETS } from '@/lib/greenroom/config'
 import { captionAt, parseSRT } from '@/lib/greenroom/srt'
 import {
@@ -11,13 +12,11 @@ import {
 } from '@/lib/greenroom/encoder'
 import { useActivityLog } from '@/composables/useActivityLog'
 
-const GREENROOM_KEY = Symbol('greenroom')
-
 const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 const buildFontStack = sel =>
   sel === 'default' ? KHMER_FONT : `"${sel}", "Noto Sans Khmer", system-ui, sans-serif`
 
-function createGreenroom() {
+export const useGreenroomStore = defineStore('greenroom', () => {
   const { entries: logEntries, log } = useActivityLog()
 
   const audioBuffer = ref(null)
@@ -395,7 +394,7 @@ function createGreenroom() {
     await runEnvCheck()
   }
 
-  return reactive({
+  return {
     logEntries,
     audioBuffer,
     imageBitmap,
@@ -435,19 +434,5 @@ function createGreenroom() {
     render,
     cancel,
     init,
-  })
-}
-
-export function provideGreenroom() {
-  const store = createGreenroom()
-  provide(GREENROOM_KEY, store)
-  return store
-}
-
-export function useGreenroom() {
-  const store = inject(GREENROOM_KEY)
-  if (!store) {
-    throw new Error('useGreenroom() must be used within <GreenroomApp>.')
   }
-  return store
-}
+})

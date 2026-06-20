@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted } from 'vue'
 
-const store = provideGreenroom()
+const store = useGreenroomStore()
 
 onMounted(() => {
   store.init()

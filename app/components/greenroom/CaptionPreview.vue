@@ -2,7 +2,7 @@
 import { onMounted, ref, watch } from 'vue'
 import { drawFrame } from '@/lib/greenroom/renderer'
 
-const store = useGreenroom()
+const store = useGreenroomStore()
 const canvas = ref(null)
 
 function paint() {

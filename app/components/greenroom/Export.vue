@@ -1,5 +1,5 @@
 <script setup>
-const store = useGreenroom()
+const store = useGreenroomStore()
 </script>
 
 <template>

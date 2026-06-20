@@ -1,7 +1,7 @@
 <script setup>
 import { nextTick, ref, watch } from 'vue'
 
-const store = useGreenroom()
+const store = useGreenroomStore()
 const logBox = ref(null)
 
 watch(
