@@ -20,7 +20,7 @@ export const DEFAULT_STYLE = {
   imageZoom: 1,
   imageOffsetXPct: 0,
   imageOffsetYPct: 0,
-  fontSizePct: 0.055,
+  fontSizePct: 0.03,
   fontWeight: 700,
   fill: '#ffffff',
   strokeColor: '#000000',
@@ -39,7 +39,7 @@ export const DEFAULT_STYLE = {
 
 export const PRESETS = {
   clean: {
-    size: 0.055,
+    size: 0.03,
     weight: 700,
     fill: '#ffffff',
     stroke: '#000000',

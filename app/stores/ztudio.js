@@ -40,8 +40,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
   const selectedCueIndex = ref(null)
 
   const controls = reactive({
-    fontKey: 'default',
-    fontSizePct: 0.055,
+    fontKey: 'AKbalthom Freedom',
+    fontSizePct: 0.03,
     fontWeight: '700',
     fill: '#ffffff',
     strokeColor: '#000000',
@@ -54,7 +54,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     imageZoom: 1,
     imageOffsetXPct: 0,
     imageOffsetYPct: 0,
-    animation: 'none',
+    animation: 'blur',
   })
 
   // What canvas-drag on the preview repositions: 'caption' or 'image'.
@@ -537,6 +537,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
         document.fonts.load(`400 64px ${KHMER_FONT}`),
       ])
       await document.fonts.ready
+      await ensureBundledFont(controls.fontKey)
       log('Default Khmer font ready.')
     } catch (e) {
       log('Font load warning: ' + e)
@@ -853,10 +854,25 @@ export const useZtudioStore = defineStore('ztudio', () => {
     showProgress.value = false
   }
 
+  async function loadDemo() {
+    try {
+      const [audio, image, srt] = await Promise.all([
+        fetch('/demo/sound.mp3').then(r => r.blob()),
+        fetch('/demo/image.png').then(r => r.blob()),
+        fetch('/demo/caption.srt').then(r => r.blob()),
+      ])
+      await Promise.all([loadAudio(audio), loadImage(image), loadSrt(srt)])
+      log('Loaded demo media.')
+    } catch (err) {
+      log('Could not load demo media: ' + (err?.message || err))
+    }
+  }
+
   async function init() {
     await ensureDefaultFonts()
     applyPreset('clean')
     await restoreCustomFonts()
+    await loadDemo()
     clampScrub()
     maybeReady()
     await runEnvCheck()

@@ -1,6 +1,7 @@
 const BASE = '/fonts/khmer/'
 
 const FONTS = [
+  { family: 'AKbalthom Freedom', label: 'AKbalthom Freedom', file: 'akbalthom-freedom.ttf' },
   { family: 'AKbalthom KhmerLight', label: 'AKbalthom Khmer Light', file: 'akbalthom-khmerlight.ttf' },
   { family: 'AKbalthom KhmerNew', label: 'AKbalthom Khmer New', file: 'akbalthom-khmernew.ttf' },
   { family: 'Carlsberg Sans Light', label: 'Carlsberg Sans Light', file: 'carlsbergsans-light.ttf' },
