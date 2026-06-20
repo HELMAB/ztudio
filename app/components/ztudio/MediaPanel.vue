@@ -12,7 +12,7 @@ const resolutionOptions = computed(() =>
 </script>
 
 <template>
-  <aside class="flex flex-col min-h-0 bg-background">
+  <aside class="flex flex-col min-h-0 bg-background overflow-y-auto lg:overflow-y-hidden">
     <div class="shrink-0 p-4 space-y-4 border-b border-border">
       <h2 class="flex items-center gap-2 font-mono text-[11px] uppercase text-muted-foreground">
         <UploadIcon class="size-3.5 text-[#00b140]" />
@@ -69,6 +69,6 @@ const resolutionOptions = computed(() =>
 
       <ZtudioReadinessPills />
     </div>
-    <ZtudioActivityLog class="flex-1 min-h-0" />
+    <ZtudioActivityLog class="h-64 shrink-0 lg:h-auto lg:flex-1 lg:min-h-0" />
   </aside>
 </template>

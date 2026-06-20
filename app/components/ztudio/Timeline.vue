@@ -132,7 +132,7 @@ watch(
 </script>
 
 <template>
-  <div class="flex flex-col h-48 select-none bg-background">
+  <div class="flex flex-col min-h-0 select-none bg-background">
     <div class="shrink-0 h-8 flex items-center justify-end gap-1 px-3 border-b border-border">
       <span class="font-mono text-[10px] text-muted-foreground mr-1 tabular-nums">
         {{ Math.round(zoom * 100) }}%
@@ -169,23 +169,23 @@ watch(
     </div>
 
     <div class="flex flex-1 min-h-0">
-      <div class="w-24 shrink-0 z-20 flex flex-col border-r border-border bg-background">
+      <div class="w-16 sm:w-24 shrink-0 z-20 flex flex-col border-r border-border bg-background">
         <div class="h-6 shrink-0 border-b border-border" />
         <div class="flex-1 flex flex-col">
           <div
-            class="flex-1 flex items-center gap-2 px-3 font-mono text-[10px] uppercase text-muted-foreground border-b border-border"
+            class="flex-1 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 overflow-hidden font-mono text-[10px] uppercase text-muted-foreground border-b border-border"
           >
             <MusicIcon class="size-3" />
             {{ $t('timeline.audio') }}
           </div>
           <div
-            class="flex-1 flex items-center gap-2 px-3 font-mono text-[10px] uppercase text-muted-foreground border-b border-border"
+            class="flex-1 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 overflow-hidden font-mono text-[10px] uppercase text-muted-foreground border-b border-border"
           >
             <ImageIcon class="size-3" />
             {{ $t('timeline.image') }}
           </div>
           <div
-            class="flex-1 flex items-center gap-2 px-3 font-mono text-[10px] uppercase text-muted-foreground"
+            class="flex-1 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 overflow-hidden font-mono text-[10px] uppercase text-muted-foreground"
           >
             <MessageSquareIcon class="size-3" />
             {{ $t('timeline.caption') }}

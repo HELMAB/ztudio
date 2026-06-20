@@ -17,7 +17,9 @@ const DOT_CLASS = {
 </script>
 
 <template>
-  <header class="shrink-0 h-14 flex items-center justify-between gap-4 px-4 border-b border-border">
+  <header
+    class="shrink-0 h-14 flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-4 border-b border-border"
+  >
     <div class="flex items-center gap-2.5 shrink-0">
       <span class="inline-block w-2.5 h-2.5 bg-[#00b140]" />
       <span class="text-sm font-semibold">{{ $t('app.name') }}</span>
@@ -26,14 +28,14 @@ const DOT_CLASS = {
       </span>
     </div>
 
-    <div class="flex items-center gap-2 min-w-0 flex-1 justify-center">
+    <div class="hidden sm:flex items-center gap-2 min-w-0 flex-1 justify-center">
       <span class="inline-block w-2 h-2 shrink-0" :class="DOT_CLASS[store.env.level]" />
       <span class="font-mono text-[11px] text-muted-foreground truncate">{{
         store.env.title
       }}</span>
     </div>
 
-    <div class="flex items-center gap-3 shrink-0">
+    <div class="flex items-center gap-1.5 sm:gap-3 shrink-0 ml-auto sm:ml-0">
       <span class="font-mono text-[11px] text-muted-foreground hidden xl:inline">{{
         store.status
       }}</span>
@@ -44,8 +46,7 @@ const DOT_CLASS = {
       />
       <Button
         variant="ghost"
-        size="sm"
-        class="font-mono text-[11px] uppercase"
+        class="font-mono text-[11px] uppercase px-2.5 sm:px-3"
         :aria-label="locale === 'en' ? 'ភាសាខ្មែរ' : 'English'"
         @click="toggleLocale"
       >

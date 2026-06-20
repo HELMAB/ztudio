@@ -3,6 +3,11 @@
     "name": "ztudio",
     "tagline": "in-browser renderer"
   },
+  "nav": {
+    "media": "Media",
+    "caption": "Caption",
+    "timeline": "Timeline"
+  },
   "actions": {
     "export": "Export",
     "stop": "Stop",

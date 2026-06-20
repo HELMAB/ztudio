@@ -47,7 +47,7 @@ function fmtTime(s) {
 
 <template>
   <section class="flex flex-col min-w-0 bg-neutral-900">
-    <div class="flex-1 min-h-0 flex items-center justify-center p-6">
+    <div class="flex-1 min-h-0 flex items-center justify-center p-3 sm:p-6">
       <canvas
         ref="canvas"
         width="1080"
@@ -57,7 +57,7 @@ function fmtTime(s) {
     </div>
 
     <div
-      class="shrink-0 flex items-center gap-4 px-6 py-3 bg-neutral-950 border-t border-neutral-800"
+      class="shrink-0 flex items-center gap-3 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-3 bg-neutral-950 border-t border-neutral-800"
     >
       <Button
         size="icon"
@@ -72,7 +72,7 @@ function fmtTime(s) {
       <span class="font-mono text-xs text-neutral-300 tabular-nums shrink-0">
         {{ fmtTime(store.scrub) }} / {{ fmtTime(store.previewDuration) }}
       </span>
-      <span class="font-mono text-[11px] text-neutral-500 truncate">
+      <span class="font-mono text-[11px] text-neutral-500 truncate min-w-0">
         {{ store.currentCaption || $t('preview.noCaption') }}
       </span>
     </div>
