@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useElementSize } from '@vueuse/core'
 import {
   ImageIcon,
@@ -12,9 +12,15 @@ import {
 
 const store = useZtudioStore()
 
-const scrollEl = ref(null)
+const scrollAreaRef = ref(null)
+const viewportEl = ref(null)
 const laneArea = ref(null)
-const { width: trackWidth } = useElementSize(scrollEl)
+const { width: trackWidth, height: trackHeight } = useElementSize(viewportEl)
+
+onMounted(() => {
+  viewportEl.value =
+    scrollAreaRef.value?.$el?.querySelector('[data-slot="scroll-area-viewport"]') ?? null
+})
 
 const MIN_ZOOM = 1
 const MAX_ZOOM = 24
@@ -113,7 +119,7 @@ watch(
     if (!store.isPlaying) {
       return
     }
-    const el = scrollEl.value
+    const el = viewportEl.value
     if (!el) {
       return
     }
@@ -181,8 +187,11 @@ watch(
         </div>
       </div>
 
-      <div ref="scrollEl" class="flex-1 min-w-0 overflow-x-auto overflow-y-hidden">
-        <div class="relative h-full flex flex-col" :style="{ width: contentWidth + 'px' }">
+      <ScrollArea ref="scrollAreaRef" type="auto" class="flex-1 min-w-0">
+        <div
+          class="relative flex flex-col"
+          :style="{ width: contentWidth + 'px', height: trackHeight + 'px' }"
+        >
           <div class="relative h-6 shrink-0 border-b border-border bg-muted/30">
             <div
               v-for="tick in ticks"
@@ -247,7 +256,7 @@ watch(
             <div class="absolute -translate-x-1/2 size-2.5 rotate-45 bg-[#00b140]" />
           </div>
         </div>
-      </div>
+      </ScrollArea>
     </div>
   </div>
 </template>
