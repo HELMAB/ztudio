@@ -9,7 +9,7 @@ const props = defineProps({
   pxPerSecond: { type: Number, required: true },
 })
 
-const store = useGreenroomStore()
+const store = useZtudioStore()
 const MIN = 0.1
 
 let mode = null

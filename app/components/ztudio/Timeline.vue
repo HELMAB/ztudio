@@ -10,7 +10,7 @@ import {
   ZoomOutIcon,
 } from '@lucide/vue'
 
-const store = useGreenroomStore()
+const store = useZtudioStore()
 
 const scrollEl = ref(null)
 const laneArea = ref(null)
@@ -228,7 +228,7 @@ watch(
             </div>
 
             <div class="relative flex-1">
-              <GreenroomTimelineCaptionClip
+              <ZtudioTimelineCaptionClip
                 v-for="c in captionClips"
                 :key="c.key"
                 :index="c.key"

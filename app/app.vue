@@ -2,7 +2,7 @@
   <div>
     <NuxtRouteAnnouncer />
     <ClientOnly>
-      <GreenroomApp />
+      <ZtudioApp />
     </ClientOnly>
   </div>
 </template>

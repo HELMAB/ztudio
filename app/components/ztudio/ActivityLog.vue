@@ -2,7 +2,7 @@
 import { nextTick, ref, watch } from 'vue'
 import { ScrollTextIcon } from '@lucide/vue'
 
-const store = useGreenroomStore()
+const store = useZtudioStore()
 const box = ref(null)
 
 watch(

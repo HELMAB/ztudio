@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, nextTick, reactive, ref, watch } from 'vue'
-import { DEFAULT_STYLE, KHMER_FONT, MAX_AUDIO_SEC, PRESETS } from '@/lib/greenroom/config'
-import { captionAt, parseSRT } from '@/lib/greenroom/srt'
+import { DEFAULT_STYLE, KHMER_FONT, MAX_AUDIO_SEC, PRESETS } from '@/lib/ztudio/config'
+import { captionAt, parseSRT } from '@/lib/ztudio/srt'
 import {
   decodeAudioFile,
   generateFast,
@@ -9,14 +9,14 @@ import {
   loadMediabunny,
   mrType,
   pickPipeline,
-} from '@/lib/greenroom/encoder'
+} from '@/lib/ztudio/encoder'
 import { useActivityLog } from '@/composables/useActivityLog'
 
 const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 const buildFontStack = sel =>
   sel === 'default' ? KHMER_FONT : `"${sel}", "Noto Sans Khmer", system-ui, sans-serif`
 
-export const useGreenroomStore = defineStore('greenroom', () => {
+export const useZtudioStore = defineStore('ztudio', () => {
   const { entries: logEntries, log } = useActivityLog()
 
   const audioBuffer = ref(null)

@@ -10,13 +10,17 @@ import { TypeIcon } from '@lucide/vue'
       <TypeIcon class="size-3.5 text-[#00b140]" />
       Caption
     </h2>
-    <div class="flex-1 min-h-0 overflow-y-auto p-4 space-y-5">
-      <GreenroomCaptionTextEditor />
-      <Separator />
-      <div class="space-y-4">
-        <span class="font-mono text-[11px] uppercase text-muted-foreground">Style</span>
-        <GreenroomCaptionControls />
-      </div>
-    </div>
+    <Tabs default-value="text" class="flex-1 min-h-0 gap-0">
+      <TabsList class="m-4 mb-0 grid w-auto grid-cols-2">
+        <TabsTrigger value="text">Text</TabsTrigger>
+        <TabsTrigger value="style">Style</TabsTrigger>
+      </TabsList>
+      <TabsContent value="text" class="min-h-0 overflow-y-auto p-4">
+        <ZtudioCaptionTextEditor />
+      </TabsContent>
+      <TabsContent value="style" class="min-h-0 overflow-y-auto p-4">
+        <ZtudioCaptionControls />
+      </TabsContent>
+    </Tabs>
   </aside>
 </template>

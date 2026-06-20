@@ -1,7 +1,7 @@
 <script setup>
 import { DownloadIcon } from '@lucide/vue'
 
-const store = useGreenroomStore()
+const store = useZtudioStore()
 </script>
 
 <template>
@@ -15,7 +15,7 @@ const store = useGreenroomStore()
       />
     </div>
     <div>
-      <GreenroomPill :ok="true">{{ store.result.label }}</GreenroomPill>
+      <ZtudioPill :ok="true">{{ store.result.label }}</ZtudioPill>
       <p class="text-sm text-muted-foreground mt-2">
         {{ store.result.sizeMB }} MB · {{ store.result.dur }}s ·
         <template v-if="store.result.frames != null">{{ store.result.frames }} frames · </template

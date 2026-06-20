@@ -1,8 +1,8 @@
 <script setup>
 import { UploadIcon } from '@lucide/vue'
-import { RESOLUTION_OPTIONS } from '@/lib/greenroom/config'
+import { RESOLUTION_OPTIONS } from '@/lib/ztudio/config'
 
-const store = useGreenroomStore()
+const store = useZtudioStore()
 
 async function onAudio(event) {
   const ok = await store.loadAudio(event.target.files[0])
@@ -27,18 +27,18 @@ function onSrt(event) {
         <UploadIcon class="size-3.5 text-[#00b140]" />
         Media
       </h2>
-      <GreenroomField label="Aspect & resolution">
-        <GreenroomSelectField v-model="store.resolution" :options="RESOLUTION_OPTIONS" />
-      </GreenroomField>
-      <GreenroomFileInput label="Audio — required, max 5:00" accept="audio/*" @select="onAudio" />
-      <GreenroomFileInput label="Image — optional" accept="image/*" @select="onImage" />
-      <GreenroomFileInput
+      <ZtudioField label="Aspect & resolution">
+        <ZtudioSelectField v-model="store.resolution" :options="RESOLUTION_OPTIONS" />
+      </ZtudioField>
+      <ZtudioFileInput label="Audio — required, max 5:00" accept="audio/*" @select="onAudio" />
+      <ZtudioFileInput label="Image — optional" accept="image/*" @select="onImage" />
+      <ZtudioFileInput
         label="Captions — optional, .srt"
         accept=".srt,text/plain"
         @select="onSrt"
       />
-      <GreenroomReadinessPills />
+      <ZtudioReadinessPills />
     </div>
-    <GreenroomActivityLog class="flex-1 min-h-0" />
+    <ZtudioActivityLog class="flex-1 min-h-0" />
   </aside>
 </template>

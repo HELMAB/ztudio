@@ -4,9 +4,9 @@ import {
   POSITION_OPTIONS,
   PRESET_OPTIONS,
   WEIGHT_OPTIONS,
-} from '@/lib/greenroom/config'
+} from '@/lib/ztudio/config'
 
-const store = useGreenroomStore()
+const store = useZtudioStore()
 
 function onFont(event) {
   store.loadFont(event.target.files[0])
@@ -16,21 +16,21 @@ function onFont(event) {
 
 <template>
   <div class="space-y-4">
-    <GreenroomField label="Preset style">
-      <GreenroomSelectField v-model="store.preset" :options="PRESET_OPTIONS" />
-    </GreenroomField>
+    <ZtudioField label="Preset style">
+      <ZtudioSelectField v-model="store.preset" :options="PRESET_OPTIONS" />
+    </ZtudioField>
 
-    <GreenroomField label="Caption font">
-      <GreenroomSelectField v-model="store.controls.fontKey" :options="store.fontOptions" />
-    </GreenroomField>
+    <ZtudioField label="Caption font">
+      <ZtudioSelectField v-model="store.controls.fontKey" :options="store.fontOptions" />
+    </ZtudioField>
 
-    <GreenroomFileInput
+    <ZtudioFileInput
       label="Upload font (.ttf/.otf)"
       accept=".ttf,.otf,font/ttf,font/otf"
       @select="onFont"
     />
 
-    <GreenroomField label="Font size" :value="store.sizeLabel">
+    <ZtudioField label="Font size" :value="store.sizeLabel">
       <Slider
         :model-value="[store.controls.fontSizePct]"
         :min="0.03"
@@ -38,30 +38,30 @@ function onFont(event) {
         :step="0.0025"
         @update:model-value="store.controls.fontSizePct = $event[0]"
       />
-    </GreenroomField>
+    </ZtudioField>
 
-    <GreenroomField label="Weight">
-      <GreenroomSelectField v-model="store.controls.fontWeight" :options="WEIGHT_OPTIONS" />
-    </GreenroomField>
+    <ZtudioField label="Weight">
+      <ZtudioSelectField v-model="store.controls.fontWeight" :options="WEIGHT_OPTIONS" />
+    </ZtudioField>
 
     <div class="grid grid-cols-2 gap-3">
-      <GreenroomField label="Text colour">
+      <ZtudioField label="Text colour">
         <input
           v-model="store.controls.fill"
           type="color"
           class="h-9 w-full cursor-pointer rounded-md border border-border bg-background p-1"
         />
-      </GreenroomField>
-      <GreenroomField label="Outline colour">
+      </ZtudioField>
+      <ZtudioField label="Outline colour">
         <input
           v-model="store.controls.strokeColor"
           type="color"
           class="h-9 w-full cursor-pointer rounded-md border border-border bg-background p-1"
         />
-      </GreenroomField>
+      </ZtudioField>
     </div>
 
-    <GreenroomField label="Outline width" :value="store.strokeLabel">
+    <ZtudioField label="Outline width" :value="store.strokeLabel">
       <Slider
         :model-value="[store.controls.strokePct]"
         :min="0"
@@ -69,20 +69,20 @@ function onFont(event) {
         :step="0.02"
         @update:model-value="store.controls.strokePct = $event[0]"
       />
-    </GreenroomField>
+    </ZtudioField>
 
-    <GreenroomField label="Position">
-      <GreenroomSelectField v-model="store.controls.position" :options="POSITION_OPTIONS" />
-    </GreenroomField>
+    <ZtudioField label="Position">
+      <ZtudioSelectField v-model="store.controls.position" :options="POSITION_OPTIONS" />
+    </ZtudioField>
 
-    <GreenroomField label="Image fit">
-      <GreenroomSelectField v-model="store.controls.imageFit" :options="FIT_OPTIONS" />
-    </GreenroomField>
+    <ZtudioField label="Image fit">
+      <ZtudioSelectField v-model="store.controls.imageFit" :options="FIT_OPTIONS" />
+    </ZtudioField>
 
-    <GreenroomField label="Background">
+    <ZtudioField label="Background">
       <label class="flex items-center gap-2.5 text-sm py-1.5 select-none">
         <Checkbox v-model="store.controls.box" /> Box behind text
       </label>
-    </GreenroomField>
+    </ZtudioField>
   </div>
 </template>

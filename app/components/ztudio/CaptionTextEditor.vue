@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { PlusIcon, Trash2Icon } from '@lucide/vue'
 
-const store = useGreenroomStore()
+const store = useZtudioStore()
 
 const index = computed(() => store.selectedCueIndex)
 const selected = computed(() => (index.value != null ? store.cues[index.value] : null))

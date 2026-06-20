@@ -1,9 +1,9 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
 import { PauseIcon, PlayIcon } from '@lucide/vue'
-import { drawFrame } from '@/lib/greenroom/renderer'
+import { drawFrame } from '@/lib/ztudio/renderer'
 
-const store = useGreenroomStore()
+const store = useZtudioStore()
 const canvas = ref(null)
 
 function paint() {

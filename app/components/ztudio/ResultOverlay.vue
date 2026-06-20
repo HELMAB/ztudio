@@ -1,7 +1,7 @@
 <script setup>
 import { XIcon } from '@lucide/vue'
 
-const store = useGreenroomStore()
+const store = useZtudioStore()
 </script>
 
 <template>
@@ -18,7 +18,7 @@ const store = useGreenroomStore()
             <XIcon class="size-4" />
           </Button>
         </div>
-        <GreenroomResult />
+        <ZtudioResult />
       </div>
     </div>
   </Teleport>
