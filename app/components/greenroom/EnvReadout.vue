@@ -11,7 +11,10 @@ const DOT_CLASS = {
 
 <template>
   <section class="border-t border-border py-4 flex items-start gap-3">
-    <span class="mt-1.5 inline-block w-[9px] h-[9px] shrink-0" :class="DOT_CLASS[store.env.level]" />
+    <span
+      class="mt-1.5 inline-block w-[9px] h-[9px] shrink-0"
+      :class="DOT_CLASS[store.env.level]"
+    />
     <div>
       <div class="font-mono text-xs text-foreground">{{ store.env.title }}</div>
       <p v-if="store.env.note" class="text-sm text-muted-foreground mt-1">{{ store.env.note }}</p>

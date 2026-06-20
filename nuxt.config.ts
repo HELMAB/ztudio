@@ -11,21 +11,24 @@ export default defineNuxtConfig({
       link: [
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
-        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@400;700&display=swap' }
-      ]
-    }
+        {
+          rel: 'stylesheet',
+          href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@400;700&display=swap',
+        },
+      ],
+    },
   },
 
   vite: {
-    plugins: [tailwindcss()]
+    plugins: [tailwindcss()],
   },
 
-  modules: ['shadcn-nuxt'],
+  modules: ['@nuxt/eslint', 'shadcn-nuxt'],
 
   shadcn: {
     /** Prefix for all the imported component */
     prefix: '',
     /** Directory that the component lives in. */
-    componentDir: './app/components/ui'
-  }
+    componentDir: './app/components/ui',
+  },
 })

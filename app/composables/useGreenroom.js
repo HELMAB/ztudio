@@ -1,10 +1,5 @@
 import { computed, inject, nextTick, provide, reactive, ref, watch } from 'vue'
-import {
-  DEFAULT_STYLE,
-  KHMER_FONT,
-  MAX_AUDIO_SEC,
-  PRESETS,
-} from '@/lib/greenroom/config'
+import { DEFAULT_STYLE, KHMER_FONT, MAX_AUDIO_SEC, PRESETS } from '@/lib/greenroom/config'
 import { captionAt, parseSRT } from '@/lib/greenroom/srt'
 import {
   decodeAudioFile,
@@ -19,7 +14,8 @@ import { useActivityLog } from '@/composables/useActivityLog'
 const GREENROOM_KEY = Symbol('greenroom')
 
 const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
-const buildFontStack = sel => sel === 'default' ? KHMER_FONT : `"${sel}", "Noto Sans Khmer", system-ui, sans-serif`
+const buildFontStack = sel =>
+  sel === 'default' ? KHMER_FONT : `"${sel}", "Noto Sans Khmer", system-ui, sans-serif`
 
 function createGreenroom() {
   const { entries: logEntries, log } = useActivityLog()
@@ -62,10 +58,15 @@ function createGreenroom() {
     const [w, h] = resolution.value.split('x').map(Number)
     return { w, h }
   })
-  const previewDuration = computed(() => audioBuffer.value ? audioBuffer.value.duration : Math.max(10, srtSpan.value))
+  const previewDuration = computed(() =>
+    audioBuffer.value ? audioBuffer.value.duration : Math.max(10, srtSpan.value),
+  )
   const currentCaption = computed(() => captionAt(scrub.value, cues.value))
   const canRender = computed(() => !!audioBuffer.value && !busy.value)
-  const fontOptions = computed(() => [{ value: 'default', label: 'Noto Sans Khmer' }, ...customFonts.value])
+  const fontOptions = computed(() => [
+    { value: 'default', label: 'Noto Sans Khmer' },
+    ...customFonts.value,
+  ])
   const progressPercent = computed(() => Math.round(progress.value * 100))
   const sizeLabel = computed(() => (controls.fontSizePct * 100).toFixed(1) + '%')
   const strokeLabel = computed(() => Math.round(controls.strokePct * 100) + '%')
@@ -83,15 +84,21 @@ function createGreenroom() {
     box: controls.box,
   }))
 
-  const audioPill = computed(() => audioBuffer.value
-    ? { ok: true, text: `audio ${fmt(audioBuffer.value.duration)}` }
-    : { ok: false, text: 'no audio' })
-  const imagePill = computed(() => imageBitmap.value
-    ? { ok: true, text: `image ${imageBitmap.value.width}×${imageBitmap.value.height}` }
-    : { ok: false, text: 'no image' })
-  const srtPill = computed(() => cues.value.length
-    ? { ok: true, text: `${cues.value.length} cues` }
-    : { ok: false, text: 'no captions' })
+  const audioPill = computed(() =>
+    audioBuffer.value
+      ? { ok: true, text: `audio ${fmt(audioBuffer.value.duration)}` }
+      : { ok: false, text: 'no audio' },
+  )
+  const imagePill = computed(() =>
+    imageBitmap.value
+      ? { ok: true, text: `image ${imageBitmap.value.width}×${imageBitmap.value.height}` }
+      : { ok: false, text: 'no image' },
+  )
+  const srtPill = computed(() =>
+    cues.value.length
+      ? { ok: true, text: `${cues.value.length} cues` }
+      : { ok: false, text: 'no captions' },
+  )
 
   function redraw() {
     previewTick.value++
@@ -123,7 +130,9 @@ function createGreenroom() {
     controls.position = p.pos
     controls.box = p.box
     redraw()
-    nextTick(() => { applyingPreset = false })
+    nextTick(() => {
+      applyingPreset = false
+    })
   }
 
   watch(preset, key => {
@@ -133,7 +142,15 @@ function createGreenroom() {
   })
 
   watch(
-    () => [controls.fontSizePct, controls.fontWeight, controls.fill, controls.strokeColor, controls.strokePct, controls.position, controls.box],
+    () => [
+      controls.fontSizePct,
+      controls.fontWeight,
+      controls.fill,
+      controls.strokeColor,
+      controls.strokePct,
+      controls.position,
+      controls.box,
+    ],
     () => {
       if (!applyingPreset) {
         preset.value = 'custom'
@@ -209,7 +226,7 @@ function createGreenroom() {
     }
     status.value = 'Loading font…'
     try {
-      const ff = new FontFace('UserFont' + (++fontCounter), await file.arrayBuffer())
+      const ff = new FontFace('UserFont' + ++fontCounter, await file.arrayBuffer())
       await ff.load()
       document.fonts.add(ff)
       customFonts.value.push({ value: ff.family, label: file.name })
@@ -274,7 +291,7 @@ function createGreenroom() {
         note: 'Neither WebCodecs nor MediaRecorder can encode here. Use desktop Chrome or Edge.',
       }
     }
-    log('Env: ' + (r.error ? (mr ? ('realtime ' + mr) : 'none') : r.label))
+    log('Env: ' + (r.error ? (mr ? 'realtime ' + mr : 'none') : r.label))
   }
 
   function presentResult(r, dur) {
@@ -317,8 +334,12 @@ function createGreenroom() {
         style: style.value,
         imageBitmap: imageBitmap.value,
         imageFit: controls.imageFit,
-        onProgress: p => { progress.value = p },
-        onStatus: m => { status.value = m },
+        onProgress: p => {
+          progress.value = p
+        },
+        onStatus: m => {
+          status.value = m
+        },
         log,
         isCancelled: () => cancelRequested,
       }
@@ -327,7 +348,9 @@ function createGreenroom() {
       if (!pipe.error) {
         log(`--- Fast encode @ ${w}x${h}, ${dur.toFixed(2)}s, font ${controls.fontKey} ---`)
         if (srtSpan.value > dur + 0.05) {
-          log(`Note: captions run to ${srtSpan.value.toFixed(1)}s but audio is ${dur.toFixed(1)}s; trailing captions cut.`)
+          log(
+            `Note: captions run to ${srtSpan.value.toFixed(1)}s but audio is ${dur.toFixed(1)}s; trailing captions cut.`,
+          )
         }
         log('Pipeline: ' + pipe.label)
         res = await generateFast(MB, pipe, w, h, dur, renderCtx)

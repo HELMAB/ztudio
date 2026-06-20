@@ -14,12 +14,7 @@ const store = useGreenroom()
       >
         Render video
       </Button>
-      <Button
-        v-else
-        variant="outline"
-        class="text-red-700 px-6 py-3"
-        @click="store.cancel()"
-      >
+      <Button v-else variant="outline" class="text-red-700 px-6 py-3" @click="store.cancel()">
         Stop
       </Button>
       <Button

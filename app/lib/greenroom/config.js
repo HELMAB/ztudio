@@ -27,10 +27,42 @@ export const DEFAULT_STYLE = {
 }
 
 export const PRESETS = {
-  clean: { size: 0.055, weight: 700, fill: '#ffffff', stroke: '#000000', strokew: 0.16, pos: 'bottom', box: false },
-  yellow: { size: 0.058, weight: 700, fill: '#ffe14d', stroke: '#000000', strokew: 0.20, pos: 'bottom', box: false },
-  boxed: { size: 0.052, weight: 700, fill: '#ffffff', stroke: '#000000', strokew: 0.00, pos: 'bottom', box: true },
-  tiktok: { size: 0.062, weight: 700, fill: '#ffffff', stroke: '#000000', strokew: 0.22, pos: 'center', box: false },
+  clean: {
+    size: 0.055,
+    weight: 700,
+    fill: '#ffffff',
+    stroke: '#000000',
+    strokew: 0.16,
+    pos: 'bottom',
+    box: false,
+  },
+  yellow: {
+    size: 0.058,
+    weight: 700,
+    fill: '#ffe14d',
+    stroke: '#000000',
+    strokew: 0.2,
+    pos: 'bottom',
+    box: false,
+  },
+  boxed: {
+    size: 0.052,
+    weight: 700,
+    fill: '#ffffff',
+    stroke: '#000000',
+    strokew: 0.0,
+    pos: 'bottom',
+    box: true,
+  },
+  tiktok: {
+    size: 0.062,
+    weight: 700,
+    fill: '#ffffff',
+    stroke: '#000000',
+    strokew: 0.22,
+    pos: 'center',
+    box: false,
+  },
 }
 
 export const RESOLUTION_OPTIONS = [

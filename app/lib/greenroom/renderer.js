@@ -74,9 +74,10 @@ export function drawFrame(ctx, w, h, t, { imageBitmap, imageFit, cues, style }) 
   ctx.fillRect(0, 0, w, h)
 
   if (imageBitmap) {
-    const scale = imageFit === 'cover'
-      ? Math.max(w / imageBitmap.width, h / imageBitmap.height)
-      : Math.min(w / imageBitmap.width, h / imageBitmap.height)
+    const scale =
+      imageFit === 'cover'
+        ? Math.max(w / imageBitmap.width, h / imageBitmap.height)
+        : Math.min(w / imageBitmap.width, h / imageBitmap.height)
     const dw = imageBitmap.width * scale
     const dh = imageBitmap.height * scale
     ctx.drawImage(imageBitmap, (w - dw) / 2, (h - dh) / 2, dw, dh)

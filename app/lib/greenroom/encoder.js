@@ -11,13 +11,15 @@ export function loadMediabunny(log) {
         const mb = await import(/* @vite-ignore */ 'https://esm.sh/mediabunny')
         log?.('Loaded mediabunny from esm.sh')
         return mb
-      } catch (e1) {
+      } catch {
         try {
           const mb = await import(/* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/mediabunny/+esm')
           log?.('Loaded mediabunny from jsDelivr')
           return mb
         } catch (e2) {
-          log?.('WebCodecs library unavailable (CDN blocked); realtime fallback may still work. ' + e2)
+          log?.(
+            'WebCodecs library unavailable (CDN blocked); realtime fallback may still work. ' + e2,
+          )
           return null
         }
       }
@@ -26,9 +28,10 @@ export function loadMediabunny(log) {
   return mediabunnyPromise
 }
 
-export const mrType = () => (typeof window !== 'undefined' && window.MediaRecorder)
-  ? MR_TYPES.find(t => MediaRecorder.isTypeSupported(t))
-  : null
+export const mrType = () =>
+  typeof window !== 'undefined' && window.MediaRecorder
+    ? MR_TYPES.find(t => MediaRecorder.isTypeSupported(t))
+    : null
 
 export async function decodeAudioFile(file) {
   const arr = await file.arrayBuffer()
@@ -46,7 +49,12 @@ export async function pickPipeline(MB, width, height) {
     return { error: 'WebCodecs library not loaded.' }
   }
 
-  const { Mp4OutputFormat, WebMOutputFormat, getFirstEncodableVideoCodec, getFirstEncodableAudioCodec } = MB
+  const {
+    Mp4OutputFormat,
+    WebMOutputFormat,
+    getFirstEncodableVideoCodec,
+    getFirstEncodableAudioCodec,
+  } = MB
 
   const mp4 = new Mp4OutputFormat()
   const v = await getFirstEncodableVideoCodec(mp4.getSupportedVideoCodecs(), { width, height })
@@ -59,14 +67,31 @@ export async function pickPipeline(MB, width, height) {
   const v2 = await getFirstEncodableVideoCodec(webm.getSupportedVideoCodecs(), { width, height })
   const a2 = await getFirstEncodableAudioCodec(webm.getSupportedAudioCodecs())
   if (v2 && a2) {
-    return { format: webm, videoCodec: v2, audioCodec: a2, label: `WebM (${v2} + ${a2}) — MP4 unavailable`, ext: 'webm', fallback: true }
+    return {
+      format: webm,
+      videoCodec: v2,
+      audioCodec: a2,
+      label: `WebM (${v2} + ${a2}) — MP4 unavailable`,
+      ext: 'webm',
+      fallback: true,
+    }
   }
 
   return { error: 'No WebCodecs video+audio codec combination.' }
 }
 
 export async function generateFast(MB, pipe, w, h, dur, ctx2) {
-  const { audioBuffer, cues, style, imageBitmap, imageFit, onProgress, onStatus, log, isCancelled } = ctx2
+  const {
+    audioBuffer,
+    cues,
+    style,
+    imageBitmap,
+    imageFit,
+    onProgress,
+    onStatus,
+    log,
+    isCancelled,
+  } = ctx2
   const { Output, BufferTarget, CanvasSource, AudioBufferSource, QUALITY_HIGH } = MB
 
   const output = new Output({ format: pipe.format, target: new BufferTarget() })
@@ -119,7 +144,17 @@ export async function generateFast(MB, pipe, w, h, dur, ctx2) {
 }
 
 export async function generateRealtime(w, h, dur, ctx2) {
-  const { audioBuffer, cues, style, imageBitmap, imageFit, onProgress, onStatus, log, isCancelled } = ctx2
+  const {
+    audioBuffer,
+    cues,
+    style,
+    imageBitmap,
+    imageFit,
+    onProgress,
+    onStatus,
+    log,
+    isCancelled,
+  } = ctx2
 
   const mimeType = mrType()
   if (!mimeType) {

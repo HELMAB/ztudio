@@ -28,7 +28,11 @@ function onSrt(event) {
       </GreenroomField>
       <GreenroomFileInput label="Audio — required, max 5:00" accept="audio/*" @select="onAudio" />
       <GreenroomFileInput label="Image — optional" accept="image/*" @select="onImage" />
-      <GreenroomFileInput label="Captions — optional, .srt" accept=".srt,text/plain" @select="onSrt" />
+      <GreenroomFileInput
+        label="Captions — optional, .srt"
+        accept=".srt,text/plain"
+        @select="onSrt"
+      />
     </div>
     <GreenroomReadinessPills />
   </section>

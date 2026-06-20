@@ -4,12 +4,15 @@ import { nextTick, ref, watch } from 'vue'
 const store = useGreenroom()
 const logBox = ref(null)
 
-watch(() => store.logEntries.length, async () => {
-  await nextTick()
-  if (logBox.value) {
-    logBox.value.scrollTop = logBox.value.scrollHeight
-  }
-})
+watch(
+  () => store.logEntries.length,
+  async () => {
+    await nextTick()
+    if (logBox.value) {
+      logBox.value.scrollTop = logBox.value.scrollHeight
+    }
+  },
+)
 </script>
 
 <template>
