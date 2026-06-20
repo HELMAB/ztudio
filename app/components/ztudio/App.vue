@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 
 const store = useZtudioStore()
@@ -8,8 +8,15 @@ const store = useZtudioStore()
 // single-column, tab-driven workspace instead.
 const isDesktop = useMediaQuery('(min-width: 1024px)')
 
-onMounted(() => {
-  store.init()
+// Branded splash stays up until init (fonts + demo media + env check) resolves.
+const ready = ref(false)
+
+onMounted(async () => {
+  try {
+    await store.init()
+  } finally {
+    ready.value = true
+  }
 })
 </script>
 
@@ -21,5 +28,14 @@ onMounted(() => {
     <ZtudioDesktopWorkspace v-if="isDesktop" />
     <ZtudioMobileWorkspace v-else />
     <ZtudioResultOverlay />
+
+    <Transition
+      enter-active-class="transition-opacity duration-300"
+      leave-active-class="transition-opacity duration-500"
+      enter-from-class="opacity-0"
+      leave-to-class="opacity-0"
+    >
+      <ZtudioSplash v-if="!ready" />
+    </Transition>
   </div>
 </template>

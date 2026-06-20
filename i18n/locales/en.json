@@ -1,7 +1,8 @@
 {
   "app": {
     "name": "ztudio",
-    "tagline": "in-browser renderer"
+    "tagline": "in-browser renderer",
+    "loading": "Preparing studio…"
   },
   "nav": {
     "media": "Media",
