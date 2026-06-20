@@ -1,7 +1,12 @@
 <script setup>
-import { CircleStopIcon, DownloadIcon } from '@lucide/vue'
+import { CircleStopIcon, DownloadIcon, LanguagesIcon } from '@lucide/vue'
 
 const store = useZtudioStore()
+const { locale, setLocale } = useI18n()
+
+function toggleLocale() {
+  setLocale(locale.value === 'en' ? 'km' : 'en')
+}
 
 const DOT_CLASS = {
   pending: 'bg-muted-foreground',
@@ -15,9 +20,9 @@ const DOT_CLASS = {
   <header class="shrink-0 h-14 flex items-center justify-between gap-4 px-4 border-b border-border">
     <div class="flex items-center gap-2.5 shrink-0">
       <span class="inline-block w-2.5 h-2.5 bg-[#00b140]" />
-      <span class="text-sm font-semibold">ztudio</span>
+      <span class="text-sm font-semibold">{{ $t('app.name') }}</span>
       <span class="font-mono text-[10px] uppercase text-muted-foreground hidden lg:inline">
-        in-browser renderer
+        {{ $t('app.tagline') }}
       </span>
     </div>
 
@@ -38,17 +43,27 @@ const DOT_CLASS = {
         class="w-24 hidden md:block"
       />
       <Button
+        variant="ghost"
+        size="sm"
+        class="font-mono text-[11px] uppercase"
+        :aria-label="locale === 'en' ? 'ភាសាខ្មែរ' : 'English'"
+        @click="toggleLocale"
+      >
+        <LanguagesIcon class="size-4" />
+        {{ locale === 'en' ? 'ខ្មែរ' : 'EN' }}
+      </Button>
+      <Button
         v-if="!store.busy"
         :disabled="!store.canRender"
         class="bg-[#00b140] text-white hover:bg-[#00a038]"
         @click="store.render()"
       >
         <DownloadIcon class="size-4" />
-        Export
+        {{ $t('actions.export') }}
       </Button>
       <Button v-else variant="outline" class="text-red-700" @click="store.cancel()">
         <CircleStopIcon class="size-4" />
-        Stop
+        {{ $t('actions.stop') }}
       </Button>
     </div>
   </header>

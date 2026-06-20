@@ -44,12 +44,31 @@ export const useZtudioStore = defineStore('ztudio', () => {
     imageFit: 'contain',
   })
 
+  const { $i18n } = useNuxtApp()
+  const t = (key, params) => $i18n.t(key, params)
+
   const busy = ref(false)
-  const status = ref('Add audio to start.')
+  const statusState = ref({ key: 'status.addAudio' })
+  const status = computed(() =>
+    statusState.value.raw != null
+      ? statusState.value.raw
+      : t(statusState.value.key, statusState.value.params || {}),
+  )
+  function setStatus(key, params) {
+    statusState.value = { key, params }
+  }
+  function setStatusRaw(raw) {
+    statusState.value = { raw }
+  }
   const progress = ref(0)
   const showProgress = ref(false)
   const result = ref(null)
-  const env = ref({ level: 'pending', title: 'Checking encoder support…', note: '' })
+  const envState = ref({ level: 'pending', titleKey: 'env.checking' })
+  const env = computed(() => ({
+    level: envState.value.level,
+    title: t(envState.value.titleKey, envState.value.titleParams || {}),
+    note: envState.value.noteKey ? t(envState.value.noteKey) : '',
+  }))
   const isPlaying = ref(false)
 
   let cancelRequested = false
@@ -94,18 +113,23 @@ export const useZtudioStore = defineStore('ztudio', () => {
 
   const audioPill = computed(() =>
     audioBuffer.value
-      ? { ok: true, text: `audio ${fmt(audioBuffer.value.duration)}` }
-      : { ok: false, text: 'no audio' },
+      ? { ok: true, text: t('pill.audio', { time: fmt(audioBuffer.value.duration) }) }
+      : { ok: false, text: t('pill.noAudio') },
   )
   const imagePill = computed(() =>
     imageBitmap.value
-      ? { ok: true, text: `image ${imageBitmap.value.width}×${imageBitmap.value.height}` }
-      : { ok: false, text: 'no image' },
+      ? {
+          ok: true,
+          text: t('pill.image', {
+            dimensions: `${imageBitmap.value.width}×${imageBitmap.value.height}`,
+          }),
+        }
+      : { ok: false, text: t('pill.noImage') },
   )
   const srtPill = computed(() =>
     cues.value.length
-      ? { ok: true, text: `${cues.value.length} cues` }
-      : { ok: false, text: 'no captions' },
+      ? { ok: true, text: t('pill.cues', { count: cues.value.length }) }
+      : { ok: false, text: t('pill.noCaptions') },
   )
 
   function redraw() {
@@ -120,7 +144,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
 
   function maybeReady() {
     if (audioBuffer.value && !busy.value) {
-      status.value = 'Ready to render.'
+      setStatus('status.ready')
     }
   }
 
@@ -176,12 +200,12 @@ export const useZtudioStore = defineStore('ztudio', () => {
       maybeReady()
       return true
     }
-    status.value = 'Decoding audio…'
+    setStatus('status.decoding')
     try {
       const buf = await decodeAudioFile(file)
       if (buf.duration > MAX_AUDIO_SEC) {
         audioBuffer.value = null
-        status.value = `That track is ${fmt(buf.duration)} — over the 5:00 limit. Trim it and try again.`
+        setStatus('status.overLimit', { duration: fmt(buf.duration) })
         log(`Rejected audio: ${buf.duration.toFixed(1)}s`)
         return false
       }
@@ -189,7 +213,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       log(`Audio: ${buf.duration.toFixed(2)}s, ${buf.numberOfChannels}ch, ${buf.sampleRate}Hz`)
     } catch (err) {
       audioBuffer.value = null
-      status.value = 'That audio file could not be decoded. Try MP3, WAV, or M4A.'
+      setStatus('status.decodeFailed')
       log('Audio decode error: ' + (err?.message || err))
       return false
     } finally {
@@ -222,7 +246,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     selectedCueIndex.value = null
     log(`Parsed ${cues.value.length} cues, spanning ${srtSpan.value.toFixed(1)}s.`)
     if (!cues.value.length) {
-      status.value = 'No cues found in that .srt — check the timestamp format.'
+      setStatus('status.noCues')
     }
     clampScrub()
     redraw()
@@ -254,7 +278,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     if (!file) {
       return
     }
-    status.value = 'Loading font…'
+    setStatus('status.loadingFont')
     try {
       const ff = new FontFace('UserFont' + ++fontCounter, await file.arrayBuffer())
       await ff.load()
@@ -263,10 +287,10 @@ export const useZtudioStore = defineStore('ztudio', () => {
       controls.fontKey = ff.family
       redraw()
       log(`Loaded font "${file.name}" as ${ff.family}.`)
-      status.value = audioBuffer.value ? 'Ready to render.' : 'Font loaded.'
+      setStatus(audioBuffer.value ? 'status.ready' : 'status.fontLoaded')
     } catch (err) {
       log('Font upload failed: ' + (err?.message || err))
-      status.value = 'That font file could not be loaded.'
+      setStatus('status.fontFailed')
     }
   }
 
@@ -302,24 +326,24 @@ export const useZtudioStore = defineStore('ztudio', () => {
     const mr = mrType()
 
     if (!r.error) {
-      env.value = {
+      envState.value = {
         level: r.fallback ? 'warn' : 'good',
-        title: `Fast encode — ${r.label}`,
-        note: r.fallback
-          ? 'AAC/H.264 unavailable here (expected on Firefox and desktop Linux); fast WebCodecs WebM will be used. Use Chrome or Edge for MP4.'
-          : 'Full MP4 (H.264 + AAC) via WebCodecs — encodes faster than realtime.',
+        titleKey: 'env.fast',
+        titleParams: { label: r.label },
+        noteKey: r.fallback ? 'env.fastFallbackNote' : 'env.fastNote',
       }
     } else if (mr) {
-      env.value = {
+      envState.value = {
         level: 'warn',
-        title: `Realtime fallback — ${mr.startsWith('video/mp4') ? 'MP4' : 'WebM'} (MediaRecorder)`,
-        note: 'No WebCodecs encoder here, so a realtime fallback will run — it takes as long as the audio. For fast MP4, use desktop Chrome or Edge.',
+        titleKey: 'env.realtime',
+        titleParams: { kind: mr.startsWith('video/mp4') ? 'MP4' : 'WebM' },
+        noteKey: 'env.realtimeNote',
       }
     } else {
-      env.value = {
+      envState.value = {
         level: 'bad',
-        title: 'No encoder available in this browser.',
-        note: 'Neither WebCodecs nor MediaRecorder can encode here. Use desktop Chrome or Edge.',
+        titleKey: 'env.none',
+        noteKey: 'env.noneNote',
       }
     }
     log('Env: ' + (r.error ? (mr ? 'realtime ' + mr : 'none') : r.label))
@@ -339,7 +363,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       ext: r.ext,
     }
     progress.value = 1
-    status.value = 'Rendered.'
+    setStatus('status.rendered')
   }
 
   async function render() {
@@ -370,7 +394,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
           progress.value = p
         },
         onStatus: m => {
-          status.value = m
+          setStatusRaw(m)
         },
         log,
         isCancelled: () => cancelRequested,
@@ -397,7 +421,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       }
 
       if (cancelRequested || !res) {
-        status.value = 'Stopped.'
+        setStatus('status.stopped')
         log('Generation cancelled.')
         return
       }
@@ -406,7 +430,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     } catch (err) {
       console.error(err)
       log('ERROR: ' + (err?.message || err))
-      status.value = 'Render failed — see activity log.'
+      setStatus('status.renderFailed')
     } finally {
       busy.value = false
       maybeReady()
@@ -415,7 +439,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
 
   function cancel() {
     cancelRequested = true
-    status.value = 'Stopping…'
+    setStatus('status.stopping')
     log('Cancel requested.')
   }
 

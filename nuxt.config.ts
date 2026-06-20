@@ -28,7 +28,22 @@ export default defineNuxtConfig({
     plugins: [tailwindcss()],
   },
 
-  modules: ['@nuxt/eslint', '@pinia/nuxt', 'shadcn-nuxt'],
+  modules: ['@nuxt/eslint', '@pinia/nuxt', 'shadcn-nuxt', '@nuxtjs/i18n'],
+
+  i18n: {
+    bundle: { optimizeTranslationDirective: false },
+    strategy: 'no_prefix',
+    defaultLocale: 'en',
+    locales: [
+      { code: 'en', name: 'English', file: 'en.json' },
+      { code: 'km', name: 'ខ្មែរ', file: 'km.json' },
+    ],
+    detectBrowserLanguage: {
+      useCookie: true,
+      cookieKey: 'ztudio_locale',
+      redirectOn: 'root',
+    },
+  },
 
   shadcn: {
     /** Prefix for all the imported component */

@@ -12,18 +12,24 @@ function fmt(s) {
   const sec = (s % 60).toFixed(1).padStart(4, '0')
   return `${m}:${sec}`
 }
+
+const rangeLabel = computed(() =>
+  selected.value ? `${fmt(selected.value.start)} – ${fmt(selected.value.end)}` : '',
+)
 </script>
 
 <template>
   <div class="space-y-2.5">
     <div class="flex items-center justify-between">
-      <span class="font-mono text-[11px] uppercase text-muted-foreground">Caption text</span>
+      <span class="font-mono text-[11px] uppercase text-muted-foreground">{{
+        $t('caption.text')
+      }}</span>
       <div class="flex items-center gap-1">
         <Button
           size="icon"
           variant="ghost"
           class="size-6"
-          aria-label="Add caption"
+          :aria-label="$t('caption.addAria')"
           @click="store.addCue()"
         >
           <PlusIcon class="size-3.5" />
@@ -33,7 +39,7 @@ function fmt(s) {
           size="icon"
           variant="ghost"
           class="size-6 text-red-600 hover:text-red-700"
-          aria-label="Delete caption"
+          :aria-label="$t('caption.deleteAria')"
           @click="store.removeCue(index)"
         >
           <Trash2Icon class="size-3.5" />
@@ -45,15 +51,15 @@ function fmt(s) {
       <Textarea
         :model-value="selected.text"
         rows="3"
-        placeholder="Type caption…"
+        :placeholder="$t('caption.placeholder')"
         @update:model-value="store.setCueText(index, $event)"
       />
       <p class="font-mono text-[10px] text-muted-foreground">
-        {{ fmt(selected.start) }} – {{ fmt(selected.end) }} · press Enter for a new line
+        {{ $t('caption.hint', { range: rangeLabel }) }}
       </p>
     </template>
     <p v-else class="text-xs text-muted-foreground">
-      Select a caption in the timeline to edit its text, or add a new one.
+      {{ $t('caption.empty') }}
     </p>
   </div>
 </template>

@@ -1,0 +1,131 @@
+{
+  "app": {
+    "name": "ztudio",
+    "tagline": "in-browser renderer"
+  },
+  "actions": {
+    "export": "Export",
+    "stop": "Stop",
+    "play": "Play",
+    "pause": "Pause",
+    "download": "Download {file}"
+  },
+  "media": {
+    "heading": "Media",
+    "resolution": "Aspect & resolution",
+    "audio": "Audio — required, max 5:00",
+    "image": "Image — optional",
+    "captions": "Captions — optional, .srt"
+  },
+  "activity": {
+    "heading": "Activity"
+  },
+  "caption": {
+    "heading": "Caption",
+    "tabText": "Text",
+    "tabStyle": "Style",
+    "text": "Caption text",
+    "addAria": "Add caption",
+    "deleteAria": "Delete caption",
+    "placeholder": "Type caption…",
+    "hint": "{range} · press Enter for a new line",
+    "empty": "Select a caption in the timeline to edit its text, or add a new one.",
+    "style": "Style"
+  },
+  "controls": {
+    "preset": "Preset style",
+    "font": "Caption font",
+    "uploadFont": "Upload font (.ttf/.otf)",
+    "fontSize": "Font size",
+    "weight": "Weight",
+    "textColour": "Text colour",
+    "outlineColour": "Outline colour",
+    "outlineWidth": "Outline width",
+    "position": "Position",
+    "imageFit": "Image fit",
+    "background": "Background",
+    "boxBehindText": "Box behind text"
+  },
+  "preview": {
+    "noCaption": "no caption at playhead"
+  },
+  "timeline": {
+    "zoomOut": "Zoom out",
+    "zoomIn": "Zoom in",
+    "fit": "Fit timeline",
+    "audio": "Audio",
+    "image": "Image",
+    "caption": "Caption"
+  },
+  "result": {
+    "complete": "Export complete",
+    "stats": "{size} MB · {dur}s · {ratio}× realtime",
+    "statsFrames": "{size} MB · {dur}s · {frames} frames · {ratio}× realtime",
+    "downloadName": "caption-video.{ext}"
+  },
+  "select": {
+    "placeholder": "Select…"
+  },
+  "font": {
+    "default": "Noto Sans Khmer"
+  },
+  "resolution": {
+    "1080x1920": "1080 × 1920 — TikTok / Reels / Shorts (9:16)",
+    "720x1280": "720 × 1280 — faster test (9:16)",
+    "1920x1080": "1920 × 1080 — YouTube (16:9)",
+    "1080x1080": "1080 × 1080 — Facebook square (1:1)"
+  },
+  "preset": {
+    "clean": "Clean White",
+    "yellow": "Yellow Pop",
+    "boxed": "Boxed",
+    "tiktok": "TikTok Bold",
+    "custom": "Custom"
+  },
+  "weightOpt": {
+    "700": "Bold",
+    "400": "Regular"
+  },
+  "position": {
+    "bottom": "Bottom",
+    "center": "Center",
+    "top": "Top"
+  },
+  "fit": {
+    "contain": "Contain (fit, green bars)",
+    "cover": "Cover (fill, crop)"
+  },
+  "pill": {
+    "noAudio": "no audio",
+    "audio": "audio {time}",
+    "noImage": "no image",
+    "image": "image {dimensions}",
+    "noCaptions": "no captions",
+    "cues": "{count} cues"
+  },
+  "status": {
+    "addAudio": "Add audio to start.",
+    "ready": "Ready to render.",
+    "decoding": "Decoding audio…",
+    "overLimit": "That track is {duration} — over the 5:00 limit. Trim it and try again.",
+    "decodeFailed": "That audio file could not be decoded. Try MP3, WAV, or M4A.",
+    "noCues": "No cues found in that .srt — check the timestamp format.",
+    "loadingFont": "Loading font…",
+    "fontLoaded": "Font loaded.",
+    "fontFailed": "That font file could not be loaded.",
+    "rendered": "Rendered.",
+    "stopped": "Stopped.",
+    "stopping": "Stopping…",
+    "renderFailed": "Render failed — see activity log."
+  },
+  "env": {
+    "checking": "Checking encoder support…",
+    "fast": "Fast encode — {label}",
+    "fastNote": "Full MP4 (H.264 + AAC) via WebCodecs — encodes faster than realtime.",
+    "fastFallbackNote": "AAC/H.264 unavailable here (expected on Firefox and desktop Linux); fast WebCodecs WebM will be used. Use Chrome or Edge for MP4.",
+    "realtime": "Realtime fallback — {kind} (MediaRecorder)",
+    "realtimeNote": "No WebCodecs encoder here, so a realtime fallback will run — it takes as long as the audio. For fast MP4, use desktop Chrome or Edge.",
+    "none": "No encoder available in this browser.",
+    "noneNote": "Neither WebCodecs nor MediaRecorder can encode here. Use desktop Chrome or Edge."
+  }
+}

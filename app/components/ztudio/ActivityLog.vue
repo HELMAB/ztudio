@@ -22,7 +22,7 @@ watch(
       class="shrink-0 flex items-center gap-2 px-4 py-2.5 font-mono text-[11px] uppercase text-muted-foreground border-b border-border"
     >
       <ScrollTextIcon class="size-3.5 text-[#00b140]" />
-      Activity
+      {{ $t('activity.heading') }}
     </h2>
     <div
       ref="box"

@@ -13,7 +13,9 @@ const store = useZtudioStore()
     >
       <div class="w-full max-w-lg rounded-lg border border-border bg-background p-5 shadow-xl">
         <div class="mb-4 flex items-center justify-between">
-          <h3 class="font-mono text-[11px] uppercase text-muted-foreground">Export complete</h3>
+          <h3 class="font-mono text-[11px] uppercase text-muted-foreground">
+            {{ $t('result.complete') }}
+          </h3>
           <Button size="icon" variant="ghost" class="size-7" @click="store.dismissResult()">
             <XIcon class="size-4" />
           </Button>

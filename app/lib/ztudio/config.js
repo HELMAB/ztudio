@@ -66,32 +66,32 @@ export const PRESETS = {
 }
 
 export const RESOLUTION_OPTIONS = [
-  { value: '1080x1920', label: '1080 × 1920 — TikTok / Reels / Shorts (9:16)' },
-  { value: '720x1280', label: '720 × 1280 — faster test (9:16)' },
-  { value: '1920x1080', label: '1920 × 1080 — YouTube (16:9)' },
-  { value: '1080x1080', label: '1080 × 1080 — Facebook square (1:1)' },
+  { value: '1080x1920', labelKey: 'resolution.1080x1920' },
+  { value: '720x1280', labelKey: 'resolution.720x1280' },
+  { value: '1920x1080', labelKey: 'resolution.1920x1080' },
+  { value: '1080x1080', labelKey: 'resolution.1080x1080' },
 ]
 
 export const PRESET_OPTIONS = [
-  { value: 'clean', label: 'Clean White' },
-  { value: 'yellow', label: 'Yellow Pop' },
-  { value: 'boxed', label: 'Boxed' },
-  { value: 'tiktok', label: 'TikTok Bold' },
-  { value: 'custom', label: 'Custom' },
+  { value: 'clean', labelKey: 'preset.clean' },
+  { value: 'yellow', labelKey: 'preset.yellow' },
+  { value: 'boxed', labelKey: 'preset.boxed' },
+  { value: 'tiktok', labelKey: 'preset.tiktok' },
+  { value: 'custom', labelKey: 'preset.custom' },
 ]
 
 export const WEIGHT_OPTIONS = [
-  { value: '700', label: 'Bold' },
-  { value: '400', label: 'Regular' },
+  { value: '700', labelKey: 'weightOpt.700' },
+  { value: '400', labelKey: 'weightOpt.400' },
 ]
 
 export const POSITION_OPTIONS = [
-  { value: 'bottom', label: 'Bottom' },
-  { value: 'center', label: 'Center' },
-  { value: 'top', label: 'Top' },
+  { value: 'bottom', labelKey: 'position.bottom' },
+  { value: 'center', labelKey: 'position.center' },
+  { value: 'top', labelKey: 'position.top' },
 ]
 
 export const FIT_OPTIONS = [
-  { value: 'contain', label: 'Contain (fit, green bars)' },
-  { value: 'cover', label: 'Cover (fill, crop)' },
+  { value: 'contain', labelKey: 'fit.contain' },
+  { value: 'cover', labelKey: 'fit.cover' },
 ]

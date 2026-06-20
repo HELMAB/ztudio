@@ -17,17 +17,29 @@ const store = useZtudioStore()
     <div>
       <ZtudioPill :ok="true">{{ store.result.label }}</ZtudioPill>
       <p class="text-sm text-muted-foreground mt-2">
-        {{ store.result.sizeMB }} MB · {{ store.result.dur }}s ·
-        <template v-if="store.result.frames != null">{{ store.result.frames }} frames · </template
-        >{{ store.result.ratio }}× realtime
+        <template v-if="store.result.frames != null">{{
+          $t('result.statsFrames', {
+            size: store.result.sizeMB,
+            dur: store.result.dur,
+            frames: store.result.frames,
+            ratio: store.result.ratio,
+          })
+        }}</template>
+        <template v-else>{{
+          $t('result.stats', {
+            size: store.result.sizeMB,
+            dur: store.result.dur,
+            ratio: store.result.ratio,
+          })
+        }}</template>
       </p>
       <a
         :href="store.result.url"
-        :download="`caption-video.${store.result.ext}`"
+        :download="$t('result.downloadName', { ext: store.result.ext })"
         class="inline-flex items-center gap-1.5 mt-2.5 font-semibold text-[#00b140] border-b border-[#00b140] pb-px"
       >
         <DownloadIcon class="size-4" />
-        Download caption-video.{{ store.result.ext }}
+        {{ $t('actions.download', { file: $t('result.downloadName', { ext: store.result.ext }) }) }}
       </a>
     </div>
   </div>

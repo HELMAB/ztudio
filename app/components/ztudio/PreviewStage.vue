@@ -63,7 +63,7 @@ function fmtTime(s) {
         size="icon"
         variant="secondary"
         class="rounded-full"
-        :aria-label="store.isPlaying ? 'Pause' : 'Play'"
+        :aria-label="store.isPlaying ? $t('actions.pause') : $t('actions.play')"
         @click="store.togglePlay()"
       >
         <PauseIcon v-if="store.isPlaying" class="size-4" />
@@ -73,7 +73,7 @@ function fmtTime(s) {
         {{ fmtTime(store.scrub) }} / {{ fmtTime(store.previewDuration) }}
       </span>
       <span class="font-mono text-[11px] text-neutral-500 truncate">
-        {{ store.currentCaption || 'no caption at playhead' }}
+        {{ store.currentCaption || $t('preview.noCaption') }}
       </span>
     </div>
   </section>

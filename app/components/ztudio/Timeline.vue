@@ -142,12 +142,18 @@ watch(
         variant="ghost"
         class="size-6"
         :disabled="zoom <= MIN_ZOOM"
-        aria-label="Zoom out"
+        :aria-label="$t('timeline.zoomOut')"
         @click="zoomOut"
       >
         <ZoomOutIcon class="size-3.5" />
       </Button>
-      <Button size="icon" variant="ghost" class="size-6" aria-label="Fit timeline" @click="zoomFit">
+      <Button
+        size="icon"
+        variant="ghost"
+        class="size-6"
+        :aria-label="$t('timeline.fit')"
+        @click="zoomFit"
+      >
         <ScanIcon class="size-3.5" />
       </Button>
       <Button
@@ -155,7 +161,7 @@ watch(
         variant="ghost"
         class="size-6"
         :disabled="zoom >= MAX_ZOOM"
-        aria-label="Zoom in"
+        :aria-label="$t('timeline.zoomIn')"
         @click="zoomIn"
       >
         <ZoomInIcon class="size-3.5" />
@@ -170,19 +176,19 @@ watch(
             class="flex-1 flex items-center gap-2 px-3 font-mono text-[10px] uppercase text-muted-foreground border-b border-border"
           >
             <MusicIcon class="size-3" />
-            Audio
+            {{ $t('timeline.audio') }}
           </div>
           <div
             class="flex-1 flex items-center gap-2 px-3 font-mono text-[10px] uppercase text-muted-foreground border-b border-border"
           >
             <ImageIcon class="size-3" />
-            Image
+            {{ $t('timeline.image') }}
           </div>
           <div
             class="flex-1 flex items-center gap-2 px-3 font-mono text-[10px] uppercase text-muted-foreground"
           >
             <MessageSquareIcon class="size-3" />
-            Caption
+            {{ $t('timeline.caption') }}
           </div>
         </div>
       </div>

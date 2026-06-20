@@ -1,0 +1,131 @@
+{
+  "app": {
+    "name": "ztudio",
+    "tagline": "កម្មវិធីបង្ហាញក្នុងកម្មវិធីរុករក"
+  },
+  "actions": {
+    "export": "នាំចេញ",
+    "stop": "បញ្ឈប់",
+    "play": "ចាក់",
+    "pause": "ផ្អាក",
+    "download": "ទាញយក {file}"
+  },
+  "media": {
+    "heading": "មេឌៀ",
+    "resolution": "សមាមាត្រ និងគុណភាព",
+    "audio": "សំឡេង — ត្រូវការ, អតិបរមា ៥:០០",
+    "image": "រូបភាព — ស្រេចចិត្ត",
+    "captions": "អក្សររត់ — ស្រេចចិត្ត, .srt"
+  },
+  "activity": {
+    "heading": "សកម្មភាព"
+  },
+  "caption": {
+    "heading": "អក្សររត់",
+    "tabText": "អត្ថបទ",
+    "tabStyle": "រចនាបថ",
+    "text": "អត្ថបទអក្សររត់",
+    "addAria": "បន្ថែមអក្សររត់",
+    "deleteAria": "លុបអក្សររត់",
+    "placeholder": "វាយអក្សររត់…",
+    "hint": "{range} · ចុច Enter ដើម្បីបន្ទាត់ថ្មី",
+    "empty": "ជ្រើសរើសអក្សររត់ក្នុងបន្ទាត់ពេលវេលា ដើម្បីកែអត្ថបទ ឬបន្ថែមថ្មី។",
+    "style": "រចនាបថ"
+  },
+  "controls": {
+    "preset": "រចនាបថសម្រេច",
+    "font": "ពុម្ពអក្សរអក្សររត់",
+    "uploadFont": "ផ្ទុកពុម្ពអក្សរ (.ttf/.otf)",
+    "fontSize": "ទំហំអក្សរ",
+    "weight": "កម្រាស់អក្សរ",
+    "textColour": "ពណ៌អក្សរ",
+    "outlineColour": "ពណ៌គែម",
+    "outlineWidth": "កម្រាស់គែម",
+    "position": "ទីតាំង",
+    "imageFit": "ការដាក់រូបភាព",
+    "background": "ផ្ទៃខាងក្រោយ",
+    "boxBehindText": "ប្រអប់ពីក្រោយអក្សរ"
+  },
+  "preview": {
+    "noCaption": "គ្មានអក្សររត់ត្រង់ចំណុចចាក់"
+  },
+  "timeline": {
+    "zoomOut": "បង្រួម",
+    "zoomIn": "ពង្រីក",
+    "fit": "ដាក់ឱ្យសម",
+    "audio": "សំឡេង",
+    "image": "រូបភាព",
+    "caption": "អក្សររត់"
+  },
+  "result": {
+    "complete": "នាំចេញរួចរាល់",
+    "stats": "{size} MB · {dur}វិ · {ratio}× ល្បឿនពិត",
+    "statsFrames": "{size} MB · {dur}វិ · {frames} ហ្វ្រេម · {ratio}× ល្បឿនពិត",
+    "downloadName": "caption-video.{ext}"
+  },
+  "select": {
+    "placeholder": "ជ្រើសរើស…"
+  },
+  "font": {
+    "default": "Noto Sans Khmer"
+  },
+  "resolution": {
+    "1080x1920": "1080 × 1920 — TikTok / Reels / Shorts (9:16)",
+    "720x1280": "720 × 1280 — សាកល្បងលឿន (9:16)",
+    "1920x1080": "1920 × 1080 — YouTube (16:9)",
+    "1080x1080": "1080 × 1080 — Facebook ការេ (1:1)"
+  },
+  "preset": {
+    "clean": "សស្អាត",
+    "yellow": "លឿងលេចធ្លោ",
+    "boxed": "មានប្រអប់",
+    "tiktok": "TikTok ដិត",
+    "custom": "ប្ដូរតាមចិត្ត"
+  },
+  "weightOpt": {
+    "700": "ដិត",
+    "400": "ធម្មតា"
+  },
+  "position": {
+    "bottom": "ខាងក្រោម",
+    "center": "កណ្ដាល",
+    "top": "ខាងលើ"
+  },
+  "fit": {
+    "contain": "ដាក់ឱ្យសម (មានរបារបៃតង)",
+    "cover": "ដាក់ឱ្យពេញ (កាត់ខ្លះ)"
+  },
+  "pill": {
+    "noAudio": "គ្មានសំឡេង",
+    "audio": "សំឡេង {time}",
+    "noImage": "គ្មានរូបភាព",
+    "image": "រូបភាព {dimensions}",
+    "noCaptions": "គ្មានអក្សររត់",
+    "cues": "{count} អក្សររត់"
+  },
+  "status": {
+    "addAudio": "បន្ថែមសំឡេងដើម្បីចាប់ផ្ដើម។",
+    "ready": "រួចរាល់សម្រាប់បង្ហាញ។",
+    "decoding": "កំពុងឌិកូដសំឡេង…",
+    "overLimit": "បទនេះមាន {duration} — លើសដែនកំណត់ ៥:០០។ សូមកាត់ឱ្យខ្លី រួចសាកម្ដងទៀត។",
+    "decodeFailed": "មិនអាចឌិកូដឯកសារសំឡេងនេះបានទេ។ សូមសាក MP3, WAV ឬ M4A។",
+    "noCues": "រកមិនឃើញអក្សររត់ក្នុង .srt នោះទេ — សូមពិនិត្យទម្រង់ពេលវេលា។",
+    "loadingFont": "កំពុងផ្ទុកពុម្ពអក្សរ…",
+    "fontLoaded": "បានផ្ទុកពុម្ពអក្សរ។",
+    "fontFailed": "មិនអាចផ្ទុកឯកសារពុម្ពអក្សរនេះបានទេ។",
+    "rendered": "បានបង្ហាញរួច។",
+    "stopped": "បានបញ្ឈប់។",
+    "stopping": "កំពុងបញ្ឈប់…",
+    "renderFailed": "ការបង្ហាញបរាជ័យ — សូមមើលកំណត់ហេតុសកម្មភាព។"
+  },
+  "env": {
+    "checking": "កំពុងពិនិត្យការគាំទ្រការអ៊ិនកូដ…",
+    "fast": "អ៊ិនកូដលឿន — {label}",
+    "fastNote": "MP4 ពេញលេញ (H.264 + AAC) តាម WebCodecs — អ៊ិនកូដលឿនជាងល្បឿនពិត។",
+    "fastFallbackNote": "AAC/H.264 មិនមានទេនៅទីនេះ (ធម្មតានៅលើ Firefox និង Linux desktop); នឹងប្រើ WebCodecs WebM លឿន។ សូមប្រើ Chrome ឬ Edge សម្រាប់ MP4។",
+    "realtime": "ប្រើជំនួសល្បឿនពិត — {kind} (MediaRecorder)",
+    "realtimeNote": "គ្មានកម្មវិធីអ៊ិនកូដ WebCodecs នៅទីនេះទេ ដូច្នេះនឹងប្រើជំនួសល្បឿនពិត — ប្រើពេលស្មើនឹងប្រវែងសំឡេង។ សម្រាប់ MP4 លឿន សូមប្រើ Chrome ឬ Edge លើ desktop។",
+    "none": "គ្មានកម្មវិធីអ៊ិនកូដនៅក្នុងកម្មវិធីរុករកនេះទេ។",
+    "noneNote": "ទាំង WebCodecs និង MediaRecorder មិនអាចអ៊ិនកូដនៅទីនេះបានទេ។ សូមប្រើ Chrome ឬ Edge លើ desktop។"
+  }
+}
