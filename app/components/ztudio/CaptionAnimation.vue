@@ -60,13 +60,13 @@ function fmtTime(s) {
           class="flex items-center gap-2 rounded-md border px-2 py-1.5 transition-colors"
           :class="
             kf.id === store.selectedKeyframeId
-              ? 'border-[#00b140] bg-[#00b140]/10'
+              ? 'border-brand bg-brand/10'
               : 'border-border'
           "
         >
           <button
             type="button"
-            class="font-mono text-xs tabular-nums shrink-0 hover:text-[#00b140]"
+            class="font-mono text-xs tabular-nums shrink-0 hover:text-brand"
             @click="store.selectKeyframe(kf.id)"
           >
             {{ fmtTime(kf.t) }}

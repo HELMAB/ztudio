@@ -267,10 +267,10 @@ watch(
             <div class="relative flex-1 border-b border-border">
               <div
                 v-if="audioClip"
-                class="absolute inset-y-1 left-0 flex items-center overflow-hidden rounded border border-[#00b140]/50 bg-[#00b140]/15 px-2"
+                class="absolute inset-y-1 left-0 flex items-center overflow-hidden rounded border border-brand/50 bg-brand/15 px-2"
                 :style="{ width: audioClip.width + 'px' }"
               >
-                <span class="font-mono text-[10px] text-[#00b140] truncate">{{
+                <span class="font-mono text-[10px] text-brand truncate">{{
                   audioClip.label
                 }}</span>
               </div>
@@ -292,7 +292,7 @@ watch(
                 class="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[2px] border z-10 cursor-grab active:cursor-grabbing"
                 :class="
                   m.selected
-                    ? 'bg-[#00b140] border-[#00b140]'
+                    ? 'bg-brand border-brand'
                     : 'bg-amber-400 border-amber-600 hover:bg-amber-300'
                 "
                 :style="{ left: m.left + 'px' }"
@@ -315,10 +315,10 @@ watch(
           </div>
 
           <div
-            class="absolute top-0 bottom-0 w-px bg-[#00b140] z-10 pointer-events-none"
+            class="absolute top-0 bottom-0 w-px bg-brand z-10 pointer-events-none"
             :style="{ left: playheadLeft + 'px' }"
           >
-            <div class="absolute -translate-x-1/2 size-2.5 rotate-45 bg-[#00b140]" />
+            <div class="absolute -translate-x-1/2 size-2.5 rotate-45 bg-brand" />
           </div>
         </div>
       </ScrollArea>

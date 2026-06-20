@@ -9,7 +9,7 @@ defineProps({
     variant="outline"
     :class="[
       'rounded-none font-mono text-[11px] uppercase px-2.5 py-1.5',
-      ok ? 'text-[#00b140] border-[#00b140]' : 'text-muted-foreground',
+      ok ? 'text-brand border-brand' : 'text-muted-foreground',
     ]"
   >
     <slot />

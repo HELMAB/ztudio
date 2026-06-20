@@ -33,7 +33,7 @@ const tab = ref('media')
           class="flex min-h-14 flex-col items-center justify-center gap-1 border-t-2 px-2 transition-colors"
           :class="
             tab === item.id
-              ? 'border-[#00b140] text-[#00b140]'
+              ? 'border-brand text-brand'
               : 'border-transparent text-muted-foreground hover:text-foreground'
           "
           :aria-current="tab === item.id ? 'page' : undefined"

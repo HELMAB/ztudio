@@ -15,7 +15,7 @@ const resolutionOptions = computed(() =>
   <aside class="flex flex-col min-h-0 bg-background overflow-y-auto lg:overflow-y-hidden">
     <div class="shrink-0 p-4 space-y-4 border-b border-border">
       <h2 class="flex items-center gap-2 font-mono text-[11px] uppercase text-muted-foreground">
-        <UploadIcon class="size-3.5 text-[#00b140]" />
+        <UploadIcon class="size-3.5 text-brand" />
         {{ $t('media.heading') }}
       </h2>
 

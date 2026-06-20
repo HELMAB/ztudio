@@ -10,7 +10,7 @@ function toggleLocale() {
 
 const DOT_CLASS = {
   pending: 'bg-muted-foreground',
-  good: 'bg-[#00b140]',
+  good: 'bg-brand',
   warn: 'bg-amber-600',
   bad: 'bg-red-600',
 }
@@ -18,18 +18,25 @@ const DOT_CLASS = {
 
 <template>
   <header
-    class="shrink-0 h-14 flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-4 border-b border-border"
+    class="shrink-0 h-14 flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-4 border-b border-border bg-card/40"
   >
     <div class="flex items-center gap-2.5 shrink-0">
-      <span class="inline-block w-2.5 h-2.5 bg-[#00b140]" />
-      <span class="text-sm font-semibold">{{ $t('app.name') }}</span>
-      <span class="font-mono text-[10px] uppercase text-muted-foreground hidden lg:inline">
+      <span
+        class="grid place-items-center size-6 rounded-md bg-brand text-brand-foreground font-bold text-xs shadow-sm shadow-brand/30"
+        >z</span
+      >
+      <span class="text-sm font-semibold tracking-tight">{{ $t('app.name') }}</span>
+      <span
+        class="font-mono text-[10px] uppercase tracking-wider text-muted-foreground hidden lg:inline"
+      >
         {{ $t('app.tagline') }}
       </span>
     </div>
 
-    <div class="hidden sm:flex items-center gap-2 min-w-0 flex-1 justify-center">
-      <span class="inline-block w-2 h-2 shrink-0" :class="DOT_CLASS[store.env.level]" />
+    <div
+      class="hidden sm:flex items-center gap-2 min-w-0 flex-1 justify-center px-2.5 py-1 rounded-full border border-border bg-background/60 max-w-fit mx-auto"
+    >
+      <span class="inline-block size-1.5 rounded-full shrink-0" :class="DOT_CLASS[store.env.level]" />
       <span class="font-mono text-[11px] text-muted-foreground truncate">{{
         store.env.title
       }}</span>
@@ -56,13 +63,13 @@ const DOT_CLASS = {
       <Button
         v-if="!store.busy"
         :disabled="!store.canRender"
-        class="bg-[#00b140] text-white hover:bg-[#00a038]"
+        class="bg-brand text-brand-foreground font-semibold hover:bg-brand/90 shadow-sm shadow-brand/20"
         @click="store.render()"
       >
         <DownloadIcon class="size-4" />
         {{ $t('actions.export') }}
       </Button>
-      <Button v-else variant="outline" class="text-red-700" @click="store.cancel()">
+      <Button v-else variant="outline" class="text-red-500 border-red-500/40" @click="store.cancel()">
         <CircleStopIcon class="size-4" />
         {{ $t('actions.stop') }}
       </Button>

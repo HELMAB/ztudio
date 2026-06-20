@@ -50,9 +50,9 @@ function onDrop(event) {
       class="group flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-7 text-center transition-colors"
       :class="
         dragging
-          ? 'border-[#00b140] bg-[#00b140]/5'
+          ? 'border-brand bg-brand/5'
           : ok
-            ? 'border-[#00b140]/40 hover:border-[#00b140]/70'
+            ? 'border-brand/40 hover:border-brand/70'
             : 'border-border hover:border-muted-foreground/40 hover:bg-muted/30'
       "
       @click="input?.click()"
@@ -64,7 +64,7 @@ function onDrop(event) {
         :is="icon"
         v-if="icon"
         class="size-7 transition-colors"
-        :class="ok ? 'text-[#00b140]' : 'text-muted-foreground group-hover:text-foreground'"
+        :class="ok ? 'text-brand' : 'text-muted-foreground group-hover:text-foreground'"
       />
       <span class="text-sm font-medium text-foreground">{{ title }}</span>
       <span class="text-xs text-muted-foreground">{{ $t('media.dropHint') }}</span>
@@ -72,14 +72,14 @@ function onDrop(event) {
 
     <div
       class="flex items-center gap-2 rounded-md px-3 py-2 font-mono text-[11px] uppercase"
-      :class="ok ? 'bg-[#00b140]/10 text-[#00b140]' : 'bg-muted/40 text-muted-foreground'"
+      :class="ok ? 'bg-brand/10 text-brand' : 'bg-muted/40 text-muted-foreground'"
     >
       <CheckIcon v-if="ok" class="size-3.5 shrink-0" />
       <span class="truncate">{{ status }}</span>
       <button
         v-if="ok"
         type="button"
-        class="ml-auto shrink-0 rounded p-0.5 hover:bg-[#00b140]/20"
+        class="ml-auto shrink-0 rounded p-0.5 hover:bg-brand/20"
         :aria-label="$t('media.clear')"
         @click="emit('clear')"
       >

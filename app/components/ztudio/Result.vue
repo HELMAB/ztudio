@@ -36,7 +36,7 @@ const store = useZtudioStore()
       <a
         :href="store.result.url"
         :download="$t('result.downloadName', { ext: store.result.ext })"
-        class="inline-flex items-center gap-1.5 mt-2.5 font-semibold text-[#00b140] border-b border-[#00b140] pb-px"
+        class="inline-flex items-center gap-1.5 mt-2.5 font-semibold text-brand border-b border-brand pb-px"
       >
         <DownloadIcon class="size-4" />
         {{ $t('actions.download', { file: $t('result.downloadName', { ext: store.result.ext }) }) }}
