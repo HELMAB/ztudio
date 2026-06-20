@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { DEFAULT_STYLE, KHMER_FONT, MAX_AUDIO_SEC, PRESETS } from '@/lib/ztudio/config'
+import { KHMER_FONTS } from '@/lib/ztudio/khmer-fonts'
 import { captionAt, parseSRT } from '@/lib/ztudio/srt'
 import {
   decodeAudioFile,
@@ -71,6 +72,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
   const canRender = computed(() => !!audioBuffer.value && !busy.value)
   const fontOptions = computed(() => [
     { value: 'default', label: 'Noto Sans Khmer' },
+    ...KHMER_FONTS.map(f => ({ value: f.family, label: f.label })),
     ...customFonts.value,
   ])
   const progressPercent = computed(() => Math.round(progress.value * 100))
@@ -165,7 +167,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
     },
   )
 
-  watch(() => [controls.fontKey, controls.imageFit, resolution.value], redraw)
+  watch(() => controls.fontKey, key => ensureBundledFont(key).then(redraw))
+  watch(() => [controls.imageFit, resolution.value], redraw)
 
   async function loadAudio(file) {
     if (!file) {
@@ -226,6 +229,27 @@ export const useZtudioStore = defineStore('ztudio', () => {
     maybeReady()
   }
 
+  const loadedFamilies = new Set()
+
+  async function ensureBundledFont(family) {
+    if (!family || family === 'default' || loadedFamilies.has(family)) {
+      return
+    }
+    const entry = KHMER_FONTS.find(f => f.family === family)
+    if (!entry) {
+      return
+    }
+    try {
+      const ff = new FontFace(family, `url("${entry.url}")`)
+      await ff.load()
+      document.fonts.add(ff)
+      loadedFamilies.add(family)
+      log(`Loaded font "${entry.label}".`)
+    } catch (err) {
+      log(`Could not load font "${entry.label}": ${err?.message || err}`)
+    }
+  }
+
   async function loadFont(file) {
     if (!file) {
       return
@@ -262,6 +286,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
   async function ensureRenderFont() {
     try {
       if (controls.fontKey !== 'default') {
+        await ensureBundledFont(controls.fontKey)
         await document.fonts.load(`${controls.fontWeight} 64px "${controls.fontKey}"`)
       }
       await document.fonts.load(`${controls.fontWeight} 64px "Noto Sans Khmer"`)
