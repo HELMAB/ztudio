@@ -25,7 +25,7 @@ function onFont(event) {
     </ZtudioField>
 
     <ZtudioField :label="$t('controls.font')">
-      <ZtudioSelectField v-model="store.controls.fontKey" :options="store.fontOptions" />
+      <ZtudioComboboxField v-model="store.controls.fontKey" :options="store.fontOptions" />
     </ZtudioField>
 
     <ZtudioFileInput

@@ -5,6 +5,7 @@
 
 @theme inline {
   --font-sans: 'Baloo 2', 'Kantumruy Pro', sans-serif;
+  --font-mono: var(--font-sans);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);

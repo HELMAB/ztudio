@@ -15,7 +15,12 @@
     "resolution": "Aspect & resolution",
     "audio": "Audio — required, max 5:00",
     "image": "Image — optional",
-    "captions": "Captions — optional, .srt"
+    "captions": "Captions — optional, .srt",
+    "tabAudio": "Audio",
+    "tabImage": "Image",
+    "tabCaption": "Caption",
+    "dropHint": "Drop a file here or click to browse",
+    "clear": "Remove file"
   },
   "activity": {
     "heading": "Activity"
@@ -66,7 +71,8 @@
     "downloadName": "caption-video.{ext}"
   },
   "select": {
-    "placeholder": "Select…"
+    "placeholder": "Select…",
+    "empty": "No matches found"
   },
   "font": {
     "default": "Noto Sans Khmer"

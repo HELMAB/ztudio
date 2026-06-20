@@ -15,7 +15,12 @@
     "resolution": "សមាមាត្រ និងគុណភាព",
     "audio": "សំឡេង — ត្រូវការ, អតិបរមា ៥:០០",
     "image": "រូបភាព — ស្រេចចិត្ត",
-    "captions": "អក្សររត់ — ស្រេចចិត្ត, .srt"
+    "captions": "អក្សររត់ — ស្រេចចិត្ត, .srt",
+    "tabAudio": "សំឡេង",
+    "tabImage": "រូបភាព",
+    "tabCaption": "អក្សររត់",
+    "dropHint": "ទម្លាក់ឯកសារនៅទីនេះ ឬចុចដើម្បីរកមើល",
+    "clear": "ដកឯកសារចេញ"
   },
   "activity": {
     "heading": "សកម្មភាព"
@@ -66,7 +71,8 @@
     "downloadName": "caption-video.{ext}"
   },
   "select": {
-    "placeholder": "ជ្រើសរើស…"
+    "placeholder": "ជ្រើសរើស…",
+    "empty": "រកមិនឃើញ"
   },
   "font": {
     "default": "Noto Sans Khmer"
