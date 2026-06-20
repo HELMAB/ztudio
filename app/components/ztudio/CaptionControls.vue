@@ -109,6 +109,19 @@ function onFont(files) {
       <ZtudioSelectField v-model="store.controls.imageFit" :options="fitOptions" />
     </ZtudioField>
 
+    <template v-if="store.imageBitmap">
+      <ZtudioField :label="$t('controls.imageZoom')" :value="store.imageZoomLabel">
+        <Slider
+          :model-value="[store.controls.imageZoom]"
+          :min="0.5"
+          :max="4"
+          :step="0.05"
+          @update:model-value="store.setImageZoom($event[0])"
+        />
+      </ZtudioField>
+      <p class="text-xs text-muted-foreground -mt-1.5">{{ $t('controls.imageDragHint') }}</p>
+    </template>
+
     <ZtudioField :label="$t('controls.background')">
       <label class="flex items-center gap-2.5 text-sm py-1.5 select-none">
         <Checkbox v-model="store.controls.box" /> {{ $t('controls.boxBehindText') }}

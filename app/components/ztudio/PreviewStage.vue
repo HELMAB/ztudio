@@ -31,12 +31,19 @@ function paint() {
 }
 
 // Centre alignment guides, shown only while dragging. A line lights up when the
-// caption is centred on that axis. These draw on the preview canvas only — the
-// encoder uses its own canvas, so guides never appear in the exported video.
+// active target is centred on that axis. These draw on the preview canvas only —
+// the encoder uses its own canvas, so guides never appear in the exported video.
 function drawGuides(ctx, w, h) {
-  const c = captionCenter(w, h, store.currentCaption, store.style)
-  const xCentered = store.controls.offsetXPct === 0
-  const yCentered = !!c && Math.abs(c.cy - h / 2) < 1
+  let xCentered
+  let yCentered
+  if (store.dragTarget === 'image') {
+    xCentered = store.controls.imageOffsetXPct === 0
+    yCentered = store.controls.imageOffsetYPct === 0
+  } else {
+    const c = captionCenter(w, h, store.currentCaption, store.style)
+    xCentered = store.controls.offsetXPct === 0
+    yCentered = !!c && Math.abs(c.cy - h / 2) < 1
+  }
   const lw = Math.max(2, w * 0.0025)
 
   const line = (active, x1, y1, x2, y2) => {
@@ -78,8 +85,9 @@ function fmtTime(s) {
   return `${m}:${sec}`
 }
 
-// Drag the caption anywhere on the preview. Pointer deltas are converted to a
-// fraction of the canvas's displayed size, so the offset is resolution-agnostic.
+// Drag to reposition the active target (caption or image) anywhere on the
+// preview. Pointer deltas are converted to a fraction of the canvas's displayed
+// size, so the offset is resolution-agnostic.
 let drag = null
 
 function onPointerDown(e) {
@@ -88,12 +96,14 @@ function onPointerDown(e) {
     return
   }
   el.setPointerCapture(e.pointerId)
+  const image = store.dragTarget === 'image' && !!store.imageBitmap
   drag = {
     startX: e.clientX,
     startY: e.clientY,
     rect: el.getBoundingClientRect(),
-    offX: store.controls.offsetXPct,
-    offY: store.controls.offsetYPct,
+    image,
+    offX: image ? store.controls.imageOffsetXPct : store.controls.offsetXPct,
+    offY: image ? store.controls.imageOffsetYPct : store.controls.offsetYPct,
   }
   dragging.value = true
 }
@@ -116,6 +126,17 @@ function onPointerMove(e) {
   let x = drag.offX + (e.clientX - drag.startX) / drag.rect.width
   let y = drag.offY + (e.clientY - drag.startY) / drag.rect.height
 
+  if (drag.image) {
+    if (Math.abs(x) < SNAP) {
+      x = 0
+    }
+    if (Math.abs(y) < SNAP) {
+      y = 0
+    }
+    store.setImageOffset(x, y)
+    return
+  }
+
   if (Math.abs(x) < SNAP) {
     x = 0
   }
@@ -134,6 +155,24 @@ function onPointerUp(e) {
   drag = null
   dragging.value = false
 }
+
+// Mouse wheel zooms the image when it is the active target.
+function onWheel(e) {
+  if (store.dragTarget !== 'image' || !store.imageBitmap) {
+    return
+  }
+  e.preventDefault()
+  const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08
+  store.setImageZoom(store.controls.imageZoom * factor)
+}
+
+function onResetDrag() {
+  if (store.dragTarget === 'image') {
+    store.resetImageTransform()
+  } else {
+    store.resetCaptionOffset()
+  }
+}
 </script>
 
 <template>
@@ -144,12 +183,13 @@ function onPointerUp(e) {
         width="1080"
         height="1920"
         class="max-w-full max-h-full object-contain border border-neutral-700 shadow-lg cursor-grab touch-none select-none active:cursor-grabbing"
-        :title="$t('preview.dragHint')"
+        :title="store.dragTarget === 'image' ? $t('preview.dragImageHint') : $t('preview.dragHint')"
         @pointerdown="onPointerDown"
         @pointermove="onPointerMove"
         @pointerup="onPointerUp"
         @pointercancel="onPointerUp"
-        @dblclick="store.resetCaptionOffset()"
+        @wheel="onWheel"
+        @dblclick="onResetDrag"
       />
     </div>
 
@@ -172,10 +212,44 @@ function onPointerUp(e) {
       <span class="font-mono text-[11px] text-neutral-500 truncate min-w-0">
         {{ store.currentCaption || $t('preview.noCaption') }}
       </span>
+
+      <div
+        v-if="store.imageBitmap"
+        class="ml-auto shrink-0 flex rounded-md border border-neutral-700 overflow-hidden text-[11px] font-mono"
+        role="group"
+        :aria-label="$t('preview.dragTarget')"
+      >
+        <button
+          type="button"
+          class="px-2.5 py-1 transition-colors"
+          :class="
+            store.dragTarget === 'caption'
+              ? 'bg-neutral-200 text-neutral-900'
+              : 'text-neutral-400 hover:text-neutral-200'
+          "
+          @click="store.dragTarget = 'caption'"
+        >
+          {{ $t('preview.targetCaption') }}
+        </button>
+        <button
+          type="button"
+          class="px-2.5 py-1 transition-colors"
+          :class="
+            store.dragTarget === 'image'
+              ? 'bg-neutral-200 text-neutral-900'
+              : 'text-neutral-400 hover:text-neutral-200'
+          "
+          @click="store.dragTarget = 'image'"
+        >
+          {{ $t('preview.targetImage') }}
+        </button>
+      </div>
+
       <Button
         size="sm"
         variant="secondary"
-        class="ml-auto shrink-0"
+        class="shrink-0"
+        :class="{ 'ml-auto': !store.imageBitmap }"
         :disabled="store.busy"
         :title="$t('actions.thumbnailHint')"
         @click="store.exportThumbnail()"

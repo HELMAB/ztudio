@@ -50,8 +50,14 @@ export const useZtudioStore = defineStore('ztudio', () => {
     offsetYPct: 0,
     box: false,
     imageFit: 'contain',
+    imageZoom: 1,
+    imageOffsetXPct: 0,
+    imageOffsetYPct: 0,
     animation: 'none',
   })
+
+  // What canvas-drag on the preview repositions: 'caption' or 'image'.
+  const dragTarget = ref('caption')
 
   const { $i18n } = useNuxtApp()
   const t = (key, params) => $i18n.t(key, params)
@@ -106,11 +112,15 @@ export const useZtudioStore = defineStore('ztudio', () => {
   const progressPercent = computed(() => Math.round(progress.value * 100))
   const sizeLabel = computed(() => (controls.fontSizePct * 100).toFixed(1) + '%')
   const strokeLabel = computed(() => Math.round(controls.strokePct * 100) + '%')
+  const imageZoomLabel = computed(() => Math.round(controls.imageZoom * 100) + '%')
   const timeLabel = computed(() => scrub.value.toFixed(1) + 's')
 
   const style = computed(() => ({
     ...DEFAULT_STYLE,
     fontFamily: buildFontStack(controls.fontKey),
+    imageZoom: controls.imageZoom,
+    imageOffsetXPct: controls.imageOffsetXPct,
+    imageOffsetYPct: controls.imageOffsetYPct,
     fontSizePct: controls.fontSizePct,
     fontWeight: controls.fontWeight,
     fill: controls.fill,
@@ -163,6 +173,23 @@ export const useZtudioStore = defineStore('ztudio', () => {
 
   function resetCaptionOffset() {
     setCaptionOffset(0, 0)
+  }
+
+  const clampZoom = v => (v < 0.5 ? 0.5 : v > 4 ? 4 : v)
+  const clampPan = v => (v < -1 ? -1 : v > 1 ? 1 : v)
+
+  function setImageZoom(z) {
+    controls.imageZoom = clampZoom(z)
+  }
+
+  function setImageOffset(xPct, yPct) {
+    controls.imageOffsetXPct = clampPan(xPct)
+    controls.imageOffsetYPct = clampPan(yPct)
+  }
+
+  function resetImageTransform() {
+    controls.imageZoom = 1
+    setImageOffset(0, 0)
   }
 
   function clampScrub() {
@@ -225,7 +252,17 @@ export const useZtudioStore = defineStore('ztudio', () => {
   )
 
   watch(() => controls.fontKey, key => ensureBundledFont(key).then(redraw))
-  watch(() => [controls.imageFit, controls.animation, resolution.value], redraw)
+  watch(
+    () => [
+      controls.imageFit,
+      controls.imageZoom,
+      controls.imageOffsetXPct,
+      controls.imageOffsetYPct,
+      controls.animation,
+      resolution.value,
+    ],
+    redraw,
+  )
 
   async function loadAudio(file) {
     if (!file) {
@@ -259,8 +296,11 @@ export const useZtudioStore = defineStore('ztudio', () => {
 
   async function loadImage(file) {
     imageBitmap.value = file ? await createImageBitmap(file) : null
+    resetImageTransform()
     if (file) {
       log(`Image: ${imageBitmap.value.width}×${imageBitmap.value.height}`)
+    } else {
+      dragTarget.value = 'caption'
     }
     redraw()
     maybeReady()
@@ -747,6 +787,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     progressPercent,
     sizeLabel,
     strokeLabel,
+    imageZoomLabel,
     timeLabel,
     style,
     audioPill,
@@ -754,8 +795,12 @@ export const useZtudioStore = defineStore('ztudio', () => {
     srtPill,
     fontPill,
     redraw,
+    dragTarget,
     setCaptionOffset,
     resetCaptionOffset,
+    setImageZoom,
+    setImageOffset,
+    resetImageTransform,
     applyPreset,
     loadAudio,
     loadImage,

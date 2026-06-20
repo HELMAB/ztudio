@@ -17,6 +17,9 @@ export const MR_TYPES = [
 
 export const DEFAULT_STYLE = {
   fontFamily: KHMER_FONT,
+  imageZoom: 1,
+  imageOffsetXPct: 0,
+  imageOffsetYPct: 0,
   fontSizePct: 0.055,
   fontWeight: 700,
   fill: '#ffffff',

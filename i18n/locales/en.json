@@ -59,12 +59,18 @@
     "position": "Position",
     "animation": "Caption animation",
     "imageFit": "Image fit",
+    "imageZoom": "Image zoom",
+    "imageDragHint": "Pick “Image” under the preview, then drag to pan or scroll to zoom.",
     "background": "Background",
     "boxBehindText": "Box behind text"
   },
   "preview": {
     "noCaption": "no caption at playhead",
-    "dragHint": "Drag to reposition the caption · double-click to reset"
+    "dragHint": "Drag to reposition the caption · double-click to reset",
+    "dragImageHint": "Drag to pan the image · scroll to zoom · double-click to reset",
+    "dragTarget": "Drag target",
+    "targetCaption": "Caption",
+    "targetImage": "Image"
   },
   "timeline": {
     "zoomOut": "Zoom out",

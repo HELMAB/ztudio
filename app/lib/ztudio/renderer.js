@@ -185,13 +185,17 @@ export function drawFrame(ctx, w, h, t, { imageBitmap, imageFit, cues, style }) 
   ctx.fillRect(0, 0, w, h)
 
   if (imageBitmap) {
-    const scale =
+    const base =
       imageFit === 'cover'
         ? Math.max(w / imageBitmap.width, h / imageBitmap.height)
         : Math.min(w / imageBitmap.width, h / imageBitmap.height)
+    // User zoom (multiplies the fit scale) and pan (fraction of frame size).
+    const scale = base * (style.imageZoom || 1)
     const dw = imageBitmap.width * scale
     const dh = imageBitmap.height * scale
-    ctx.drawImage(imageBitmap, (w - dw) / 2, (h - dh) / 2, dw, dh)
+    const ox = w * (style.imageOffsetXPct || 0)
+    const oy = h * (style.imageOffsetYPct || 0)
+    ctx.drawImage(imageBitmap, (w - dw) / 2 + ox, (h - dh) / 2 + oy, dw, dh)
   } else {
     drawPlaceholder(ctx, w, h)
   }
