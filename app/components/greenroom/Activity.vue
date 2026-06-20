@@ -1,5 +1,6 @@
 <script setup>
 import { nextTick, ref, watch } from 'vue'
+import { ScrollTextIcon } from '@lucide/vue'
 
 const store = useGreenroomStore()
 const logBox = ref(null)
@@ -17,7 +18,7 @@ watch(
 
 <template>
   <section class="border-t border-border py-10">
-    <GreenroomSectionHeading>Activity</GreenroomSectionHeading>
+    <GreenroomSectionHeading :icon="ScrollTextIcon">Activity</GreenroomSectionHeading>
     <div
       ref="logBox"
       class="font-mono text-xs leading-relaxed bg-muted/40 text-muted-foreground p-3.5 max-h-[220px] overflow-auto whitespace-pre-wrap border border-border rounded-md"

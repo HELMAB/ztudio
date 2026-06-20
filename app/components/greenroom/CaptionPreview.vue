@@ -47,7 +47,7 @@ onMounted(() => {
       height="1920"
       class="block w-full max-w-[260px] border border-border bg-black"
     />
-    <div class="mt-2 font-mono text-[11px] text-muted-foreground uppercase tracking-wider">
+    <div class="mt-2 font-mono text-[11px] text-muted-foreground uppercase">
       <span class="text-foreground">{{ store.timeLabel }}</span> · live preview
     </div>
     <div

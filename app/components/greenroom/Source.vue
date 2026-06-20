@@ -1,4 +1,5 @@
 <script setup>
+import { UploadIcon } from '@lucide/vue'
 import { RESOLUTION_OPTIONS } from '@/lib/greenroom/config'
 
 const store = useGreenroomStore()
@@ -21,7 +22,7 @@ function onSrt(event) {
 
 <template>
   <section class="border-t border-border py-10">
-    <GreenroomSectionHeading>Source</GreenroomSectionHeading>
+    <GreenroomSectionHeading :icon="UploadIcon">Source</GreenroomSectionHeading>
     <div class="grid sm:grid-cols-2 gap-5">
       <GreenroomField label="Aspect & resolution">
         <GreenroomSelectField v-model="store.resolution" :options="RESOLUTION_OPTIONS" />

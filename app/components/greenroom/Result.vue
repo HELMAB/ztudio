@@ -1,4 +1,6 @@
 <script setup>
+import { DownloadIcon } from '@lucide/vue'
+
 const store = useGreenroomStore()
 </script>
 
@@ -22,9 +24,11 @@ const store = useGreenroomStore()
       <a
         :href="store.result.url"
         :download="`caption-video.${store.result.ext}`"
-        class="inline-block mt-2.5 font-semibold text-[#00b140] border-b border-[#00b140] pb-px"
-        >↓ Download caption-video.{{ store.result.ext }}</a
+        class="inline-flex items-center gap-1.5 mt-2.5 font-semibold text-[#00b140] border-b border-[#00b140] pb-px"
       >
+        <DownloadIcon class="size-4" />
+        Download caption-video.{{ store.result.ext }}
+      </a>
     </div>
   </div>
 </template>

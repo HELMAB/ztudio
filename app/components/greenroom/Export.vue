@@ -1,10 +1,12 @@
 <script setup>
+import { ClapperboardIcon, CircleStopIcon, FilmIcon, RefreshCwIcon } from '@lucide/vue'
+
 const store = useGreenroomStore()
 </script>
 
 <template>
   <section class="border-t border-border py-10">
-    <GreenroomSectionHeading>Export</GreenroomSectionHeading>
+    <GreenroomSectionHeading :icon="ClapperboardIcon">Export</GreenroomSectionHeading>
     <div class="flex flex-wrap gap-3 items-center">
       <Button
         v-if="!store.busy"
@@ -12,9 +14,11 @@ const store = useGreenroomStore()
         class="bg-[#00b140] text-white hover:bg-[#00a038] px-6 py-3"
         @click="store.render()"
       >
+        <FilmIcon class="size-4" />
         Render video
       </Button>
       <Button v-else variant="outline" class="text-red-700 px-6 py-3" @click="store.cancel()">
+        <CircleStopIcon class="size-4" />
         Stop
       </Button>
       <Button
@@ -23,6 +27,7 @@ const store = useGreenroomStore()
         class="text-muted-foreground px-5 py-3"
         @click="store.redraw()"
       >
+        <RefreshCwIcon class="size-4" />
         Refresh preview
       </Button>
     </div>
