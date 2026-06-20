@@ -32,6 +32,8 @@
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.16.0",
+    "@vite-pwa/assets-generator": "^1.0.2",
+    "@vite-pwa/nuxt": "^1.1.1",
     "eslint": "^10.5.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.8.4",

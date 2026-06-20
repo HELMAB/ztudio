@@ -28,7 +28,75 @@ export default defineNuxtConfig({
     plugins: [tailwindcss()],
   },
 
-  modules: ['@nuxt/eslint', '@pinia/nuxt', 'shadcn-nuxt', '@nuxtjs/i18n'],
+  modules: ['@nuxt/eslint', '@pinia/nuxt', 'shadcn-nuxt', '@nuxtjs/i18n', '@vite-pwa/nuxt'],
+
+  pwa: {
+    registerType: 'autoUpdate',
+    pwaAssets: {
+      preset: 'minimal-2023',
+      image: 'public/logo.svg',
+    },
+    manifest: {
+      id: '/',
+      name: 'ztudio — audio to captioned video',
+      short_name: 'ztudio',
+      description:
+        'Turn audio, an image and captions into a captioned video — entirely in your browser.',
+      lang: 'en',
+      theme_color: '#00b140',
+      background_color: '#ffffff',
+      display: 'standalone',
+      start_url: '/',
+      scope: '/',
+      categories: ['video', 'productivity', 'multimedia'],
+    },
+    workbox: {
+      globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+      cleanupOutdatedCaches: true,
+      clientsClaim: true,
+      runtimeCaching: [
+        {
+          urlPattern: ({ url }) => url.origin === 'https://fonts.googleapis.com',
+          handler: 'StaleWhileRevalidate',
+          options: { cacheName: 'google-fonts-stylesheets' },
+        },
+        {
+          urlPattern: ({ url }) => url.origin === 'https://fonts.gstatic.com',
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'google-fonts-webfonts',
+            expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 },
+            cacheableResponse: { statuses: [0, 200] },
+          },
+        },
+        {
+          // Bundled Khmer .ttf files are loaded on demand, not precached.
+          urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/fonts/'),
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'khmer-fonts',
+            expiration: { maxEntries: 40, maxAgeSeconds: 60 * 60 * 24 * 365 },
+          },
+        },
+        {
+          // mediabunny WebCodecs library, loaded at render time from a CDN.
+          urlPattern: ({ url }) =>
+            url.origin === 'https://esm.sh' || url.origin === 'https://cdn.jsdelivr.net',
+          handler: 'StaleWhileRevalidate',
+          options: {
+            cacheName: 'mediabunny-cdn',
+            cacheableResponse: { statuses: [0, 200] },
+          },
+        },
+      ],
+    },
+    devOptions: {
+      enabled: true,
+      suppressWarnings: true,
+      navigateFallbackAllowlist: [/^\/$/],
+      type: 'module',
+    },
+  },
 
   i18n: {
     bundle: { optimizeTranslationDirective: false },
