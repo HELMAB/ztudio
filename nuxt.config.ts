@@ -60,6 +60,7 @@ export default defineNuxtConfig({
     },
     workbox: {
       globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+      globIgnores: ['**/demo/**'],
       cleanupOutdatedCaches: true,
       clientsClaim: true,
       runtimeCaching: [
