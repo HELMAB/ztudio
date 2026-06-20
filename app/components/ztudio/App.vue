@@ -17,7 +17,6 @@ onMounted(() => {
   <div
     class="flex flex-col h-dvh w-full overflow-hidden bg-background text-foreground font-sans antialiased"
   >
-    <div class="h-0.5 shrink-0 bg-[#00b140]" />
     <ZtudioTopBar />
     <ZtudioDesktopWorkspace v-if="isDesktop" />
     <ZtudioMobileWorkspace v-else />

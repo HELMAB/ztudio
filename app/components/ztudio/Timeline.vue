@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useElementSize } from '@vueuse/core'
 import {
+  DiamondPlusIcon,
   ImageIcon,
   MessageSquareIcon,
   MusicIcon,
@@ -84,6 +85,37 @@ const captionClips = computed(() =>
 )
 const playheadLeft = computed(() => store.scrub * pxPerSecond.value)
 
+const keyframeMarkers = computed(() =>
+  store.keyframes.map(k => ({
+    id: k.id,
+    left: k.t * pxPerSecond.value,
+    selected: k.id === store.selectedKeyframeId,
+  })),
+)
+
+let kfDrag = null
+function onKeyframeDown(event, id) {
+  event.stopPropagation()
+  store.selectKeyframe(id)
+  kfDrag = id
+  window.addEventListener('pointermove', onKeyframeMove)
+  window.addEventListener('pointerup', onKeyframeUp)
+}
+function onKeyframeMove(event) {
+  const el = laneArea.value
+  const pps = pxPerSecond.value
+  if (kfDrag == null || !el || pps <= 0) {
+    return
+  }
+  const rect = el.getBoundingClientRect()
+  store.moveKeyframe(kfDrag, (event.clientX - rect.left) / pps)
+}
+function onKeyframeUp() {
+  kfDrag = null
+  window.removeEventListener('pointermove', onKeyframeMove)
+  window.removeEventListener('pointerup', onKeyframeUp)
+}
+
 let seeking = false
 function seekFromEvent(event) {
   const el = laneArea.value
@@ -111,7 +143,10 @@ function onLaneDown(event) {
   window.addEventListener('pointermove', onLaneMove)
   window.addEventListener('pointerup', onLaneUp)
 }
-onBeforeUnmount(onLaneUp)
+onBeforeUnmount(() => {
+  onLaneUp()
+  onKeyframeUp()
+})
 
 watch(
   () => store.scrub,
@@ -134,6 +169,16 @@ watch(
 <template>
   <div class="flex flex-col min-h-0 select-none bg-background">
     <div class="shrink-0 h-8 flex items-center justify-end gap-1 px-3 border-b border-border">
+      <Button
+        size="sm"
+        variant="ghost"
+        class="h-6 mr-auto text-[11px] text-muted-foreground"
+        :title="$t('keyframe.addHint')"
+        @click="store.addKeyframe()"
+      >
+        <DiamondPlusIcon class="size-3.5" />
+        <span class="hidden sm:inline">{{ $t('keyframe.add') }}</span>
+      </Button>
       <span class="font-mono text-[10px] text-muted-foreground mr-1 tabular-nums">
         {{ Math.round(zoom * 100) }}%
       </span>
@@ -240,6 +285,20 @@ watch(
                   {{ imageClip.label }}
                 </span>
               </div>
+              <button
+                v-for="m in keyframeMarkers"
+                :key="m.id"
+                type="button"
+                class="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[2px] border z-10 cursor-grab active:cursor-grabbing"
+                :class="
+                  m.selected
+                    ? 'bg-[#00b140] border-[#00b140]'
+                    : 'bg-amber-400 border-amber-600 hover:bg-amber-300'
+                "
+                :style="{ left: m.left + 'px' }"
+                :title="$t('keyframe.marker')"
+                @pointerdown="onKeyframeDown($event, m.id)"
+              />
             </div>
 
             <div class="relative flex-1">

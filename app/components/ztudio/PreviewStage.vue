@@ -24,6 +24,7 @@ function paint() {
     imageFit: store.controls.imageFit,
     cues: store.cues,
     style: store.style,
+    keyframes: store.keyframes,
   })
   if (dragging.value) {
     drawGuides(ctx, w, h)
@@ -71,6 +72,7 @@ onMounted(() => {
       store.imageBitmap,
       store.cues,
       store.controls.imageFit,
+      store.keyframes,
       store.previewTick,
       dragging.value,
     ],

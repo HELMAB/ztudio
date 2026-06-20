@@ -87,6 +87,7 @@ export async function generateFast(MB, pipe, w, h, dur, ctx2) {
     style,
     imageBitmap,
     imageFit,
+    keyframes,
     onProgress,
     onStatus,
     log,
@@ -106,7 +107,13 @@ export async function generateFast(MB, pipe, w, h, dur, ctx2) {
   output.addAudioTrack(audioSource)
   await output.start()
 
-  const segs = buildSegments(cues, dur, style.animation, style.animDuration)
+  const segs = buildSegments(
+    cues,
+    dur,
+    style.animation,
+    style.animDuration,
+    (keyframes || []).map(k => k.t),
+  )
   log(`Frames: ${segs.length} (vs ${Math.ceil(dur * 30)} at naive 30fps).`)
   const t0 = performance.now()
 
@@ -114,7 +121,7 @@ export async function generateFast(MB, pipe, w, h, dur, ctx2) {
     if (isCancelled()) {
       return null
     }
-    drawFrame(ctx, w, h, segs[i].start, { imageBitmap, imageFit, cues, style })
+    drawFrame(ctx, w, h, segs[i].start, { imageBitmap, imageFit, cues, style, keyframes })
     await videoSource.add(segs[i].start, segs[i].dur)
     if (i % 4 === 0) {
       onProgress(i / segs.length)
@@ -150,6 +157,7 @@ export async function generateRealtime(w, h, dur, ctx2) {
     style,
     imageBitmap,
     imageFit,
+    keyframes,
     onProgress,
     onStatus,
     log,
@@ -166,7 +174,7 @@ export async function generateRealtime(w, h, dur, ctx2) {
   canvas.width = w
   canvas.height = h
   const ctx = canvas.getContext('2d', { alpha: false })
-  drawFrame(ctx, w, h, 0, { imageBitmap, imageFit, cues, style })
+  drawFrame(ctx, w, h, 0, { imageBitmap, imageFit, cues, style, keyframes })
 
   const AC = window.AudioContext || window.webkitAudioContext
   const ac = new AC()
@@ -203,7 +211,7 @@ export async function generateRealtime(w, h, dur, ctx2) {
         res()
         return
       }
-      drawFrame(ctx, w, h, Math.min(elapsed, dur), { imageBitmap, imageFit, cues, style })
+      drawFrame(ctx, w, h, Math.min(elapsed, dur), { imageBitmap, imageFit, cues, style, keyframes })
       onProgress(Math.min(1, elapsed / dur))
       onStatus(`Recording in real time… ${elapsed.toFixed(1)} / ${dur.toFixed(1)}s`)
       requestAnimationFrame(tick)

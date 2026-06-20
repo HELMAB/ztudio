@@ -80,6 +80,22 @@
     "image": "Image",
     "caption": "Caption"
   },
+  "keyframe": {
+    "heading": "Keyframes",
+    "hint": "Keyframes animate image zoom/pan and caption position over time. Add one, scrub elsewhere, then move things — each edit keys the playhead.",
+    "add": "Keyframe",
+    "addAt": "Add keyframe at {time}",
+    "addHint": "Add a keyframe at the playhead",
+    "clear": "Clear",
+    "delete": "Delete keyframe",
+    "marker": "Keyframe — drag to retime"
+  },
+  "easing": {
+    "linear": "Linear",
+    "easeIn": "Ease in",
+    "easeOut": "Ease out",
+    "easeInOut": "Ease in-out"
+  },
   "result": {
     "complete": "Export complete",
     "stats": "{size} MB · {dur}s · {ratio}× realtime",

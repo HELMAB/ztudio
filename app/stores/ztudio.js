@@ -4,6 +4,7 @@ import { DEFAULT_STYLE, KHMER_FONT, MAX_AUDIO_SEC, PRESETS } from '@/lib/ztudio/
 import { KHMER_FONTS } from '@/lib/ztudio/khmer-fonts'
 import { captionAt, parseSRT } from '@/lib/ztudio/srt'
 import { drawFrame } from '@/lib/ztudio/renderer'
+import { ANIMATED_FIELDS, DEFAULT_EASING, keyframeValues } from '@/lib/ztudio/keyframes'
 import {
   decodeAudioFile,
   generateFast,
@@ -59,6 +60,11 @@ export const useZtudioStore = defineStore('ztudio', () => {
   // What canvas-drag on the preview repositions: 'caption' or 'image'.
   const dragTarget = ref('caption')
 
+  // Keyframes animate the ANIMATED_FIELDS over time. Each is a snapshot of those
+  // fields at a time t with an easing for the transition into it. Kept sorted.
+  const keyframes = ref([])
+  const selectedKeyframeId = ref(null)
+
   const { $i18n } = useNuxtApp()
   const t = (key, params) => $i18n.t(key, params)
 
@@ -88,6 +94,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
 
   let cancelRequested = false
   let applyingPreset = false
+  let loadingKeyframe = false
+  let kfCounter = 0
   let fontCounter = 0
   let playRaf = null
   let playCtx = null
@@ -103,6 +111,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     audioBuffer.value ? audioBuffer.value.duration : Math.max(10, srtSpan.value),
   )
   const currentCaption = computed(() => captionAt(scrub.value, cues.value))
+  const hasKeyframes = computed(() => keyframes.value.length > 0)
   const canRender = computed(() => !!audioBuffer.value && !busy.value)
   const fontOptions = computed(() => [
     { value: 'default', label: 'Noto Sans Khmer' },
@@ -244,7 +253,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       controls.box,
     ],
     () => {
-      if (!applyingPreset) {
+      if (!applyingPreset && !loadingKeyframe) {
         preset.value = 'custom'
       }
       redraw()
@@ -263,6 +272,98 @@ export const useZtudioStore = defineStore('ztudio', () => {
     ],
     redraw,
   )
+
+  function animatedSnapshot() {
+    const values = {}
+    for (const field of ANIMATED_FIELDS) {
+      values[field] = controls[field]
+    }
+    return values
+  }
+
+  // Editing an animated control while keyframes exist commits the change to a
+  // keyframe at the current playhead (auto-key). Skipped while syncing from a
+  // keyframe (below) so loading a frame's values never spawns a stray keyframe.
+  watch(
+    () => ANIMATED_FIELDS.map(field => controls[field]),
+    () => {
+      if (loadingKeyframe || !keyframes.value.length) {
+        return
+      }
+      upsertKeyframeAt(scrub.value)
+    },
+  )
+
+  // Scrubbing mirrors the interpolated values back into controls so the panel,
+  // sliders, and drag handles reflect the frame under the playhead.
+  watch(
+    () => scrub.value,
+    t => {
+      if (!keyframes.value.length) {
+        return
+      }
+      const values = keyframeValues(keyframes.value, t)
+      loadingKeyframe = true
+      Object.assign(controls, values)
+      nextTick(() => {
+        loadingKeyframe = false
+      })
+    },
+  )
+
+  const KEYFRAME_EPS = 0.04
+
+  function upsertKeyframeAt(t) {
+    const existing = keyframes.value.find(k => Math.abs(k.t - t) <= KEYFRAME_EPS)
+    const kf = {
+      id: existing ? existing.id : ++kfCounter,
+      t: existing ? existing.t : +t.toFixed(3),
+      easing: existing ? existing.easing : DEFAULT_EASING,
+      values: animatedSnapshot(),
+    }
+    keyframes.value = [...keyframes.value.filter(k => k !== existing), kf].sort((a, b) => a.t - b.t)
+    selectedKeyframeId.value = kf.id
+    redraw()
+  }
+
+  function addKeyframe() {
+    upsertKeyframeAt(scrub.value)
+  }
+
+  function removeKeyframe(id) {
+    keyframes.value = keyframes.value.filter(k => k.id !== id)
+    if (selectedKeyframeId.value === id) {
+      selectedKeyframeId.value = null
+    }
+    redraw()
+  }
+
+  function clearKeyframes() {
+    keyframes.value = []
+    selectedKeyframeId.value = null
+    redraw()
+  }
+
+  function selectKeyframe(id) {
+    selectedKeyframeId.value = id
+    const kf = keyframes.value.find(k => k.id === id)
+    if (kf) {
+      seek(kf.t)
+    }
+  }
+
+  function setKeyframeEasing(id, easing) {
+    keyframes.value = keyframes.value.map(k => (k.id === id ? { ...k, easing } : k))
+    redraw()
+  }
+
+  function moveKeyframe(id, t) {
+    const clamped = Math.max(0, Math.min(previewDuration.value, t))
+    keyframes.value = keyframes.value
+      .map(k => (k.id === id ? { ...k, t: +clamped.toFixed(3) } : k))
+      .sort((a, b) => a.t - b.t)
+    redraw()
+  }
 
   async function loadAudio(file) {
     if (!file) {
@@ -525,6 +626,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
         style: style.value,
         imageBitmap: imageBitmap.value,
         imageFit: controls.imageFit,
+        keyframes: keyframes.value,
         onProgress: p => {
           progress.value = p
         },
@@ -596,6 +698,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
         imageFit: controls.imageFit,
         cues: cues.value,
         style: style.value,
+        keyframes: keyframes.value,
       })
       const blob = await new Promise(resolve => cv.toBlob(resolve, 'image/png'))
       if (!blob) {
@@ -801,6 +904,15 @@ export const useZtudioStore = defineStore('ztudio', () => {
     setImageZoom,
     setImageOffset,
     resetImageTransform,
+    keyframes,
+    selectedKeyframeId,
+    hasKeyframes,
+    addKeyframe,
+    removeKeyframe,
+    clearKeyframes,
+    selectKeyframe,
+    setKeyframeEasing,
+    moveKeyframe,
     applyPreset,
     loadAudio,
     loadImage,

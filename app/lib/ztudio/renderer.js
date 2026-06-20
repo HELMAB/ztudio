@@ -1,4 +1,5 @@
 import { GREEN } from './config'
+import { applyKeyframes } from './keyframes'
 import { cueAt } from './srt'
 
 const clamp01 = x => (x < 0 ? 0 : x > 1 ? 1 : x)
@@ -180,7 +181,10 @@ function captionAnim(t, cue, style) {
   return { type: style.animation, enter: Math.min(inP, outP), reveal: inP }
 }
 
-export function drawFrame(ctx, w, h, t, { imageBitmap, imageFit, cues, style }) {
+export function drawFrame(ctx, w, h, t, { imageBitmap, imageFit, cues, style, keyframes }) {
+  // Resolve any keyframe animation for this timestamp; static when there are none.
+  style = applyKeyframes(style, keyframes, t)
+
   ctx.fillStyle = GREEN
   ctx.fillRect(0, 0, w, h)
 

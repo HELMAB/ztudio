@@ -9,7 +9,7 @@ function densify(pts, from, to, step, total) {
   }
 }
 
-export function buildSegments(cues, total, animType = 'none', animDur = 0) {
+export function buildSegments(cues, total, animType = 'none', animDur = 0, keyframeTimes = []) {
   const pts = new Set([0, total])
   const animated = animType && animType !== 'none' && animDur > 0
 
@@ -26,6 +26,16 @@ export function buildSegments(cues, total, animType = 'none', animDur = 0) {
       densify(pts, cue.start, Math.min(cue.start + animDur, mid), ANIM_FRAME_STEP, total)
       densify(pts, Math.max(cue.end - animDur, mid), cue.end, ANIM_FRAME_STEP, total)
     }
+  }
+
+  // Keyframes: boundary at each key, and dense frames between adjacent keys where
+  // values interpolate. Before the first / after the last key the scene is held.
+  const kfs = [...keyframeTimes].filter(t => t > 0 && t < total).sort((a, b) => a - b)
+  for (const t of kfs) {
+    pts.add(+t.toFixed(3))
+  }
+  for (let i = 0; i < kfs.length - 1; i++) {
+    densify(pts, kfs[i], kfs[i + 1], ANIM_FRAME_STEP, total)
   }
 
   for (let t = MAX_FRAME_DUR; t < total; t += MAX_FRAME_DUR) {
