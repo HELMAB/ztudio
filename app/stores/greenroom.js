@@ -22,7 +22,7 @@ export const useGreenroomStore = defineStore('greenroom', () => {
   const audioBuffer = ref(null)
   const imageBitmap = ref(null)
   const cues = ref([])
-  const srtSpan = ref(0)
+  const srtSpan = computed(() => (cues.value.length ? Math.max(...cues.value.map(c => c.end)) : 0))
 
   const resolution = ref('1080x1920')
   const customFonts = ref([])
@@ -208,14 +208,12 @@ export const useGreenroomStore = defineStore('greenroom', () => {
   async function loadSrt(file) {
     if (!file) {
       cues.value = []
-      srtSpan.value = 0
       clampScrub()
       redraw()
       maybeReady()
       return
     }
     cues.value = parseSRT(await file.text())
-    srtSpan.value = cues.value.length ? cues.value[cues.value.length - 1].end : 0
     log(`Parsed ${cues.value.length} cues, spanning ${srtSpan.value.toFixed(1)}s.`)
     if (!cues.value.length) {
       status.value = 'No cues found in that .srt — check the timestamp format.'
@@ -470,6 +468,19 @@ export const useGreenroomStore = defineStore('greenroom', () => {
     scrub.value = Math.min(Math.max(t, 0), previewDuration.value)
   }
 
+  function updateCue(index, start, end) {
+    const cue = cues.value[index]
+    if (!cue) {
+      return
+    }
+    const minDur = 0.1
+    const s = Math.max(0, start)
+    const e = Math.max(s + minDur, end)
+    cue.start = Math.round(s * 1000) / 1000
+    cue.end = Math.round(e * 1000) / 1000
+    redraw()
+  }
+
   function dismissResult() {
     if (result.value?.url) {
       URL.revokeObjectURL(result.value.url)
@@ -530,6 +541,7 @@ export const useGreenroomStore = defineStore('greenroom', () => {
     pause,
     togglePlay,
     seek,
+    updateCue,
     dismissResult,
     init,
   }

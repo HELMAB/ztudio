@@ -1,35 +1,69 @@
 <script setup>
-import { computed, onBeforeUnmount, ref } from 'vue'
-import { ImageIcon, MessageSquareIcon, MusicIcon } from '@lucide/vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { useElementSize } from '@vueuse/core'
+import {
+  ImageIcon,
+  MessageSquareIcon,
+  MusicIcon,
+  ScanIcon,
+  ZoomInIcon,
+  ZoomOutIcon,
+} from '@lucide/vue'
 
 const store = useGreenroomStore()
-const trackArea = ref(null)
-let dragging = false
 
-const pct = v => `${v}%`
+const scrollEl = ref(null)
+const laneArea = ref(null)
+const { width: trackWidth } = useElementSize(scrollEl)
+
+const MIN_ZOOM = 1
+const MAX_ZOOM = 24
+const zoom = ref(1)
+
 const duration = computed(() => store.previewDuration)
+const pxPerSecond = computed(() =>
+  duration.value > 0 ? (trackWidth.value * zoom.value) / duration.value : 0,
+)
+const contentWidth = computed(() => trackWidth.value * zoom.value)
 
+function zoomIn() {
+  zoom.value = Math.min(zoom.value * 1.5, MAX_ZOOM)
+}
+function zoomOut() {
+  zoom.value = Math.max(zoom.value / 1.5, MIN_ZOOM)
+}
+function zoomFit() {
+  zoom.value = 1
+}
+
+const NICE_STEPS = [0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300]
 const ticks = computed(() => {
+  const pps = pxPerSecond.value
   const d = duration.value
-  const step = [1, 2, 5, 10, 15, 30, 60, 120].find(s => d / s <= 10) ?? 300
+  if (pps <= 0) {
+    return [{ t: 0, left: 0 }]
+  }
+  const step = NICE_STEPS.find(s => s >= 70 / pps) ?? 300
   const out = []
   for (let t = 0; t <= d + 1e-6; t += step) {
-    out.push({ t, left: (t / d) * 100 })
+    out.push({ t, left: t * pps })
   }
   return out
 })
 
 function fmtTick(t) {
-  const m = Math.floor(t / 60)
-  const s = Math.floor(t % 60)
-  return m ? `${m}:${String(s).padStart(2, '0')}` : `${s}s`
+  if (t >= 60) {
+    const m = Math.floor(t / 60)
+    const s = Math.round(t % 60)
+    return `${m}:${String(s).padStart(2, '0')}`
+  }
+  return Number.isInteger(t) ? `${t}s` : `${t.toFixed(1)}s`
 }
 
 const audioClip = computed(() =>
   store.audioBuffer
     ? {
-        left: 0,
-        width: (store.audioBuffer.duration / duration.value) * 100,
+        width: store.audioBuffer.duration * pxPerSecond.value,
         label: `audio · ${store.audioBuffer.duration.toFixed(1)}s`,
       }
     : null,
@@ -40,129 +74,177 @@ const imageClip = computed(() =>
     : null,
 )
 const captionClips = computed(() =>
-  store.cues.map((c, i) => ({
-    key: i,
-    left: (c.start / duration.value) * 100,
-    width: ((c.end - c.start) / duration.value) * 100,
-    label: c.text.split('\n')[0],
-  })),
+  store.cues.map((c, i) => ({ key: i, start: c.start, end: c.end, label: c.text.split('\n')[0] })),
 )
-const playheadLeft = computed(() => (store.scrub / duration.value) * 100)
+const playheadLeft = computed(() => store.scrub * pxPerSecond.value)
 
+let seeking = false
 function seekFromEvent(event) {
-  const el = trackArea.value
-  if (!el) {
+  const el = laneArea.value
+  const pps = pxPerSecond.value
+  if (!el || pps <= 0) {
     return
   }
   const rect = el.getBoundingClientRect()
-  const ratio = Math.min(Math.max((event.clientX - rect.left) / rect.width, 0), 1)
-  store.seek(ratio * duration.value)
+  store.seek((event.clientX - rect.left) / pps)
 }
-
-function onMove(event) {
-  if (dragging) {
+function onLaneMove(event) {
+  if (seeking) {
     seekFromEvent(event)
   }
 }
-
-function onUp() {
-  dragging = false
-  window.removeEventListener('pointermove', onMove)
-  window.removeEventListener('pointerup', onUp)
+function onLaneUp() {
+  seeking = false
+  window.removeEventListener('pointermove', onLaneMove)
+  window.removeEventListener('pointerup', onLaneUp)
 }
-
-function onDown(event) {
-  dragging = true
+function onLaneDown(event) {
+  seeking = true
   seekFromEvent(event)
-  window.addEventListener('pointermove', onMove)
-  window.addEventListener('pointerup', onUp)
+  window.addEventListener('pointermove', onLaneMove)
+  window.addEventListener('pointerup', onLaneUp)
 }
+onBeforeUnmount(onLaneUp)
 
-onBeforeUnmount(onUp)
+watch(
+  () => store.scrub,
+  () => {
+    if (!store.isPlaying) {
+      return
+    }
+    const el = scrollEl.value
+    if (!el) {
+      return
+    }
+    const x = store.scrub * pxPerSecond.value
+    if (x < el.scrollLeft + 24 || x > el.scrollLeft + el.clientWidth - 24) {
+      el.scrollLeft = x - el.clientWidth / 2
+    }
+  },
+)
 </script>
 
 <template>
   <div class="flex flex-col h-48 select-none bg-background">
-    <div class="relative h-6 shrink-0 border-b border-border bg-muted/30">
-      <div class="absolute inset-y-0 left-24 right-0">
-        <div
-          v-for="tick in ticks"
-          :key="tick.t"
-          class="absolute top-0 h-full flex items-start"
-          :style="{ left: pct(tick.left) }"
-        >
-          <span class="border-l border-border h-2" />
-          <span class="font-mono text-[10px] text-muted-foreground pl-1 pt-0.5">
-            {{ fmtTick(tick.t) }}
-          </span>
-        </div>
-      </div>
+    <div class="shrink-0 h-8 flex items-center justify-end gap-1 px-3 border-b border-border">
+      <span class="font-mono text-[10px] text-muted-foreground mr-1 tabular-nums">
+        {{ Math.round(zoom * 100) }}%
+      </span>
+      <Button
+        size="icon"
+        variant="ghost"
+        class="size-6"
+        :disabled="zoom <= MIN_ZOOM"
+        aria-label="Zoom out"
+        @click="zoomOut"
+      >
+        <ZoomOutIcon class="size-3.5" />
+      </Button>
+      <Button size="icon" variant="ghost" class="size-6" aria-label="Fit timeline" @click="zoomFit">
+        <ScanIcon class="size-3.5" />
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        class="size-6"
+        :disabled="zoom >= MAX_ZOOM"
+        aria-label="Zoom in"
+        @click="zoomIn"
+      >
+        <ZoomInIcon class="size-3.5" />
+      </Button>
     </div>
 
-    <div class="relative flex-1 min-h-0">
-      <div class="absolute left-0 top-0 bottom-0 w-24 z-20 border-r border-border bg-background">
-        <div
-          class="h-1/3 flex items-center gap-2 px-3 font-mono text-[10px] uppercase text-muted-foreground border-b border-border"
-        >
-          <MusicIcon class="size-3" />
-          Audio
-        </div>
-        <div
-          class="h-1/3 flex items-center gap-2 px-3 font-mono text-[10px] uppercase text-muted-foreground border-b border-border"
-        >
-          <ImageIcon class="size-3" />
-          Image
-        </div>
-        <div
-          class="h-1/3 flex items-center gap-2 px-3 font-mono text-[10px] uppercase text-muted-foreground"
-        >
-          <MessageSquareIcon class="size-3" />
-          Caption
+    <div class="flex flex-1 min-h-0">
+      <div class="w-24 shrink-0 z-20 flex flex-col border-r border-border bg-background">
+        <div class="h-6 shrink-0 border-b border-border" />
+        <div class="flex-1 flex flex-col">
+          <div
+            class="flex-1 flex items-center gap-2 px-3 font-mono text-[10px] uppercase text-muted-foreground border-b border-border"
+          >
+            <MusicIcon class="size-3" />
+            Audio
+          </div>
+          <div
+            class="flex-1 flex items-center gap-2 px-3 font-mono text-[10px] uppercase text-muted-foreground border-b border-border"
+          >
+            <ImageIcon class="size-3" />
+            Image
+          </div>
+          <div
+            class="flex-1 flex items-center gap-2 px-3 font-mono text-[10px] uppercase text-muted-foreground"
+          >
+            <MessageSquareIcon class="size-3" />
+            Caption
+          </div>
         </div>
       </div>
 
-      <div
-        ref="trackArea"
-        class="absolute left-24 right-0 top-0 bottom-0 cursor-pointer touch-none"
-        @pointerdown="onDown"
-      >
-        <div class="relative h-1/3 border-b border-border">
-          <div
-            v-if="audioClip"
-            class="absolute inset-y-1 flex items-center overflow-hidden rounded border border-[#00b140]/50 bg-[#00b140]/15 px-2"
-            :style="{ left: pct(audioClip.left), width: pct(audioClip.width) }"
-          >
-            <span class="font-mono text-[10px] text-[#00b140] truncate">{{ audioClip.label }}</span>
+      <div ref="scrollEl" class="flex-1 min-w-0 overflow-x-auto overflow-y-hidden">
+        <div class="relative h-full flex flex-col" :style="{ width: contentWidth + 'px' }">
+          <div class="relative h-6 shrink-0 border-b border-border bg-muted/30">
+            <div
+              v-for="tick in ticks"
+              :key="tick.t"
+              class="absolute top-0 h-full flex items-start"
+              :style="{ left: tick.left + 'px' }"
+            >
+              <span class="border-l border-border h-2" />
+              <span
+                class="font-mono text-[10px] text-muted-foreground pl-1 pt-0.5 whitespace-nowrap"
+              >
+                {{ fmtTick(tick.t) }}
+              </span>
+            </div>
           </div>
-        </div>
 
-        <div class="relative h-1/3 border-b border-border">
           <div
-            v-if="imageClip"
-            class="absolute inset-y-1 left-0 right-0 flex items-center overflow-hidden rounded border border-border bg-foreground/10 px-2"
+            ref="laneArea"
+            class="relative flex-1 flex flex-col cursor-pointer"
+            @pointerdown="onLaneDown"
           >
-            <span class="font-mono text-[10px] text-muted-foreground truncate">
-              {{ imageClip.label }}
-            </span>
-          </div>
-        </div>
+            <div class="relative flex-1 border-b border-border">
+              <div
+                v-if="audioClip"
+                class="absolute inset-y-1 left-0 flex items-center overflow-hidden rounded border border-[#00b140]/50 bg-[#00b140]/15 px-2"
+                :style="{ width: audioClip.width + 'px' }"
+              >
+                <span class="font-mono text-[10px] text-[#00b140] truncate">{{
+                  audioClip.label
+                }}</span>
+              </div>
+            </div>
 
-        <div class="relative h-1/3">
+            <div class="relative flex-1 border-b border-border">
+              <div
+                v-if="imageClip"
+                class="absolute inset-y-1 left-0 right-0 flex items-center overflow-hidden rounded border border-border bg-foreground/10 px-2"
+              >
+                <span class="font-mono text-[10px] text-muted-foreground truncate">
+                  {{ imageClip.label }}
+                </span>
+              </div>
+            </div>
+
+            <div class="relative flex-1">
+              <GreenroomTimelineCaptionClip
+                v-for="c in captionClips"
+                :key="c.key"
+                :index="c.key"
+                :start="c.start"
+                :end="c.end"
+                :label="c.label"
+                :px-per-second="pxPerSecond"
+              />
+            </div>
+          </div>
+
           <div
-            v-for="c in captionClips"
-            :key="c.key"
-            class="absolute inset-y-1 flex items-center overflow-hidden rounded border border-amber-500/50 bg-amber-500/15 px-2"
-            :style="{ left: pct(c.left), width: pct(c.width) }"
+            class="absolute top-0 bottom-0 w-px bg-[#00b140] z-10 pointer-events-none"
+            :style="{ left: playheadLeft + 'px' }"
           >
-            <span class="font-mono text-[10px] text-amber-700 truncate">{{ c.label }}</span>
+            <div class="absolute -translate-x-1/2 size-2.5 rotate-45 bg-[#00b140]" />
           </div>
-        </div>
-
-        <div
-          class="absolute top-0 bottom-0 w-px bg-[#00b140] z-10 pointer-events-none"
-          :style="{ left: pct(playheadLeft) }"
-        >
-          <div class="absolute -translate-x-1/2 size-2.5 rotate-45 bg-[#00b140]" />
         </div>
       </div>
     </div>
