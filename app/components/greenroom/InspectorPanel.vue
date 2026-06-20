@@ -10,8 +10,13 @@ import { TypeIcon } from '@lucide/vue'
       <TypeIcon class="size-3.5 text-[#00b140]" />
       Caption
     </h2>
-    <div class="flex-1 min-h-0 overflow-y-auto p-4">
-      <GreenroomCaptionControls />
+    <div class="flex-1 min-h-0 overflow-y-auto p-4 space-y-5">
+      <GreenroomCaptionTextEditor />
+      <Separator />
+      <div class="space-y-4">
+        <span class="font-mono text-[11px] uppercase text-muted-foreground">Style</span>
+        <GreenroomCaptionControls />
+      </div>
     </div>
   </aside>
 </template>

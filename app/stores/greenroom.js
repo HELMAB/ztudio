@@ -29,6 +29,7 @@ export const useGreenroomStore = defineStore('greenroom', () => {
   const preset = ref('clean')
   const scrub = ref(0)
   const previewTick = ref(0)
+  const selectedCueIndex = ref(null)
 
   const controls = reactive({
     fontKey: 'default',
@@ -208,12 +209,14 @@ export const useGreenroomStore = defineStore('greenroom', () => {
   async function loadSrt(file) {
     if (!file) {
       cues.value = []
+      selectedCueIndex.value = null
       clampScrub()
       redraw()
       maybeReady()
       return
     }
     cues.value = parseSRT(await file.text())
+    selectedCueIndex.value = null
     log(`Parsed ${cues.value.length} cues, spanning ${srtSpan.value.toFixed(1)}s.`)
     if (!cues.value.length) {
       status.value = 'No cues found in that .srt — check the timestamp format.'
@@ -481,6 +484,43 @@ export const useGreenroomStore = defineStore('greenroom', () => {
     redraw()
   }
 
+  function selectCue(index) {
+    selectedCueIndex.value = index
+  }
+
+  function setCueText(index, text) {
+    const cue = cues.value[index]
+    if (!cue) {
+      return
+    }
+    cue.text = text
+    redraw()
+  }
+
+  function addCue() {
+    const dur = previewDuration.value
+    const start = Math.min(scrub.value, Math.max(0, dur - 1))
+    const end = Math.max(Math.min(start + 2, dur), start + 0.5)
+    cues.value.push({
+      start: Math.round(start * 1000) / 1000,
+      end: Math.round(end * 1000) / 1000,
+      text: 'New caption',
+    })
+    selectedCueIndex.value = cues.value.length - 1
+    redraw()
+    maybeReady()
+  }
+
+  function removeCue(index) {
+    if (index == null || !cues.value[index]) {
+      return
+    }
+    cues.value.splice(index, 1)
+    selectedCueIndex.value = null
+    redraw()
+    maybeReady()
+  }
+
   function dismissResult() {
     if (result.value?.url) {
       URL.revokeObjectURL(result.value.url)
@@ -508,6 +548,7 @@ export const useGreenroomStore = defineStore('greenroom', () => {
     preset,
     scrub,
     previewTick,
+    selectedCueIndex,
     controls,
     busy,
     status,
@@ -542,6 +583,10 @@ export const useGreenroomStore = defineStore('greenroom', () => {
     togglePlay,
     seek,
     updateCue,
+    selectCue,
+    setCueText,
+    addCue,
+    removeCue,
     dismissResult,
     init,
   }

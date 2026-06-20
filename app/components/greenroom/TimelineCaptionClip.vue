@@ -19,6 +19,7 @@ let origEnd = 0
 
 const left = computed(() => props.start * props.pxPerSecond)
 const width = computed(() => (props.end - props.start) * props.pxPerSecond)
+const isSelected = computed(() => store.selectedCueIndex === props.index)
 
 function onMove(event) {
   if (!mode) {
@@ -45,6 +46,7 @@ function onUp() {
 
 function begin(nextMode, event) {
   event.stopPropagation()
+  store.selectCue(props.index)
   mode = nextMode
   startX = event.clientX
   origStart = props.start
@@ -59,7 +61,8 @@ onBeforeUnmount(onUp)
 
 <template>
   <div
-    class="absolute inset-y-1 flex items-center overflow-hidden rounded border border-amber-500/60 bg-amber-500/20"
+    class="absolute inset-y-1 flex items-center overflow-hidden rounded border bg-amber-500/20"
+    :class="isSelected ? 'border-amber-600 ring-2 ring-amber-500 z-10' : 'border-amber-500/60'"
     :style="{ left: left + 'px', width: width + 'px' }"
   >
     <div

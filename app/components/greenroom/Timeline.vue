@@ -99,6 +99,7 @@ function onLaneUp() {
   window.removeEventListener('pointerup', onLaneUp)
 }
 function onLaneDown(event) {
+  store.selectCue(null)
   seeking = true
   seekFromEvent(event)
   window.addEventListener('pointermove', onLaneMove)
