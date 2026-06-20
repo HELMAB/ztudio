@@ -1,6 +1,8 @@
 <template>
   <div>
     <NuxtRouteAnnouncer />
-    <ShadcnDemo />
+    <ClientOnly>
+      <GreenroomApp />
+    </ClientOnly>
   </div>
 </template>
