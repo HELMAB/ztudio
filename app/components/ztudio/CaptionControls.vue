@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { TypeIcon } from '@lucide/vue'
 import { FIT_OPTIONS, POSITION_OPTIONS, PRESET_OPTIONS, WEIGHT_OPTIONS } from '@/lib/ztudio/config'
 
@@ -14,6 +14,18 @@ const positionOptions = localize(POSITION_OPTIONS)
 const fitOptions = localize(FIT_OPTIONS)
 
 const showFontUploader = ref(false)
+
+// Reveal the uploader automatically when there are custom fonts
+// (e.g. restored from a previous session).
+watch(
+  () => store.customFonts.length,
+  count => {
+    if (count > 0) {
+      showFontUploader.value = true
+    }
+  },
+  { immediate: true },
+)
 
 function onFont(files) {
   store.loadFonts(files)

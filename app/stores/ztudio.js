@@ -11,6 +11,11 @@ import {
   mrType,
   pickPipeline,
 } from '@/lib/ztudio/encoder'
+import {
+  clearFonts as idbClearFonts,
+  getAllFonts as idbGetAllFonts,
+  putFont as idbPutFont,
+} from '@/lib/ztudio/font-store'
 import { useActivityLog } from '@/composables/useActivityLog'
 
 const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
@@ -281,19 +286,29 @@ export const useZtudioStore = defineStore('ztudio', () => {
     }
   }
 
+  // Registers a font buffer as a FontFace and adds it to the dropdown.
+  // Returns the entry (without persisting it).
+  async function registerFontBuffer(buffer, name, id = null) {
+    const ff = new FontFace('UserFont' + ++fontCounter, buffer)
+    await ff.load()
+    document.fonts.add(ff)
+    const entry = { value: ff.family, label: name, face: ff, id }
+    customFonts.value.push(entry)
+    return entry
+  }
+
   async function loadFont(file) {
     if (!file) {
       return
     }
     setStatus('status.loadingFont')
     try {
-      const ff = new FontFace('UserFont' + ++fontCounter, await file.arrayBuffer())
-      await ff.load()
-      document.fonts.add(ff)
-      customFonts.value.push({ value: ff.family, label: file.name, face: ff })
-      controls.fontKey = ff.family
+      const buffer = await file.arrayBuffer()
+      const entry = await registerFontBuffer(buffer, file.name)
+      entry.id = await idbPutFont(file.name, buffer)
+      controls.fontKey = entry.value
       redraw()
-      log(`Loaded font "${file.name}" as ${ff.family}.`)
+      log(`Loaded font "${file.name}" as ${entry.value}.`)
       setStatus(audioBuffer.value ? 'status.ready' : 'status.fontLoaded')
     } catch (err) {
       log('Font upload failed: ' + (err?.message || err))
@@ -307,7 +322,34 @@ export const useZtudioStore = defineStore('ztudio', () => {
     }
   }
 
-  function clearCustomFonts() {
+  // Re-registers fonts saved from previous sessions on startup.
+  async function restoreCustomFonts() {
+    let records
+    try {
+      records = await idbGetAllFonts()
+    } catch (err) {
+      log('Could not read saved fonts: ' + (err?.message || err))
+      return
+    }
+    if (!records.length) {
+      return
+    }
+    let last = null
+    for (const rec of records) {
+      try {
+        last = await registerFontBuffer(rec.buffer, rec.name, rec.id)
+      } catch (err) {
+        log(`Could not restore font "${rec.name}": ${err?.message || err}`)
+      }
+    }
+    if (last) {
+      controls.fontKey = last.value
+      redraw()
+      log(`Restored ${customFonts.value.length} saved font(s).`)
+    }
+  }
+
+  async function clearCustomFonts() {
     for (const f of customFonts.value) {
       if (f.face) {
         document.fonts.delete(f.face)
@@ -318,6 +360,11 @@ export const useZtudioStore = defineStore('ztudio', () => {
       controls.fontKey = 'default'
     }
     redraw()
+    try {
+      await idbClearFonts()
+    } catch (err) {
+      log('Could not clear saved fonts: ' + (err?.message || err))
+    }
     log('Cleared custom fonts.')
   }
 
@@ -608,6 +655,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
   async function init() {
     await ensureDefaultFonts()
     applyPreset('clean')
+    await restoreCustomFonts()
     clampScrub()
     maybeReady()
     await runEnvCheck()
