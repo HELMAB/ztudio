@@ -24,6 +24,7 @@
     "heading": "Caption",
     "tabText": "Text",
     "tabStyle": "Style",
+    "tabAnimation": "Animation",
     "text": "Caption text",
     "addAria": "Add caption",
     "deleteAria": "Delete caption",

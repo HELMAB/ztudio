@@ -1,12 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import {
-  ANIMATION_OPTIONS,
-  FIT_OPTIONS,
-  POSITION_OPTIONS,
-  PRESET_OPTIONS,
-  WEIGHT_OPTIONS,
-} from '@/lib/ztudio/config'
+import { FIT_OPTIONS, POSITION_OPTIONS, PRESET_OPTIONS, WEIGHT_OPTIONS } from '@/lib/ztudio/config'
 
 const store = useZtudioStore()
 const { t } = useI18n()
@@ -17,7 +11,6 @@ const presetOptions = localize(PRESET_OPTIONS)
 const weightOptions = localize(WEIGHT_OPTIONS)
 const positionOptions = localize(POSITION_OPTIONS)
 const fitOptions = localize(FIT_OPTIONS)
-const animationOptions = localize(ANIMATION_OPTIONS)
 
 function onFont(event) {
   store.loadFont(event.target.files[0])
@@ -84,10 +77,6 @@ function onFont(event) {
 
     <ZtudioField :label="$t('controls.position')">
       <ZtudioSelectField v-model="store.controls.position" :options="positionOptions" />
-    </ZtudioField>
-
-    <ZtudioField :label="$t('controls.animation')">
-      <ZtudioSelectField v-model="store.controls.animation" :options="animationOptions" />
     </ZtudioField>
 
     <ZtudioField :label="$t('controls.imageFit')">
