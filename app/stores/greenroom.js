@@ -48,10 +48,16 @@ export const useGreenroomStore = defineStore('greenroom', () => {
   const showProgress = ref(false)
   const result = ref(null)
   const env = ref({ level: 'pending', title: 'Checking encoder support…', note: '' })
+  const isPlaying = ref(false)
 
   let cancelRequested = false
   let applyingPreset = false
   let fontCounter = 0
+  let playRaf = null
+  let playCtx = null
+  let playSource = null
+  let playStartClock = 0
+  let playStartOffset = 0
 
   const dimensions = computed(() => {
     const [w, h] = resolution.value.split('x').map(Number)
@@ -314,6 +320,7 @@ export const useGreenroomStore = defineStore('greenroom', () => {
     if (busy.value || !audioBuffer.value) {
       return
     }
+    pause()
     cancelRequested = false
     busy.value = true
     result.value = null
@@ -386,6 +393,91 @@ export const useGreenroomStore = defineStore('greenroom', () => {
     log('Cancel requested.')
   }
 
+  function stopPlaybackAudio() {
+    if (playSource) {
+      try {
+        playSource.stop()
+      } catch {
+        /* already stopped */
+      }
+      playSource = null
+    }
+    if (playCtx) {
+      playCtx.close().catch(() => {})
+      playCtx = null
+    }
+  }
+
+  function pause() {
+    if (playRaf) {
+      cancelAnimationFrame(playRaf)
+      playRaf = null
+    }
+    stopPlaybackAudio()
+    isPlaying.value = false
+  }
+
+  function play() {
+    if (isPlaying.value) {
+      return
+    }
+    const dur = previewDuration.value
+    if (scrub.value >= dur) {
+      scrub.value = 0
+    }
+    isPlaying.value = true
+    playStartOffset = scrub.value
+
+    if (audioBuffer.value) {
+      const AC = window.AudioContext || window.webkitAudioContext
+      playCtx = new AC()
+      playSource = playCtx.createBufferSource()
+      playSource.buffer = audioBuffer.value
+      playSource.connect(playCtx.destination)
+      playSource.start(0, playStartOffset)
+      playStartClock = playCtx.currentTime
+    } else {
+      playStartClock = performance.now() / 1000
+    }
+
+    const tick = () => {
+      if (!isPlaying.value) {
+        return
+      }
+      const now = audioBuffer.value && playCtx ? playCtx.currentTime : performance.now() / 1000
+      const t = playStartOffset + (now - playStartClock)
+      if (t >= dur) {
+        scrub.value = dur
+        pause()
+        return
+      }
+      scrub.value = t
+      playRaf = requestAnimationFrame(tick)
+    }
+    playRaf = requestAnimationFrame(tick)
+  }
+
+  function togglePlay() {
+    if (isPlaying.value) {
+      pause()
+    } else {
+      play()
+    }
+  }
+
+  function seek(t) {
+    pause()
+    scrub.value = Math.min(Math.max(t, 0), previewDuration.value)
+  }
+
+  function dismissResult() {
+    if (result.value?.url) {
+      URL.revokeObjectURL(result.value.url)
+    }
+    result.value = null
+    showProgress.value = false
+  }
+
   async function init() {
     await ensureDefaultFonts()
     applyPreset('clean')
@@ -412,6 +504,7 @@ export const useGreenroomStore = defineStore('greenroom', () => {
     showProgress,
     result,
     env,
+    isPlaying,
     dimensions,
     previewDuration,
     currentCaption,
@@ -433,6 +526,11 @@ export const useGreenroomStore = defineStore('greenroom', () => {
     loadFont,
     render,
     cancel,
+    play,
+    pause,
+    togglePlay,
+    seek,
+    dismissResult,
     init,
   }
 })

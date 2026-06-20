@@ -15,12 +15,10 @@ function onFont(event) {
 </script>
 
 <template>
-  <div class="grid grid-cols-2 gap-4">
-    <div class="col-span-2">
-      <GreenroomField label="Preset style">
-        <GreenroomSelectField v-model="store.preset" :options="PRESET_OPTIONS" />
-      </GreenroomField>
-    </div>
+  <div class="space-y-4">
+    <GreenroomField label="Preset style">
+      <GreenroomSelectField v-model="store.preset" :options="PRESET_OPTIONS" />
+    </GreenroomField>
 
     <GreenroomField label="Caption font">
       <GreenroomSelectField v-model="store.controls.fontKey" :options="store.fontOptions" />
@@ -46,21 +44,22 @@ function onFont(event) {
       <GreenroomSelectField v-model="store.controls.fontWeight" :options="WEIGHT_OPTIONS" />
     </GreenroomField>
 
-    <GreenroomField label="Text colour">
-      <input
-        v-model="store.controls.fill"
-        type="color"
-        class="h-9 w-full cursor-pointer rounded-md border border-border bg-background p-1"
-      />
-    </GreenroomField>
-
-    <GreenroomField label="Outline colour">
-      <input
-        v-model="store.controls.strokeColor"
-        type="color"
-        class="h-9 w-full cursor-pointer rounded-md border border-border bg-background p-1"
-      />
-    </GreenroomField>
+    <div class="grid grid-cols-2 gap-3">
+      <GreenroomField label="Text colour">
+        <input
+          v-model="store.controls.fill"
+          type="color"
+          class="h-9 w-full cursor-pointer rounded-md border border-border bg-background p-1"
+        />
+      </GreenroomField>
+      <GreenroomField label="Outline colour">
+        <input
+          v-model="store.controls.strokeColor"
+          type="color"
+          class="h-9 w-full cursor-pointer rounded-md border border-border bg-background p-1"
+        />
+      </GreenroomField>
+    </div>
 
     <GreenroomField label="Outline width" :value="store.strokeLabel">
       <Slider
@@ -76,26 +75,14 @@ function onFont(event) {
       <GreenroomSelectField v-model="store.controls.position" :options="POSITION_OPTIONS" />
     </GreenroomField>
 
+    <GreenroomField label="Image fit">
+      <GreenroomSelectField v-model="store.controls.imageFit" :options="FIT_OPTIONS" />
+    </GreenroomField>
+
     <GreenroomField label="Background">
       <label class="flex items-center gap-2.5 text-sm py-1.5 select-none">
         <Checkbox v-model="store.controls.box" /> Box behind text
       </label>
     </GreenroomField>
-
-    <GreenroomField label="Image fit">
-      <GreenroomSelectField v-model="store.controls.imageFit" :options="FIT_OPTIONS" />
-    </GreenroomField>
-
-    <div class="col-span-2">
-      <GreenroomField label="Timeline" :value="store.timeLabel">
-        <Slider
-          :model-value="[store.scrub]"
-          :min="0"
-          :max="store.previewDuration"
-          :step="0.1"
-          @update:model-value="store.scrub = $event[0]"
-        />
-      </GreenroomField>
-    </div>
   </div>
 </template>

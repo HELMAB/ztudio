@@ -21,9 +21,12 @@ function onSrt(event) {
 </script>
 
 <template>
-  <section class="border-t border-border py-10">
-    <GreenroomSectionHeading :icon="UploadIcon">Source</GreenroomSectionHeading>
-    <div class="grid sm:grid-cols-2 gap-5">
+  <aside class="flex flex-col min-h-0 bg-background">
+    <div class="shrink-0 p-4 space-y-4 border-b border-border">
+      <h2 class="flex items-center gap-2 font-mono text-[11px] uppercase text-muted-foreground">
+        <UploadIcon class="size-3.5 text-[#00b140]" />
+        Media
+      </h2>
       <GreenroomField label="Aspect & resolution">
         <GreenroomSelectField v-model="store.resolution" :options="RESOLUTION_OPTIONS" />
       </GreenroomField>
@@ -34,7 +37,8 @@ function onSrt(event) {
         accept=".srt,text/plain"
         @select="onSrt"
       />
+      <GreenroomReadinessPills />
     </div>
-    <GreenroomReadinessPills />
-  </section>
+    <GreenroomActivityLog class="flex-1 min-h-0" />
+  </aside>
 </template>
