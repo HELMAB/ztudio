@@ -1,5 +1,9 @@
 export const MAX_AUDIO_SEC = 300
 export const MAX_FRAME_DUR = 1.0
+// Duration of the caption enter/exit animation, in seconds.
+export const ANIM_DURATION = 0.35
+// Frame step used to densify the encode inside animation windows (~30fps).
+export const ANIM_FRAME_STEP = 1 / 30
 export const GREEN = '#00B140'
 export const KHMER_FONT = '"Noto Sans Khmer", system-ui, sans-serif'
 
@@ -24,6 +28,8 @@ export const DEFAULT_STYLE = {
   lineHeight: 1.34,
   topMarginPct: 0.09,
   bottomMarginPct: 0.09,
+  animation: 'none',
+  animDuration: ANIM_DURATION,
 }
 
 export const PRESETS = {
@@ -94,4 +100,18 @@ export const POSITION_OPTIONS = [
 export const FIT_OPTIONS = [
   { value: 'contain', labelKey: 'fit.contain' },
   { value: 'cover', labelKey: 'fit.cover' },
+]
+
+export const ANIMATION_OPTIONS = [
+  { value: 'none', labelKey: 'anim.none' },
+  { value: 'fade', labelKey: 'anim.fade' },
+  { value: 'slideUp', labelKey: 'anim.slideUp' },
+  { value: 'slideDown', labelKey: 'anim.slideDown' },
+  { value: 'slideLeft', labelKey: 'anim.slideLeft' },
+  { value: 'slideRight', labelKey: 'anim.slideRight' },
+  { value: 'pop', labelKey: 'anim.pop' },
+  { value: 'zoom', labelKey: 'anim.zoom' },
+  { value: 'blur', labelKey: 'anim.blur' },
+  { value: 'typewriter', labelKey: 'anim.typewriter' },
+  { value: 'wordByWord', labelKey: 'anim.wordByWord' },
 ]

@@ -28,7 +28,11 @@ export function parseSRT(text) {
   return cues
 }
 
+export function cueAt(t, cues) {
+  return cues.find(c => t >= c.start && t < c.end) || null
+}
+
 export function captionAt(t, cues) {
-  const cue = cues.find(c => t >= c.start && t < c.end)
+  const cue = cueAt(t, cues)
   return cue ? cue.text : ''
 }

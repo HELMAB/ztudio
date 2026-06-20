@@ -106,7 +106,7 @@ export async function generateFast(MB, pipe, w, h, dur, ctx2) {
   output.addAudioTrack(audioSource)
   await output.start()
 
-  const segs = buildSegments(cues, dur)
+  const segs = buildSegments(cues, dur, style.animation, style.animDuration)
   log(`Frames: ${segs.length} (vs ${Math.ceil(dur * 30)} at naive 30fps).`)
   const t0 = performance.now()
 

@@ -42,6 +42,7 @@
     "outlineColour": "Outline colour",
     "outlineWidth": "Outline width",
     "position": "Position",
+    "animation": "Caption animation",
     "imageFit": "Image fit",
     "background": "Background",
     "boxBehindText": "Box behind text"
@@ -94,6 +95,19 @@
   "fit": {
     "contain": "Contain (fit, green bars)",
     "cover": "Cover (fill, crop)"
+  },
+  "anim": {
+    "none": "None",
+    "fade": "Fade",
+    "slideUp": "Slide up",
+    "slideDown": "Slide down",
+    "slideLeft": "Slide in from right",
+    "slideRight": "Slide in from left",
+    "pop": "Pop (scale up)",
+    "zoom": "Zoom in",
+    "blur": "Blur in",
+    "typewriter": "Typewriter",
+    "wordByWord": "Word by word"
   },
   "pill": {
     "noAudio": "no audio",

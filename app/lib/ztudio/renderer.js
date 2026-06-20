@@ -1,5 +1,37 @@
 import { GREEN } from './config'
-import { captionAt } from './srt'
+import { cueAt } from './srt'
+
+const clamp01 = x => (x < 0 ? 0 : x > 1 ? 1 : x)
+
+// Reveal types progressively uncover text; return one entry per original line
+// (later lines may be empty) so the block keeps a stable height.
+function revealLines(lines, type, reveal) {
+  if (type === 'typewriter') {
+    let budget = Math.ceil(reveal * lines.join('').length)
+    return lines.map(line => {
+      if (budget <= 0) {
+        return ''
+      }
+      const shown = line.slice(0, budget)
+      budget -= line.length
+      return shown
+    })
+  }
+  if (type === 'wordByWord') {
+    const total = lines.reduce((n, l) => n + (l.trim() ? l.trim().split(/\s+/).length : 0), 0)
+    let budget = Math.ceil(reveal * total)
+    return lines.map(line => {
+      const words = line.trim() ? line.trim().split(/\s+/) : []
+      if (budget <= 0) {
+        return ''
+      }
+      const shown = words.slice(0, budget).join(' ')
+      budget -= words.length
+      return shown
+    })
+  }
+  return lines
+}
 
 function drawPlaceholder(ctx, w, h) {
   const cw = Math.min(w, h) * 0.6
@@ -16,7 +48,7 @@ function drawPlaceholder(ctx, w, h) {
   ctx.fillText('IMAGE', w / 2, h / 2)
 }
 
-function drawCaption(ctx, w, h, text, style) {
+function drawCaption(ctx, w, h, text, style, anim) {
   if (!text) {
     return
   }
@@ -42,6 +74,44 @@ function drawCaption(ctx, w, h, text, style) {
     first = h - botM - blockH + lineH / 2
   }
 
+  const isReveal = anim && (anim.type === 'typewriter' || anim.type === 'wordByWord')
+  const displayLines = isReveal ? revealLines(lines, anim.type, anim.reveal) : lines
+
+  ctx.save()
+
+  // Transform/opacity effects pivot around the caption block centre.
+  if (anim && !isReveal) {
+    const e = anim.enter
+    const cx = w / 2
+    const cy = first - lineH / 2 + blockH / 2
+    let dx = 0
+    let dy = 0
+    let scale = 1
+    const dist = h * 0.05
+    const distX = w * 0.08
+
+    if (anim.type === 'slideUp') {
+      dy = (1 - e) * dist
+    } else if (anim.type === 'slideDown') {
+      dy = -(1 - e) * dist
+    } else if (anim.type === 'slideLeft') {
+      dx = (1 - e) * distX
+    } else if (anim.type === 'slideRight') {
+      dx = -(1 - e) * distX
+    } else if (anim.type === 'pop') {
+      scale = 0.6 + 0.4 * e
+    } else if (anim.type === 'zoom') {
+      scale = 1.5 - 0.5 * e
+    } else if (anim.type === 'blur') {
+      ctx.filter = `blur(${(1 - e) * 10}px)`
+    }
+
+    ctx.globalAlpha = e
+    ctx.translate(cx + dx, cy + dy)
+    ctx.scale(scale, scale)
+    ctx.translate(-cx, -cy)
+  }
+
   if (style.box) {
     let maxW = 0
     for (const line of lines) {
@@ -58,15 +128,31 @@ function drawCaption(ctx, w, h, text, style) {
   const sw = fontPx * style.strokePct
   ctx.lineWidth = sw
 
-  for (let i = 0; i < lines.length; i++) {
+  for (let i = 0; i < displayLines.length; i++) {
     const y = first + i * lineH
     if (sw > 0.5) {
       ctx.strokeStyle = style.strokeColor
-      ctx.strokeText(lines[i], w / 2, y)
+      ctx.strokeText(displayLines[i], w / 2, y)
     }
     ctx.fillStyle = style.fill
-    ctx.fillText(lines[i], w / 2, y)
+    ctx.fillText(displayLines[i], w / 2, y)
   }
+
+  ctx.restore()
+}
+
+// Animation progress for the cue active at time t, or null when there is none.
+function captionAnim(t, cue, style) {
+  if (!cue || !style.animation || style.animation === 'none') {
+    return null
+  }
+  const d = style.animDuration || 0
+  if (d <= 0) {
+    return null
+  }
+  const inP = clamp01((t - cue.start) / d)
+  const outP = clamp01((cue.end - t) / d)
+  return { type: style.animation, enter: Math.min(inP, outP), reveal: inP }
 }
 
 export function drawFrame(ctx, w, h, t, { imageBitmap, imageFit, cues, style }) {
@@ -85,5 +171,6 @@ export function drawFrame(ctx, w, h, t, { imageBitmap, imageFit, cues, style }) 
     drawPlaceholder(ctx, w, h)
   }
 
-  drawCaption(ctx, w, h, captionAt(t, cues), style)
+  const cue = cueAt(t, cues)
+  drawCaption(ctx, w, h, cue ? cue.text : '', style, captionAnim(t, cue, style))
 }

@@ -42,6 +42,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     position: 'bottom',
     box: false,
     imageFit: 'contain',
+    animation: 'none',
   })
 
   const { $i18n } = useNuxtApp()
@@ -109,6 +110,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     strokePct: controls.strokePct,
     position: controls.position,
     box: controls.box,
+    animation: controls.animation,
   }))
 
   const audioPill = computed(() =>
@@ -192,7 +194,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
   )
 
   watch(() => controls.fontKey, key => ensureBundledFont(key).then(redraw))
-  watch(() => [controls.imageFit, resolution.value], redraw)
+  watch(() => [controls.imageFit, controls.animation, resolution.value], redraw)
 
   async function loadAudio(file) {
     if (!file) {

@@ -1,7 +1,17 @@
-import { MAX_FRAME_DUR } from './config'
+import { ANIM_FRAME_STEP, MAX_FRAME_DUR } from './config'
 
-export function buildSegments(cues, total) {
+// Sample [from, to] at a fixed step so animated stretches encode smoothly.
+function densify(pts, from, to, step, total) {
+  for (let t = from; t < to; t += step) {
+    if (t > 0 && t < total) {
+      pts.add(+t.toFixed(3))
+    }
+  }
+}
+
+export function buildSegments(cues, total, animType = 'none', animDur = 0) {
   const pts = new Set([0, total])
+  const animated = animType && animType !== 'none' && animDur > 0
 
   for (const cue of cues) {
     if (cue.start > 0 && cue.start < total) {
@@ -9,6 +19,12 @@ export function buildSegments(cues, total) {
     }
     if (cue.end > 0 && cue.end < total) {
       pts.add(cue.end)
+    }
+    if (animated) {
+      // Dense frames only where motion happens: the enter and exit windows.
+      const mid = (cue.start + cue.end) / 2
+      densify(pts, cue.start, Math.min(cue.start + animDur, mid), ANIM_FRAME_STEP, total)
+      densify(pts, Math.max(cue.end - animDur, mid), cue.end, ANIM_FRAME_STEP, total)
     }
   }
 
