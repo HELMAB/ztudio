@@ -2,40 +2,48 @@
 import { ref } from 'vue'
 import { CheckIcon, XIcon } from '@lucide/vue'
 
-defineProps({
+const props = defineProps({
   accept: { type: String, default: '' },
   title: { type: String, default: '' },
   hint: { type: String, default: '' },
   icon: { type: [Object, Function], default: null },
   ok: { type: Boolean, default: false },
   status: { type: String, default: '' },
+  multiple: { type: Boolean, default: false },
 })
 const emit = defineEmits(['select', 'clear'])
 
 const input = ref(null)
 const dragging = ref(false)
 
-function pick(file) {
-  if (file) {
-    emit('select', file)
+function pick(files) {
+  if (files && files.length) {
+    emit('select', props.multiple ? files : files[0])
   }
 }
 
 function onChange(event) {
-  pick(event.target.files[0])
+  pick(event.target.files)
   // Reset so picking the same file again still fires a change event.
   event.target.value = ''
 }
 
 function onDrop(event) {
   dragging.value = false
-  pick(event.dataTransfer?.files?.[0])
+  pick(event.dataTransfer?.files)
 }
 </script>
 
 <template>
   <div class="space-y-3">
-    <input ref="input" type="file" :accept="accept" class="sr-only" @change="onChange" />
+    <input
+      ref="input"
+      type="file"
+      :accept="accept"
+      :multiple="multiple"
+      class="sr-only"
+      @change="onChange"
+    />
 
     <button
       type="button"

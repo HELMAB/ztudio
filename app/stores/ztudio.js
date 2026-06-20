@@ -133,6 +133,11 @@ export const useZtudioStore = defineStore('ztudio', () => {
       ? { ok: true, text: t('pill.cues', { count: cues.value.length }) }
       : { ok: false, text: t('pill.noCaptions') },
   )
+  const fontPill = computed(() =>
+    customFonts.value.length
+      ? { ok: true, text: t('pill.fonts', { count: customFonts.value.length }) }
+      : { ok: false, text: t('pill.noFonts') },
+  )
 
   function redraw() {
     previewTick.value++
@@ -285,7 +290,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       const ff = new FontFace('UserFont' + ++fontCounter, await file.arrayBuffer())
       await ff.load()
       document.fonts.add(ff)
-      customFonts.value.push({ value: ff.family, label: file.name })
+      customFonts.value.push({ value: ff.family, label: file.name, face: ff })
       controls.fontKey = ff.family
       redraw()
       log(`Loaded font "${file.name}" as ${ff.family}.`)
@@ -294,6 +299,26 @@ export const useZtudioStore = defineStore('ztudio', () => {
       log('Font upload failed: ' + (err?.message || err))
       setStatus('status.fontFailed')
     }
+  }
+
+  async function loadFonts(files) {
+    for (const file of Array.from(files || [])) {
+      await loadFont(file)
+    }
+  }
+
+  function clearCustomFonts() {
+    for (const f of customFonts.value) {
+      if (f.face) {
+        document.fonts.delete(f.face)
+      }
+    }
+    customFonts.value = []
+    if (!fontOptions.value.some(o => o.value === controls.fontKey)) {
+      controls.fontKey = 'default'
+    }
+    redraw()
+    log('Cleared custom fonts.')
   }
 
   async function ensureDefaultFonts() {
@@ -621,12 +646,15 @@ export const useZtudioStore = defineStore('ztudio', () => {
     audioPill,
     imagePill,
     srtPill,
+    fontPill,
     redraw,
     applyPreset,
     loadAudio,
     loadImage,
     loadSrt,
     loadFont,
+    loadFonts,
+    clearCustomFonts,
     render,
     cancel,
     play,

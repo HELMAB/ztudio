@@ -41,7 +41,9 @@
   "controls": {
     "preset": "Preset style",
     "font": "Caption font",
-    "uploadFont": "Upload font (.ttf/.otf)",
+    "customFont": "Custom font",
+    "customFontToggle": "Upload custom fonts",
+    "uploadFont": "Upload fonts (.ttf/.otf)",
     "fontSize": "Font size",
     "weight": "Weight",
     "textColour": "Text colour",
@@ -122,7 +124,9 @@
     "noImage": "no image",
     "image": "image {dimensions}",
     "noCaptions": "no captions",
-    "cues": "{count} cues"
+    "cues": "{count} cues",
+    "noFonts": "no custom fonts",
+    "fonts": "{count} custom fonts"
   },
   "status": {
     "addAudio": "Add audio to start.",

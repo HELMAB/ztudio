@@ -1,5 +1,6 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { TypeIcon } from '@lucide/vue'
 import { FIT_OPTIONS, POSITION_OPTIONS, PRESET_OPTIONS, WEIGHT_OPTIONS } from '@/lib/ztudio/config'
 
 const store = useZtudioStore()
@@ -12,9 +13,10 @@ const weightOptions = localize(WEIGHT_OPTIONS)
 const positionOptions = localize(POSITION_OPTIONS)
 const fitOptions = localize(FIT_OPTIONS)
 
-function onFont(event) {
-  store.loadFont(event.target.files[0])
-  event.target.value = ''
+const showFontUploader = ref(false)
+
+function onFont(files) {
+  store.loadFonts(files)
 }
 </script>
 
@@ -28,10 +30,22 @@ function onFont(event) {
       <ZtudioComboboxField v-model="store.controls.fontKey" :options="store.fontOptions" />
     </ZtudioField>
 
-    <ZtudioFileInput
-      :label="$t('controls.uploadFont')"
+    <ZtudioField :label="$t('controls.customFont')">
+      <label class="flex items-center gap-2.5 text-sm py-1.5 select-none">
+        <Switch v-model="showFontUploader" /> {{ $t('controls.customFontToggle') }}
+      </label>
+    </ZtudioField>
+
+    <ZtudioMediaUploader
+      v-if="showFontUploader"
       accept=".ttf,.otf,font/ttf,font/otf"
+      multiple
+      :title="$t('controls.uploadFont')"
+      :icon="TypeIcon"
+      :ok="store.fontPill.ok"
+      :status="store.fontPill.text"
       @select="onFont"
+      @clear="store.clearCustomFonts()"
     />
 
     <ZtudioField :label="$t('controls.fontSize')" :value="store.sizeLabel">
