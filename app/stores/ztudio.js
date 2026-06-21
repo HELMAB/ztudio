@@ -3,6 +3,7 @@ import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { DEFAULT_STYLE, KHMER_FONT, MAX_AUDIO_SEC, PRESETS } from '@/lib/ztudio/config'
 import { KHMER_FONTS } from '@/lib/ztudio/khmer-fonts'
 import { captionAt, parseSRT } from '@/lib/ztudio/srt'
+import { imageAt } from '@/lib/ztudio/images'
 import { drawFrame } from '@/lib/ztudio/renderer'
 import { ANIMATED_FIELDS, DEFAULT_EASING, keyframeValues } from '@/lib/ztudio/keyframes'
 import {
@@ -28,8 +29,14 @@ export const useZtudioStore = defineStore('ztudio', () => {
   const { entries: logEntries, log } = useActivityLog()
 
   const audioBuffer = ref(null)
-  const imageBitmap = ref(null)
+  // The image track: a sorted array of slideshow clips, each with its own time
+  // range and framing. Replaces the former single image.
+  const images = ref([])
+  const selectedImageId = ref(null)
   const cues = ref([])
+  // Audio trim window in seconds (absolute media time). trimEnd 0 == full clip.
+  const trimStart = ref(0)
+  const trimEnd = ref(0)
   const srtSpan = computed(() => (cues.value.length ? Math.max(...cues.value.map(c => c.end)) : 0))
 
   const resolution = ref('1080x1920')
@@ -50,10 +57,6 @@ export const useZtudioStore = defineStore('ztudio', () => {
     offsetXPct: 0,
     offsetYPct: 0,
     box: false,
-    imageFit: 'contain',
-    imageZoom: 1,
-    imageOffsetXPct: 0,
-    imageOffsetYPct: 0,
     animation: 'blur',
   })
 
@@ -97,6 +100,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
   let loadingKeyframe = false
   let kfCounter = 0
   let fontCounter = 0
+  let imageCounter = 0
   let playRaf = null
   let playCtx = null
   let playSource = null
@@ -110,6 +114,33 @@ export const useZtudioStore = defineStore('ztudio', () => {
   const previewDuration = computed(() =>
     audioBuffer.value ? audioBuffer.value.duration : Math.max(10, srtSpan.value),
   )
+  // Effective trim window; falls back to the full clip when nothing is trimmed.
+  const trimWindow = computed(() => {
+    if (!audioBuffer.value) {
+      return { from: 0, to: previewDuration.value }
+    }
+    const dur = audioBuffer.value.duration
+    const from = Math.max(0, Math.min(trimStart.value, dur))
+    const to = trimEnd.value > 0 ? Math.min(trimEnd.value, dur) : dur
+    return { from, to: Math.max(from, to) }
+  })
+  const outputDuration = computed(() => trimWindow.value.to - trimWindow.value.from)
+  const hasTrim = computed(
+    () =>
+      !!audioBuffer.value &&
+      (trimWindow.value.from > 0.001 || trimWindow.value.to < audioBuffer.value.duration - 0.001),
+  )
+  const hasImages = computed(() => images.value.length > 0)
+  // The clip being edited in the inspector / dragged on the preview.
+  const selectedImage = computed(
+    () => images.value.find(im => im.id === selectedImageId.value) || null,
+  )
+  // The clip on screen at the playhead (gaps → null).
+  const activeImage = computed(() => imageAt(scrub.value, images.value))
+  const selectedImageHasCrop = computed(() => {
+    const im = selectedImage.value
+    return !!im && !!(im.cropTop || im.cropBottom || im.cropLeft || im.cropRight)
+  })
   const currentCaption = computed(() => captionAt(scrub.value, cues.value))
   const hasKeyframes = computed(() => keyframes.value.length > 0)
   const canRender = computed(() => !!audioBuffer.value && !busy.value)
@@ -121,15 +152,15 @@ export const useZtudioStore = defineStore('ztudio', () => {
   const progressPercent = computed(() => Math.round(progress.value * 100))
   const sizeLabel = computed(() => (controls.fontSizePct * 100).toFixed(1) + '%')
   const strokeLabel = computed(() => Math.round(controls.strokePct * 100) + '%')
-  const imageZoomLabel = computed(() => Math.round(controls.imageZoom * 100) + '%')
+  const imageZoomLabel = computed(() => Math.round((selectedImage.value?.zoom || 1) * 100) + '%')
   const timeLabel = computed(() => scrub.value.toFixed(1) + 's')
+  const outputDurationLabel = computed(() => fmt(outputDuration.value))
+  const trimStartLabel = computed(() => fmt(trimWindow.value.from))
+  const trimEndLabel = computed(() => fmt(trimWindow.value.to))
 
   const style = computed(() => ({
     ...DEFAULT_STYLE,
     fontFamily: buildFontStack(controls.fontKey),
-    imageZoom: controls.imageZoom,
-    imageOffsetXPct: controls.imageOffsetXPct,
-    imageOffsetYPct: controls.imageOffsetYPct,
     fontSizePct: controls.fontSizePct,
     fontWeight: controls.fontWeight,
     fill: controls.fill,
@@ -148,13 +179,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
       : { ok: false, text: t('pill.noAudio') },
   )
   const imagePill = computed(() =>
-    imageBitmap.value
-      ? {
-          ok: true,
-          text: t('pill.image', {
-            dimensions: `${imageBitmap.value.width}×${imageBitmap.value.height}`,
-          }),
-        }
+    images.value.length
+      ? { ok: true, text: t('pill.images', { count: images.value.length }) }
       : { ok: false, text: t('pill.noImage') },
   )
   const srtPill = computed(() =>
@@ -186,19 +212,82 @@ export const useZtudioStore = defineStore('ztudio', () => {
 
   const clampZoom = v => (v < 0.5 ? 0.5 : v > 4 ? 4 : v)
   const clampPan = v => (v < -1 ? -1 : v > 1 ? 1 : v)
+  const clampCrop = v => (v < 0 ? 0 : v > 0.45 ? 0.45 : v)
 
+  // All image-framing edits target the selected clip.
   function setImageZoom(z) {
-    controls.imageZoom = clampZoom(z)
+    const im = selectedImage.value
+    if (im) {
+      im.zoom = clampZoom(z)
+      redraw()
+    }
   }
 
   function setImageOffset(xPct, yPct) {
-    controls.imageOffsetXPct = clampPan(xPct)
-    controls.imageOffsetYPct = clampPan(yPct)
+    const im = selectedImage.value
+    if (im) {
+      im.offsetXPct = clampPan(xPct)
+      im.offsetYPct = clampPan(yPct)
+      redraw()
+    }
+  }
+
+  function setImageFit(fit) {
+    const im = selectedImage.value
+    if (im) {
+      im.fit = fit
+      redraw()
+    }
+  }
+
+  function setImageCrop(side, value) {
+    const im = selectedImage.value
+    if (im && ['cropTop', 'cropBottom', 'cropLeft', 'cropRight'].includes(side)) {
+      im[side] = clampCrop(value)
+      redraw()
+    }
   }
 
   function resetImageTransform() {
-    controls.imageZoom = 1
-    setImageOffset(0, 0)
+    const im = selectedImage.value
+    if (im) {
+      im.zoom = 1
+      im.offsetXPct = 0
+      im.offsetYPct = 0
+      redraw()
+    }
+  }
+
+  function resetImageCrop() {
+    const im = selectedImage.value
+    if (im) {
+      im.cropTop = 0
+      im.cropBottom = 0
+      im.cropLeft = 0
+      im.cropRight = 0
+      redraw()
+    }
+  }
+
+  // Set the audio trim window (seconds). Keeps a minimum gap and clamps to the clip.
+  function setTrim(start, end) {
+    if (!audioBuffer.value) {
+      return
+    }
+    const dur = audioBuffer.value.duration
+    const MIN_GAP = 0.1
+    let s = Math.max(0, Math.min(start, dur - MIN_GAP))
+    let e = Math.min(dur, Math.max(end, s + MIN_GAP))
+    trimStart.value = Math.round(s * 1000) / 1000
+    trimEnd.value = Math.round(e * 1000) / 1000
+    if (scrub.value < trimStart.value || scrub.value > trimEnd.value) {
+      scrub.value = trimStart.value
+    }
+  }
+
+  function resetTrim() {
+    trimStart.value = 0
+    trimEnd.value = audioBuffer.value ? audioBuffer.value.duration : 0
   }
 
   function clampScrub() {
@@ -260,18 +349,11 @@ export const useZtudioStore = defineStore('ztudio', () => {
     },
   )
 
-  watch(() => controls.fontKey, key => ensureBundledFont(key).then(redraw))
   watch(
-    () => [
-      controls.imageFit,
-      controls.imageZoom,
-      controls.imageOffsetXPct,
-      controls.imageOffsetYPct,
-      controls.animation,
-      resolution.value,
-    ],
-    redraw,
+    () => controls.fontKey,
+    key => ensureBundledFont(key).then(redraw),
   )
+  watch(() => [controls.animation, resolution.value], redraw)
 
   function animatedSnapshot() {
     const values = {}
@@ -368,6 +450,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
   async function loadAudio(file) {
     if (!file) {
       audioBuffer.value = null
+      trimStart.value = 0
+      trimEnd.value = 0
       maybeReady()
       return true
     }
@@ -381,6 +465,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
         return false
       }
       audioBuffer.value = buf
+      trimStart.value = 0
+      trimEnd.value = buf.duration
       log(`Audio: ${buf.duration.toFixed(2)}s, ${buf.numberOfChannels}ch, ${buf.sampleRate}Hz`)
     } catch (err) {
       audioBuffer.value = null
@@ -395,16 +481,110 @@ export const useZtudioStore = defineStore('ztudio', () => {
     return true
   }
 
-  async function loadImage(file) {
-    imageBitmap.value = file ? await createImageBitmap(file) : null
-    resetImageTransform()
-    if (file) {
-      log(`Image: ${imageBitmap.value.width}×${imageBitmap.value.height}`)
+  const MIN_IMAGE_DUR = 0.5
+
+  function sortImages() {
+    images.value = [...images.value].sort((a, b) => a.start - b.start)
+  }
+
+  // Append one decoded image as a slideshow clip. The first clip spans the whole
+  // timeline; later ones default to a 3s slot at the playhead so they don't hide
+  // earlier clips.
+  async function addImageFile(file, name) {
+    const bitmap = await createImageBitmap(file)
+    const dur = previewDuration.value
+    let start, end
+    if (!images.value.length) {
+      start = 0
+      end = dur
     } else {
+      start = Math.min(Math.max(0, scrub.value), Math.max(0, dur - MIN_IMAGE_DUR))
+      end = Math.min(start + 3, dur)
+      if (end - start < MIN_IMAGE_DUR) {
+        start = Math.max(0, dur - 3)
+        end = dur
+      }
+    }
+    const clip = {
+      id: ++imageCounter,
+      bitmap,
+      name: name || `image ${imageCounter}`,
+      width: bitmap.width,
+      height: bitmap.height,
+      start: Math.round(start * 1000) / 1000,
+      end: Math.round(end * 1000) / 1000,
+      fit: 'contain',
+      zoom: 1,
+      offsetXPct: 0,
+      offsetYPct: 0,
+      cropTop: 0,
+      cropBottom: 0,
+      cropLeft: 0,
+      cropRight: 0,
+    }
+    images.value.push(clip)
+    sortImages()
+    selectedImageId.value = clip.id
+    log(
+      `Image: ${clip.name} ${bitmap.width}×${bitmap.height} (${fmt(clip.start)}–${fmt(clip.end)}).`,
+    )
+    return clip
+  }
+
+  async function addImages(files) {
+    const list = Array.from(files || [])
+    for (const file of list) {
+      try {
+        await addImageFile(file, file.name)
+      } catch (err) {
+        log('Image load failed: ' + (err?.message || err))
+      }
+    }
+    redraw()
+    maybeReady()
+  }
+
+  function clearImages() {
+    images.value = []
+    selectedImageId.value = null
+    dragTarget.value = 'caption'
+    redraw()
+    maybeReady()
+  }
+
+  function removeImage(id) {
+    images.value = images.value.filter(im => im.id !== id)
+    if (selectedImageId.value === id) {
+      selectedImageId.value = images.value.length ? images.value[0].id : null
+    }
+    if (!images.value.length) {
       dragTarget.value = 'caption'
     }
     redraw()
     maybeReady()
+  }
+
+  function selectImage(id) {
+    selectedImageId.value = id
+    const im = images.value.find(c => c.id === id)
+    // Bring the clip on screen so inspector edits are visible (WYSIWYG).
+    if (im && (scrub.value < im.start || scrub.value >= im.end)) {
+      seek(im.start)
+    }
+  }
+
+  function updateImageTime(id, start, end) {
+    const im = images.value.find(c => c.id === id)
+    if (!im) {
+      return
+    }
+    const dur = previewDuration.value
+    const s = Math.max(0, Math.min(start, dur - MIN_IMAGE_DUR))
+    const e = Math.min(dur, Math.max(end, s + MIN_IMAGE_DUR))
+    im.start = Math.round(s * 1000) / 1000
+    im.end = Math.round(e * 1000) / 1000
+    sortImages()
+    redraw()
   }
 
   async function loadSrt(file) {
@@ -617,16 +797,24 @@ export const useZtudioStore = defineStore('ztudio', () => {
     try {
       await ensureRenderFont()
       const { w, h } = dimensions.value
-      const dur = audioBuffer.value.duration
+      const { from, to } = trimWindow.value
+      const dur = to - from
       const MB = await loadMediabunny(log)
       const pipe = await pickPipeline(MB, w, h)
 
+      if (hasTrim.value) {
+        log(
+          `Trim: ${fmt(from)}–${fmt(to)} of ${fmt(audioBuffer.value.duration)} (output ${fmt(dur)}).`,
+        )
+      }
+
       const renderCtx = {
         audioBuffer: audioBuffer.value,
+        from,
+        to,
         cues: cues.value,
         style: style.value,
-        imageBitmap: imageBitmap.value,
-        imageFit: controls.imageFit,
+        images: images.value,
         keyframes: keyframes.value,
         onProgress: p => {
           progress.value = p
@@ -641,9 +829,9 @@ export const useZtudioStore = defineStore('ztudio', () => {
       let res
       if (!pipe.error) {
         log(`--- Fast encode @ ${w}x${h}, ${dur.toFixed(2)}s, font ${controls.fontKey} ---`)
-        if (srtSpan.value > dur + 0.05) {
+        if (srtSpan.value > to + 0.05) {
           log(
-            `Note: captions run to ${srtSpan.value.toFixed(1)}s but audio is ${dur.toFixed(1)}s; trailing captions cut.`,
+            `Note: captions run to ${srtSpan.value.toFixed(1)}s but the kept range ends at ${to.toFixed(1)}s; trailing captions cut.`,
           )
         }
         log('Pipeline: ' + pipe.label)
@@ -695,8 +883,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       cv.width = w
       cv.height = h
       drawFrame(cv.getContext('2d'), w, h, scrub.value, {
-        imageBitmap: imageBitmap.value,
-        imageFit: controls.imageFit,
+        images: images.value,
         cues: cues.value,
         style: style.value,
         keyframes: keyframes.value,
@@ -747,9 +934,11 @@ export const useZtudioStore = defineStore('ztudio', () => {
     if (isPlaying.value) {
       return
     }
-    const dur = previewDuration.value
-    if (scrub.value >= dur) {
-      scrub.value = 0
+    // Playback is bound to the trim window; full clip when nothing is trimmed.
+    const { from, to } = trimWindow.value
+    const dur = to
+    if (scrub.value < from || scrub.value >= to) {
+      scrub.value = from
     }
     isPlaying.value = true
     playStartOffset = scrub.value
@@ -861,7 +1050,9 @@ export const useZtudioStore = defineStore('ztudio', () => {
         fetch('/demo/image.png').then(r => r.blob()),
         fetch('/demo/caption.srt').then(r => r.blob()),
       ])
-      await Promise.all([loadAudio(audio), loadImage(image), loadSrt(srt)])
+      // Audio first so the demo image clip can span the full known duration.
+      await loadAudio(audio)
+      await Promise.all([addImages([image]), loadSrt(srt)])
       log('Loaded demo media.')
     } catch (err) {
       log('Could not load demo media: ' + (err?.message || err))
@@ -881,9 +1072,22 @@ export const useZtudioStore = defineStore('ztudio', () => {
   return {
     logEntries,
     audioBuffer,
-    imageBitmap,
+    images,
+    selectedImageId,
+    selectedImage,
+    activeImage,
+    hasImages,
+    selectedImageHasCrop,
     cues,
     srtSpan,
+    trimStart,
+    trimEnd,
+    trimWindow,
+    outputDuration,
+    outputDurationLabel,
+    trimStartLabel,
+    trimEndLabel,
+    hasTrim,
     resolution,
     customFonts,
     preset,
@@ -919,7 +1123,17 @@ export const useZtudioStore = defineStore('ztudio', () => {
     resetCaptionOffset,
     setImageZoom,
     setImageOffset,
+    setImageFit,
+    setImageCrop,
     resetImageTransform,
+    resetImageCrop,
+    addImages,
+    clearImages,
+    removeImage,
+    selectImage,
+    updateImageTime,
+    setTrim,
+    resetTrim,
     keyframes,
     selectedKeyframeId,
     hasKeyframes,
@@ -931,7 +1145,6 @@ export const useZtudioStore = defineStore('ztudio', () => {
     moveKeyframe,
     applyPreset,
     loadAudio,
-    loadImage,
     loadSrt,
     loadFont,
     loadFonts,

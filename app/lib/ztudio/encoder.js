@@ -44,6 +44,27 @@ export async function decodeAudioFile(file) {
   }
 }
 
+// Copy the samples in [from, to] (seconds) into a new, shorter AudioBuffer.
+// Returns the original buffer untouched when the window already spans it.
+export function sliceAudioBuffer(buffer, from, to) {
+  const sr = buffer.sampleRate
+  const startSample = Math.max(0, Math.floor(from * sr))
+  const endSample = Math.min(buffer.length, Math.ceil(to * sr))
+  const len = endSample - startSample
+  if (len <= 0 || (startSample === 0 && endSample === buffer.length)) {
+    return buffer
+  }
+  const out = new AudioBuffer({
+    length: len,
+    numberOfChannels: buffer.numberOfChannels,
+    sampleRate: sr,
+  })
+  for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+    out.copyToChannel(buffer.getChannelData(ch).subarray(startSample, endSample), ch, 0)
+  }
+  return out
+}
+
 export async function pickPipeline(MB, width, height) {
   if (!MB) {
     return { error: 'WebCodecs library not loaded.' }
@@ -81,18 +102,11 @@ export async function pickPipeline(MB, width, height) {
 }
 
 export async function generateFast(MB, pipe, w, h, dur, ctx2) {
-  const {
-    audioBuffer,
-    cues,
-    style,
-    imageBitmap,
-    imageFit,
-    keyframes,
-    onProgress,
-    onStatus,
-    log,
-    isCancelled,
-  } = ctx2
+  const { audioBuffer, cues, style, images, keyframes, onProgress, onStatus, log, isCancelled } =
+    ctx2
+  // Trim window in absolute media time; defaults to the whole clip.
+  const from = ctx2.from || 0
+  const to = ctx2.to != null ? ctx2.to : from + dur
   const { Output, BufferTarget, CanvasSource, AudioBufferSource, QUALITY_HIGH } = MB
 
   const output = new Output({ format: pipe.format, target: new BufferTarget() })
@@ -109,10 +123,12 @@ export async function generateFast(MB, pipe, w, h, dur, ctx2) {
 
   const segs = buildSegments(
     cues,
-    dur,
+    from,
+    to,
     style.animation,
     style.animDuration,
     (keyframes || []).map(k => k.t),
+    (images || []).flatMap(im => [im.start, im.end]),
   )
   log(`Frames: ${segs.length} (vs ${Math.ceil(dur * 30)} at naive 30fps).`)
   const t0 = performance.now()
@@ -121,8 +137,9 @@ export async function generateFast(MB, pipe, w, h, dur, ctx2) {
     if (isCancelled()) {
       return null
     }
-    drawFrame(ctx, w, h, segs[i].start, { imageBitmap, imageFit, cues, style, keyframes })
-    await videoSource.add(segs[i].start, segs[i].dur)
+    // Draw at absolute media time; emit at output time (offset by the trim start).
+    drawFrame(ctx, w, h, segs[i].start, { images, cues, style, keyframes })
+    await videoSource.add(segs[i].start - from, segs[i].dur)
     if (i % 4 === 0) {
       onProgress(i / segs.length)
       onStatus(`Rendering frame ${i + 1}/${segs.length}…`)
@@ -135,7 +152,7 @@ export async function generateFast(MB, pipe, w, h, dur, ctx2) {
   }
 
   onStatus('Adding audio…')
-  await audioSource.add(audioBuffer)
+  await audioSource.add(sliceAudioBuffer(audioBuffer, from, to))
   onStatus('Finalizing…')
   await output.finalize()
 
@@ -151,18 +168,10 @@ export async function generateFast(MB, pipe, w, h, dur, ctx2) {
 }
 
 export async function generateRealtime(w, h, dur, ctx2) {
-  const {
-    audioBuffer,
-    cues,
-    style,
-    imageBitmap,
-    imageFit,
-    keyframes,
-    onProgress,
-    onStatus,
-    log,
-    isCancelled,
-  } = ctx2
+  const { audioBuffer, cues, style, images, keyframes, onProgress, onStatus, log, isCancelled } =
+    ctx2
+
+  const from = ctx2.from || 0
 
   const mimeType = mrType()
   if (!mimeType) {
@@ -174,7 +183,7 @@ export async function generateRealtime(w, h, dur, ctx2) {
   canvas.width = w
   canvas.height = h
   const ctx = canvas.getContext('2d', { alpha: false })
-  drawFrame(ctx, w, h, 0, { imageBitmap, imageFit, cues, style, keyframes })
+  drawFrame(ctx, w, h, from, { images, cues, style, keyframes })
 
   const AC = window.AudioContext || window.webkitAudioContext
   const ac = new AC()
@@ -201,7 +210,7 @@ export async function generateRealtime(w, h, dur, ctx2) {
   const t0 = performance.now()
   rec.start(100)
   const startAt = ac.currentTime
-  src.start()
+  src.start(0, from, dur)
   log('Recording in real time…')
 
   await new Promise(res => {
@@ -211,7 +220,12 @@ export async function generateRealtime(w, h, dur, ctx2) {
         res()
         return
       }
-      drawFrame(ctx, w, h, Math.min(elapsed, dur), { imageBitmap, imageFit, cues, style, keyframes })
+      drawFrame(ctx, w, h, from + Math.min(elapsed, dur), {
+        images,
+        cues,
+        style,
+        keyframes,
+      })
       onProgress(Math.min(1, elapsed / dur))
       onStatus(`Recording in real time… ${elapsed.toFixed(1)} / ${dur.toFixed(1)}s`)
       requestAnimationFrame(tick)

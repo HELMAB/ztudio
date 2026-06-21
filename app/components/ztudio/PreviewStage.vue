@@ -20,8 +20,7 @@ function paint() {
   el.height = h
   const ctx = el.getContext('2d')
   drawFrame(ctx, w, h, store.scrub, {
-    imageBitmap: store.imageBitmap,
-    imageFit: store.controls.imageFit,
+    images: store.images,
     cues: store.cues,
     style: store.style,
     keyframes: store.keyframes,
@@ -38,8 +37,8 @@ function drawGuides(ctx, w, h) {
   let xCentered
   let yCentered
   if (store.dragTarget === 'image') {
-    xCentered = store.controls.imageOffsetXPct === 0
-    yCentered = store.controls.imageOffsetYPct === 0
+    xCentered = (store.selectedImage?.offsetXPct ?? 0) === 0
+    yCentered = (store.selectedImage?.offsetYPct ?? 0) === 0
   } else {
     const c = captionCenter(w, h, store.currentCaption, store.style)
     xCentered = store.controls.offsetXPct === 0
@@ -69,9 +68,9 @@ onMounted(() => {
       store.dimensions,
       store.scrub,
       store.style,
-      store.imageBitmap,
+      store.images,
+      store.selectedImageId,
       store.cues,
-      store.controls.imageFit,
       store.keyframes,
       store.previewTick,
       dragging.value,
@@ -98,14 +97,14 @@ function onPointerDown(e) {
     return
   }
   el.setPointerCapture(e.pointerId)
-  const image = store.dragTarget === 'image' && !!store.imageBitmap
+  const image = store.dragTarget === 'image' && !!store.selectedImage
   drag = {
     startX: e.clientX,
     startY: e.clientY,
     rect: el.getBoundingClientRect(),
     image,
-    offX: image ? store.controls.imageOffsetXPct : store.controls.offsetXPct,
-    offY: image ? store.controls.imageOffsetYPct : store.controls.offsetYPct,
+    offX: image ? store.selectedImage.offsetXPct : store.controls.offsetXPct,
+    offY: image ? store.selectedImage.offsetYPct : store.controls.offsetYPct,
   }
   dragging.value = true
 }
@@ -160,12 +159,12 @@ function onPointerUp(e) {
 
 // Mouse wheel zooms the image when it is the active target.
 function onWheel(e) {
-  if (store.dragTarget !== 'image' || !store.imageBitmap) {
+  if (store.dragTarget !== 'image' || !store.selectedImage) {
     return
   }
   e.preventDefault()
   const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08
-  store.setImageZoom(store.controls.imageZoom * factor)
+  store.setImageZoom(store.selectedImage.zoom * factor)
 }
 
 function onResetDrag() {
@@ -211,12 +210,19 @@ function onResetDrag() {
       <span class="font-mono text-xs text-neutral-300 tabular-nums shrink-0">
         {{ fmtTime(store.scrub) }} / {{ fmtTime(store.previewDuration) }}
       </span>
+      <span
+        v-if="store.hasTrim"
+        class="shrink-0 rounded border border-brand/50 bg-brand/15 px-1.5 py-0.5 font-mono text-[10px] text-brand tabular-nums"
+        :title="$t('trim.outputHint')"
+      >
+        {{ $t('trim.output', { duration: store.outputDurationLabel }) }}
+      </span>
       <span class="font-mono text-[11px] text-neutral-500 truncate min-w-0">
         {{ store.currentCaption || $t('preview.noCaption') }}
       </span>
 
       <div
-        v-if="store.imageBitmap"
+        v-if="store.hasImages"
         class="ml-auto shrink-0 flex rounded-md border border-neutral-700 overflow-hidden text-[11px] font-mono"
         role="group"
         :aria-label="$t('preview.dragTarget')"
@@ -251,7 +257,7 @@ function onResetDrag() {
         size="sm"
         variant="secondary"
         class="shrink-0"
-        :class="{ 'ml-auto': !store.imageBitmap }"
+        :class="{ 'ml-auto': !store.hasImages }"
         :disabled="store.busy"
         :title="$t('actions.thumbnailHint')"
         @click="store.exportThumbnail()"

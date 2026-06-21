@@ -1,6 +1,7 @@
 import { GREEN } from './config'
 import { applyKeyframes } from './keyframes'
 import { cueAt } from './srt'
+import { clipCrop, imageAt } from './images'
 
 const clamp01 = x => (x < 0 ? 0 : x > 1 ? 1 : x)
 
@@ -181,26 +182,32 @@ function captionAnim(t, cue, style) {
   return { type: style.animation, enter: Math.min(inP, outP), reveal: inP }
 }
 
-export function drawFrame(ctx, w, h, t, { imageBitmap, imageFit, cues, style, keyframes }) {
+export function drawFrame(ctx, w, h, t, { images, cues, style, keyframes }) {
   // Resolve any keyframe animation for this timestamp; static when there are none.
   style = applyKeyframes(style, keyframes, t)
 
   ctx.fillStyle = GREEN
   ctx.fillRect(0, 0, w, h)
 
-  if (imageBitmap) {
-    const base =
-      imageFit === 'cover'
-        ? Math.max(w / imageBitmap.width, h / imageBitmap.height)
-        : Math.min(w / imageBitmap.width, h / imageBitmap.height)
-    // User zoom (multiplies the fit scale) and pan (fraction of frame size).
-    const scale = base * (style.imageZoom || 1)
-    const dw = imageBitmap.width * scale
-    const dh = imageBitmap.height * scale
-    const ox = w * (style.imageOffsetXPct || 0)
-    const oy = h * (style.imageOffsetYPct || 0)
-    ctx.drawImage(imageBitmap, (w - dw) / 2 + ox, (h - dh) / 2 + oy, dw, dh)
-  } else {
+  // The slideshow clip active at this moment, with its own framing; gaps stay green.
+  const img = imageAt(t, images)
+  if (img) {
+    const bmp = img.bitmap
+    // Source-crop rect (normalized 0..1). Fit/zoom/pan operate on the cropped region.
+    const c = clipCrop(img)
+    const sx = c ? c.x * bmp.width : 0
+    const sy = c ? c.y * bmp.height : 0
+    const sw = c ? c.w * bmp.width : bmp.width
+    const sh = c ? c.h * bmp.height : bmp.height
+    const base = img.fit === 'cover' ? Math.max(w / sw, h / sh) : Math.min(w / sw, h / sh)
+    // Per-clip zoom (multiplies the fit scale) and pan (fraction of frame size).
+    const scale = base * (img.zoom || 1)
+    const dw = sw * scale
+    const dh = sh * scale
+    const ox = w * (img.offsetXPct || 0)
+    const oy = h * (img.offsetYPct || 0)
+    ctx.drawImage(bmp, sx, sy, sw, sh, (w - dw) / 2 + ox, (h - dh) / 2 + oy, dw, dh)
+  } else if (!images || !images.length) {
     drawPlaceholder(ctx, w, h)
   }
 

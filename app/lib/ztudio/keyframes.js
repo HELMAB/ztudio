@@ -1,12 +1,7 @@
 // Numeric properties that keyframes animate over time. A keyframe stores a
 // snapshot of all of them, so the whole "scene" is interpolated between keys.
-export const ANIMATED_FIELDS = [
-  'imageZoom',
-  'imageOffsetXPct',
-  'imageOffsetYPct',
-  'offsetXPct',
-  'offsetYPct',
-]
+// Image framing is a static per-clip setting, so only caption position animates.
+export const ANIMATED_FIELDS = ['offsetXPct', 'offsetYPct']
 
 export const EASINGS = {
   linear: t => t,

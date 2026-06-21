@@ -45,12 +45,14 @@ const resolutionOptions = computed(() =>
         <TabsContent value="image" class="pt-4">
           <ZtudioMediaUploader
             accept="image/*"
+            multiple
             :title="$t('media.image')"
+            :hint="$t('media.imageHint')"
             :icon="ImageIcon"
             :ok="store.imagePill.ok"
             :status="store.imagePill.text"
-            @select="store.loadImage($event)"
-            @clear="store.loadImage(null)"
+            @select="store.addImages($event)"
+            @clear="store.clearImages()"
           />
         </TabsContent>
 

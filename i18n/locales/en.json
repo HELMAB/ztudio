@@ -22,7 +22,8 @@
     "heading": "Media",
     "resolution": "Aspect & resolution",
     "audio": "Audio — required, max 5:00",
-    "image": "Image — optional",
+    "image": "Images — optional",
+    "imageHint": "Add one or more images. Each becomes a clip on the timeline you can move, resize, and frame.",
     "captions": "Captions — optional, .srt",
     "tabAudio": "Audio",
     "tabImage": "Image",
@@ -62,8 +63,25 @@
     "imageFit": "Image fit",
     "imageZoom": "Image zoom",
     "imageDragHint": "Pick “Image” under the preview, then drag to pan or scroll to zoom.",
+    "editingImage": "Editing: {name}",
+    "selectImageHint": "Select an image clip in the timeline to frame it.",
+    "cropImage": "Crop image",
+    "cropToggle": "Trim the image edges",
+    "cropTop": "Crop top",
+    "cropBottom": "Crop bottom",
+    "cropLeft": "Crop left",
+    "cropRight": "Crop right",
     "background": "Background",
     "boxBehindText": "Box behind text"
+  },
+  "trim": {
+    "start": "Trim start — drag to set where the audio begins",
+    "end": "Trim end — drag to set where the audio ends",
+    "output": "trim · {duration}",
+    "outputHint": "Exported video length after trimming"
+  },
+  "image": {
+    "remove": "Remove this image clip"
   },
   "preview": {
     "noCaption": "no caption at playhead",
@@ -155,6 +173,7 @@
     "audio": "audio {time}",
     "noImage": "no image",
     "image": "image {dimensions}",
+    "images": "{count} images",
     "noCaptions": "no captions",
     "cues": "{count} cues",
     "noFonts": "no custom fonts",

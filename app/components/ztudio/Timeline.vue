@@ -69,10 +69,52 @@ const audioClip = computed(() =>
       }
     : null,
 )
-const imageClip = computed(() =>
-  store.imageBitmap
-    ? { label: `image · ${store.imageBitmap.width}×${store.imageBitmap.height}` }
-    : null,
+const trim = computed(() => {
+  if (!store.audioBuffer) {
+    return null
+  }
+  const { from, to } = store.trimWindow
+  const full = store.audioBuffer.duration * pxPerSecond.value
+  return {
+    startX: from * pxPerSecond.value,
+    endX: to * pxPerSecond.value,
+    full,
+    active: store.hasTrim,
+  }
+})
+
+let trimDrag = null
+function onTrimDown(event, which) {
+  event.stopPropagation()
+  trimDrag = which
+  window.addEventListener('pointermove', onTrimMove)
+  window.addEventListener('pointerup', onTrimUp)
+}
+function onTrimMove(event) {
+  const el = laneArea.value
+  const pps = pxPerSecond.value
+  if (!trimDrag || !el || pps <= 0) {
+    return
+  }
+  const t = (event.clientX - el.getBoundingClientRect().left) / pps
+  if (trimDrag === 'start') {
+    store.setTrim(t, store.trimEnd)
+  } else {
+    store.setTrim(store.trimStart, t)
+  }
+}
+function onTrimUp() {
+  trimDrag = null
+  window.removeEventListener('pointermove', onTrimMove)
+  window.removeEventListener('pointerup', onTrimUp)
+}
+const imageClips = computed(() =>
+  store.images.map(im => ({
+    id: im.id,
+    start: im.start,
+    end: im.end,
+    label: im.name,
+  })),
 )
 const captionClips = computed(() =>
   store.cues.map((c, i) => ({ key: i, start: c.start, end: c.end, label: c.text.split('\n')[0] })),
@@ -140,6 +182,7 @@ function onLaneDown(event) {
 onBeforeUnmount(() => {
   onLaneUp()
   onKeyframeUp()
+  onTrimUp()
 })
 
 watch(
@@ -251,6 +294,20 @@ watch(
                 {{ fmtTick(tick.t) }}
               </span>
             </div>
+            <button
+              v-for="m in keyframeMarkers"
+              :key="m.id"
+              type="button"
+              class="absolute bottom-0.5 size-3 -translate-x-1/2 rotate-45 rounded-[2px] border z-10 cursor-grab active:cursor-grabbing"
+              :class="
+                m.selected
+                  ? 'bg-brand border-brand'
+                  : 'bg-amber-400 border-amber-600 hover:bg-amber-300'
+              "
+              :style="{ left: m.left + 'px' }"
+              :title="$t('keyframe.marker')"
+              @pointerdown="onKeyframeDown($event, m.id)"
+            />
           </div>
 
           <div
@@ -264,34 +321,50 @@ watch(
                 class="absolute inset-y-1 left-0 flex items-center overflow-hidden rounded border border-brand/50 bg-brand/15 px-2"
                 :style="{ width: audioClip.width + 'px' }"
               >
-                <span class="font-mono text-[10px] text-brand truncate">{{
-                  audioClip.label
-                }}</span>
+                <span class="font-mono text-[10px] text-brand truncate">{{ audioClip.label }}</span>
               </div>
+
+              <template v-if="trim && trim.active">
+                <div
+                  class="absolute inset-y-1 left-0 rounded-l bg-background/70 pointer-events-none"
+                  :style="{ width: trim.startX + 'px' }"
+                />
+                <div
+                  class="absolute inset-y-1 rounded-r bg-background/70 pointer-events-none"
+                  :style="{
+                    left: trim.endX + 'px',
+                    width: Math.max(0, trim.full - trim.endX) + 'px',
+                  }"
+                />
+              </template>
+
+              <button
+                v-if="trim"
+                type="button"
+                class="absolute inset-y-0.5 z-10 w-2 -translate-x-1/2 rounded-sm border border-brand bg-brand/80 cursor-ew-resize hover:bg-brand"
+                :style="{ left: trim.startX + 'px' }"
+                :title="$t('trim.start')"
+                @pointerdown="onTrimDown($event, 'start')"
+              />
+              <button
+                v-if="trim"
+                type="button"
+                class="absolute inset-y-0.5 z-10 w-2 -translate-x-1/2 rounded-sm border border-brand bg-brand/80 cursor-ew-resize hover:bg-brand"
+                :style="{ left: trim.endX + 'px' }"
+                :title="$t('trim.end')"
+                @pointerdown="onTrimDown($event, 'end')"
+              />
             </div>
 
             <div class="relative flex-1 border-b border-border">
-              <div
-                v-if="imageClip"
-                class="absolute inset-y-1 left-0 right-0 flex items-center overflow-hidden rounded border border-border bg-foreground/10 px-2"
-              >
-                <span class="font-mono text-[10px] text-muted-foreground truncate">
-                  {{ imageClip.label }}
-                </span>
-              </div>
-              <button
-                v-for="m in keyframeMarkers"
-                :key="m.id"
-                type="button"
-                class="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[2px] border z-10 cursor-grab active:cursor-grabbing"
-                :class="
-                  m.selected
-                    ? 'bg-brand border-brand'
-                    : 'bg-amber-400 border-amber-600 hover:bg-amber-300'
-                "
-                :style="{ left: m.left + 'px' }"
-                :title="$t('keyframe.marker')"
-                @pointerdown="onKeyframeDown($event, m.id)"
+              <ZtudioTimelineImageClip
+                v-for="c in imageClips"
+                :id="c.id"
+                :key="c.id"
+                :start="c.start"
+                :end="c.end"
+                :label="c.label"
+                :px-per-second="pxPerSecond"
               />
             </div>
 

@@ -1,48 +1,67 @@
 import { ANIM_FRAME_STEP, MAX_FRAME_DUR } from './config'
 
-// Sample [from, to] at a fixed step so animated stretches encode smoothly.
-function densify(pts, from, to, step, total) {
-  for (let t = from; t < to; t += step) {
-    if (t > 0 && t < total) {
+// Sample [start, end] at a fixed step so animated stretches encode smoothly,
+// keeping every point strictly inside the (lo, hi) window.
+function densify(pts, start, end, step, lo, hi) {
+  for (let t = start; t < end; t += step) {
+    if (t > lo && t < hi) {
       pts.add(+t.toFixed(3))
     }
   }
 }
 
-export function buildSegments(cues, total, animType = 'none', animDur = 0, keyframeTimes = []) {
-  const pts = new Set([0, total])
+// Build variable-length frames over the [from, to] window (absolute media time).
+// When trimming, `from` is the trim start so segments cover only the kept range;
+// the caller offsets each segment's timestamp by `from` for the output stream.
+export function buildSegments(
+  cues,
+  from,
+  to,
+  animType = 'none',
+  animDur = 0,
+  keyframeTimes = [],
+  imageTimes = [],
+) {
+  const pts = new Set([from, to])
   const animated = animType && animType !== 'none' && animDur > 0
 
+  // Each image clip's start/end is a hard cut, so it must land on a frame boundary.
+  for (const t of imageTimes) {
+    if (t > from && t < to) {
+      pts.add(+t.toFixed(3))
+    }
+  }
+
   for (const cue of cues) {
-    if (cue.start > 0 && cue.start < total) {
+    if (cue.start > from && cue.start < to) {
       pts.add(cue.start)
     }
-    if (cue.end > 0 && cue.end < total) {
+    if (cue.end > from && cue.end < to) {
       pts.add(cue.end)
     }
     if (animated) {
       // Dense frames only where motion happens: the enter and exit windows.
       const mid = (cue.start + cue.end) / 2
-      densify(pts, cue.start, Math.min(cue.start + animDur, mid), ANIM_FRAME_STEP, total)
-      densify(pts, Math.max(cue.end - animDur, mid), cue.end, ANIM_FRAME_STEP, total)
+      densify(pts, cue.start, Math.min(cue.start + animDur, mid), ANIM_FRAME_STEP, from, to)
+      densify(pts, Math.max(cue.end - animDur, mid), cue.end, ANIM_FRAME_STEP, from, to)
     }
   }
 
   // Keyframes: boundary at each key, and dense frames between adjacent keys where
   // values interpolate. Before the first / after the last key the scene is held.
-  const kfs = [...keyframeTimes].filter(t => t > 0 && t < total).sort((a, b) => a - b)
+  const kfs = [...keyframeTimes].filter(t => t > from && t < to).sort((a, b) => a - b)
   for (const t of kfs) {
     pts.add(+t.toFixed(3))
   }
   for (let i = 0; i < kfs.length - 1; i++) {
-    densify(pts, kfs[i], kfs[i + 1], ANIM_FRAME_STEP, total)
+    densify(pts, kfs[i], kfs[i + 1], ANIM_FRAME_STEP, from, to)
   }
 
-  for (let t = MAX_FRAME_DUR; t < total; t += MAX_FRAME_DUR) {
+  for (let t = from + MAX_FRAME_DUR; t < to; t += MAX_FRAME_DUR) {
     pts.add(+t.toFixed(3))
   }
 
-  const sorted = [...pts].filter(t => t >= 0 && t <= total).sort((a, b) => a - b)
+  const sorted = [...pts].filter(t => t >= from && t <= to).sort((a, b) => a - b)
   const segments = []
 
   for (let i = 0; i < sorted.length - 1; i++) {
