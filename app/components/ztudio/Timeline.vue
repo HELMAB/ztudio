@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useElementSize } from '@vueuse/core'
 import {
   DiamondPlusIcon,
@@ -13,15 +13,9 @@ import {
 
 const store = useZtudioStore()
 
-const scrollAreaRef = ref(null)
 const viewportEl = ref(null)
 const laneArea = ref(null)
 const { width: trackWidth, height: trackHeight } = useElementSize(viewportEl)
-
-onMounted(() => {
-  viewportEl.value =
-    scrollAreaRef.value?.$el?.querySelector('[data-slot="scroll-area-viewport"]') ?? null
-})
 
 const MIN_ZOOM = 1
 const MAX_ZOOM = 24
@@ -238,7 +232,7 @@ watch(
         </div>
       </div>
 
-      <ScrollArea ref="scrollAreaRef" type="auto" class="flex-1 min-w-0">
+      <div ref="viewportEl" class="flex-1 min-w-0 overflow-x-auto overflow-y-hidden">
         <div
           class="relative flex flex-col"
           :style="{ width: contentWidth + 'px', height: trackHeight + 'px' }"
@@ -321,7 +315,7 @@ watch(
             <div class="absolute -translate-x-1/2 size-2.5 rotate-45 bg-brand" />
           </div>
         </div>
-      </ScrollArea>
+      </div>
     </div>
   </div>
 </template>
