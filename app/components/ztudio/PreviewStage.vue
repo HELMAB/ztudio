@@ -1,10 +1,12 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue'
-import { ImageDownIcon, PauseIcon, PlayIcon } from '@lucide/vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { ImageDownIcon, MaximizeIcon, MinimizeIcon, PauseIcon, PlayIcon } from '@lucide/vue'
 import { captionCenter, drawFrame } from '@/lib/ztudio/renderer'
 
 const store = useZtudioStore()
 const canvas = ref(null)
+const stageEl = ref(null)
+const isFullscreen = ref(false)
 
 // Offset (fraction of frame) within which we snap the caption to a centre axis.
 const SNAP = 0.012
@@ -62,6 +64,22 @@ function drawGuides(ctx, w, h) {
   line(yCentered, 0, h / 2, w, h / 2)
 }
 
+function syncFullscreen() {
+  isFullscreen.value = !!(document.fullscreenElement || document.webkitFullscreenElement)
+}
+
+function toggleFullscreen() {
+  const el = stageEl.value
+  if (!el) {
+    return
+  }
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    ;(document.exitFullscreen || document.webkitExitFullscreen)?.call(document)
+  } else {
+    ;(el.requestFullscreen || el.webkitRequestFullscreen)?.call(el)
+  }
+}
+
 onMounted(() => {
   watch(
     () => [
@@ -78,6 +96,13 @@ onMounted(() => {
     paint,
     { immediate: true },
   )
+  document.addEventListener('fullscreenchange', syncFullscreen)
+  document.addEventListener('webkitfullscreenchange', syncFullscreen)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('fullscreenchange', syncFullscreen)
+  document.removeEventListener('webkitfullscreenchange', syncFullscreen)
 })
 
 function fmtTime(s) {
@@ -177,7 +202,7 @@ function onResetDrag() {
 </script>
 
 <template>
-  <section class="flex flex-col min-w-0 bg-neutral-900">
+  <section ref="stageEl" class="flex flex-col min-w-0 bg-neutral-900">
     <div class="flex-1 min-h-0 flex items-center justify-center p-3 sm:p-6">
       <canvas
         ref="canvas"
@@ -264,6 +289,18 @@ function onResetDrag() {
       >
         <ImageDownIcon class="size-4" />
         <span class="hidden sm:inline">{{ $t('actions.thumbnail') }}</span>
+      </Button>
+
+      <Button
+        size="icon"
+        variant="secondary"
+        class="shrink-0"
+        :aria-label="isFullscreen ? $t('preview.exitFullscreen') : $t('preview.fullscreen')"
+        :title="isFullscreen ? $t('preview.exitFullscreen') : $t('preview.fullscreen')"
+        @click="toggleFullscreen()"
+      >
+        <MinimizeIcon v-if="isFullscreen" class="size-4" />
+        <MaximizeIcon v-else class="size-4" />
       </Button>
     </div>
   </section>

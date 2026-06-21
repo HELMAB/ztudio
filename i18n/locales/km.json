@@ -107,7 +107,9 @@
     "dragImageHint": "អូសដើម្បីផ្លាស់ទីរូបភាព · រំកិលដើម្បីពង្រីក · ចុចពីរដងដើម្បីកំណត់ឡើងវិញ",
     "dragTarget": "គោលដៅអូស",
     "targetCaption": "អក្សររត់",
-    "targetImage": "រូបភាព"
+    "targetImage": "រូបភាព",
+    "fullscreen": "ពេញអេក្រង់",
+    "exitFullscreen": "ចេញពីពេញអេក្រង់"
   },
   "timeline": {
     "zoomOut": "បង្រួម",

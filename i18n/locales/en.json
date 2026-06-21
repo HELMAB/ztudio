@@ -107,7 +107,9 @@
     "dragImageHint": "Drag to pan the image · scroll to zoom · double-click to reset",
     "dragTarget": "Drag target",
     "targetCaption": "Caption",
-    "targetImage": "Image"
+    "targetImage": "Image",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen"
   },
   "timeline": {
     "zoomOut": "Zoom out",

@@ -531,7 +531,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       cropBottom: 0,
       cropLeft: 0,
       cropRight: 0,
-      effect: 'none',
+      effect: 'vivid',
     }
     images.value.push(clip)
     sortImages()
