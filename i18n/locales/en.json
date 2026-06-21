@@ -39,6 +39,7 @@
     "tabText": "Text",
     "tabStyle": "Style",
     "tabAnimation": "Animation",
+    "tabImage": "Image",
     "text": "Caption text",
     "addAria": "Add caption",
     "deleteAria": "Delete caption",
@@ -63,8 +64,10 @@
     "imageFit": "Image fit",
     "imageZoom": "Image zoom",
     "imageDragHint": "Pick “Image” under the preview, then drag to pan or scroll to zoom.",
+    "imageEffect": "Image effect",
     "editingImage": "Editing: {name}",
     "selectImageHint": "Select an image clip in the timeline to frame it.",
+    "noImagesHint": "Add images in the Media panel, then select a clip here to frame it.",
     "cropImage": "Crop image",
     "cropToggle": "Trim the image edges",
     "cropTop": "Crop top",
@@ -154,6 +157,19 @@
   "fit": {
     "contain": "Contain (fit, green bars)",
     "cover": "Cover (fill, crop)"
+  },
+  "effect": {
+    "none": "None",
+    "mono": "Mono (B&W)",
+    "sepia": "Sepia",
+    "vintage": "Vintage",
+    "vivid": "Vivid",
+    "cool": "Cool",
+    "warm": "Warm",
+    "fade": "Fade",
+    "noir": "Noir",
+    "dream": "Dream (soft)",
+    "invert": "Invert"
   },
   "anim": {
     "none": "None",

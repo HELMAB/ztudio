@@ -240,6 +240,14 @@ export const useZtudioStore = defineStore('ztudio', () => {
     }
   }
 
+  function setImageEffect(effect) {
+    const im = selectedImage.value
+    if (im) {
+      im.effect = effect
+      redraw()
+    }
+  }
+
   function setImageCrop(side, value) {
     const im = selectedImage.value
     if (im && ['cropTop', 'cropBottom', 'cropLeft', 'cropRight'].includes(side)) {
@@ -521,6 +529,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       cropBottom: 0,
       cropLeft: 0,
       cropRight: 0,
+      effect: 'none',
     }
     images.value.push(clip)
     sortImages()
@@ -1124,6 +1133,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     setImageZoom,
     setImageOffset,
     setImageFit,
+    setImageEffect,
     setImageCrop,
     resetImageTransform,
     resetImageCrop,

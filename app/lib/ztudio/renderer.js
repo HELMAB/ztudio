@@ -1,7 +1,7 @@
 import { GREEN } from './config'
 import { applyKeyframes } from './keyframes'
 import { cueAt } from './srt'
-import { clipCrop, imageAt } from './images'
+import { clipCrop, effectFilter, imageAt } from './images'
 
 const clamp01 = x => (x < 0 ? 0 : x > 1 ? 1 : x)
 
@@ -206,7 +206,10 @@ export function drawFrame(ctx, w, h, t, { images, cues, style, keyframes }) {
     const dh = sh * scale
     const ox = w * (img.offsetXPct || 0)
     const oy = h * (img.offsetYPct || 0)
+    // Effect applies to the image draw only; reset to 'none' so the caption is clean.
+    ctx.filter = effectFilter(img.effect)
     ctx.drawImage(bmp, sx, sy, sw, sh, (w - dw) / 2 + ox, (h - dh) / 2 + oy, dw, dh)
+    ctx.filter = 'none'
   } else if (!images || !images.length) {
     drawPlaceholder(ctx, w, h)
   }

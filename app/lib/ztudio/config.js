@@ -104,6 +104,34 @@ export const FIT_OPTIONS = [
   { value: 'cover', labelKey: 'fit.cover' },
 ]
 
+// Per-image effects. `filter` is a canvas 2D `ctx.filter` string, applied to the
+// image draw only (so preview and export match). `none` skips filtering.
+export const IMAGE_EFFECTS = [
+  { value: 'none', labelKey: 'effect.none', filter: 'none' },
+  { value: 'mono', labelKey: 'effect.mono', filter: 'grayscale(1)' },
+  { value: 'sepia', labelKey: 'effect.sepia', filter: 'sepia(0.85)' },
+  {
+    value: 'vintage',
+    labelKey: 'effect.vintage',
+    filter: 'sepia(0.4) contrast(1.1) brightness(1.05) saturate(1.2)',
+  },
+  { value: 'vivid', labelKey: 'effect.vivid', filter: 'saturate(1.6) contrast(1.15)' },
+  {
+    value: 'cool',
+    labelKey: 'effect.cool',
+    filter: 'hue-rotate(-15deg) saturate(1.2) brightness(1.03)',
+  },
+  { value: 'warm', labelKey: 'effect.warm', filter: 'sepia(0.3) saturate(1.4) brightness(1.05)' },
+  {
+    value: 'fade',
+    labelKey: 'effect.fade',
+    filter: 'contrast(0.85) brightness(1.1) saturate(0.85)',
+  },
+  { value: 'noir', labelKey: 'effect.noir', filter: 'grayscale(1) contrast(1.4) brightness(0.95)' },
+  { value: 'dream', labelKey: 'effect.dream', filter: 'blur(6px) brightness(1.1) saturate(1.3)' },
+  { value: 'invert', labelKey: 'effect.invert', filter: 'invert(1)' },
+]
+
 export const ANIMATION_OPTIONS = [
   { value: 'none', labelKey: 'anim.none' },
   { value: 'fade', labelKey: 'anim.fade' },

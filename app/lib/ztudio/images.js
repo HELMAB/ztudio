@@ -1,3 +1,14 @@
+import { IMAGE_EFFECTS } from './config'
+
+// Resolve a clip's effect key to a canvas `ctx.filter` string ('none' when absent).
+export function effectFilter(effect) {
+  if (!effect || effect === 'none') {
+    return 'none'
+  }
+  const entry = IMAGE_EFFECTS.find(e => e.value === effect)
+  return entry ? entry.filter : 'none'
+}
+
 // The image track is a sequential slideshow: at most one clip is active at any
 // time. Clips are kept sorted by start; the active one is the last whose range
 // contains t. Returns null in gaps (the frame falls back to the green key).
