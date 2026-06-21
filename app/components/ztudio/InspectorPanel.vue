@@ -8,7 +8,7 @@ import { TypeIcon } from '@lucide/vue'
       class="shrink-0 flex items-center gap-2 px-4 py-3 font-mono text-[11px] uppercase text-muted-foreground border-b border-border"
     >
       <TypeIcon class="size-3.5 text-brand" />
-      {{ $t('caption.heading') }}
+      {{ $t('settings.heading') }}
     </h2>
     <Tabs default-value="style" class="flex-1 min-h-0 gap-0">
       <TabsList class="m-4 mb-0 grid w-auto grid-cols-3">

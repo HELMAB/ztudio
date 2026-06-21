@@ -34,6 +34,9 @@
   "activity": {
     "heading": "Activity"
   },
+  "settings": {
+    "heading": "Settings"
+  },
   "caption": {
     "heading": "Caption",
     "tabStyle": "Style",
