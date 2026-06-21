@@ -6,6 +6,10 @@
 
 A fully client-side tool that turns audio + an optional still image + an optional `.srt` caption file into a captioned video — decoded, drawn, and encoded entirely in your browser. No backend, no uploads, nothing leaves your device. Built primarily for Khmer captioning, with a chroma-green default background for keying.
 
+<p align="center">
+  <img src="art.png" alt="ztudio screenshot" width="100%" />
+</p>
+
 ## Features
 
 - **100% in-browser** — your audio, images, and captions never get uploaded anywhere.
