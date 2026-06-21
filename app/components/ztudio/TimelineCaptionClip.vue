@@ -64,6 +64,8 @@ onBeforeUnmount(onUp)
     class="absolute inset-y-1 flex items-center overflow-hidden rounded border bg-amber-500/20"
     :class="isSelected ? 'border-amber-600 ring-2 ring-amber-500 z-10' : 'border-amber-500/60'"
     :style="{ left: left + 'px', width: width + 'px' }"
+    :title="$t('caption.editHint')"
+    @dblclick="store.openEditCaption(index)"
   >
     <div
       class="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-amber-500/50 hover:bg-amber-500"

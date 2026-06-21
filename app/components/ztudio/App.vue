@@ -28,6 +28,7 @@ onMounted(async () => {
     <ZtudioDesktopWorkspace v-if="isDesktop" />
     <ZtudioMobileWorkspace v-else />
     <ZtudioResultOverlay />
+    <ZtudioCaptionDialog />
 
     <Transition
       enter-active-class="transition-opacity duration-300"

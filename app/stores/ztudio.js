@@ -45,6 +45,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
   const scrub = ref(0)
   const previewTick = ref(0)
   const selectedCueIndex = ref(null)
+  // Add/edit caption dialog: { open, mode: 'add' | 'edit', index }.
+  const captionDialog = ref({ open: false, mode: 'add', index: null })
 
   const controls = reactive({
     fontKey: 'AKbalthom Freedom',
@@ -1034,6 +1036,37 @@ export const useZtudioStore = defineStore('ztudio', () => {
     maybeReady()
   }
 
+  // Create a caption from explicit values (used by the add/edit dialog).
+  function addCaption(text, start, end) {
+    const dur = previewDuration.value
+    const s = Math.max(0, Math.min(start, dur - 0.1))
+    const e = Math.max(s + 0.1, Math.min(end, dur))
+    cues.value.push({
+      start: Math.round(s * 1000) / 1000,
+      end: Math.round(e * 1000) / 1000,
+      text,
+    })
+    selectedCueIndex.value = cues.value.length - 1
+    redraw()
+    maybeReady()
+  }
+
+  function openAddCaption() {
+    captionDialog.value = { open: true, mode: 'add', index: null }
+  }
+
+  function openEditCaption(index) {
+    if (!cues.value[index]) {
+      return
+    }
+    selectedCueIndex.value = index
+    captionDialog.value = { open: true, mode: 'edit', index }
+  }
+
+  function closeCaptionDialog() {
+    captionDialog.value = { ...captionDialog.value, open: false }
+  }
+
   function removeCue(index) {
     if (index == null || !cues.value[index]) {
       return
@@ -1170,7 +1203,12 @@ export const useZtudioStore = defineStore('ztudio', () => {
     selectCue,
     setCueText,
     addCue,
+    addCaption,
     removeCue,
+    captionDialog,
+    openAddCaption,
+    openEditCaption,
+    closeCaptionDialog,
     dismissResult,
     init,
   }

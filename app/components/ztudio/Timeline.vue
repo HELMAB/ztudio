@@ -4,6 +4,7 @@ import { useElementSize } from '@vueuse/core'
 import {
   DiamondPlusIcon,
   ImageIcon,
+  MessageSquarePlusIcon,
   MessageSquareIcon,
   MusicIcon,
   ScanIcon,
@@ -206,6 +207,16 @@ watch(
 <template>
   <div class="flex flex-col min-h-0 select-none bg-background">
     <div class="shrink-0 h-8 flex items-center justify-end gap-1 px-3 border-b border-border">
+      <Button
+        size="sm"
+        variant="ghost"
+        class="h-6 text-[11px] text-muted-foreground"
+        :title="$t('caption.addHint')"
+        @click="store.openAddCaption()"
+      >
+        <MessageSquarePlusIcon class="size-3.5" />
+        <span class="hidden sm:inline">{{ $t('caption.add') }}</span>
+      </Button>
       <Button
         size="sm"
         variant="ghost"

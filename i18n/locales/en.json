@@ -36,11 +36,13 @@
   },
   "caption": {
     "heading": "Caption",
-    "tabText": "Text",
     "tabStyle": "Style",
     "tabAnimation": "Animation",
     "tabImage": "Image",
     "text": "Caption text",
+    "add": "Caption",
+    "addHint": "Add a caption at the playhead",
+    "editHint": "Double-click to edit this caption",
     "addAria": "Add caption",
     "deleteAria": "Delete caption",
     "placeholder": "Type caption…",
@@ -85,6 +87,16 @@
   },
   "image": {
     "remove": "Remove this image clip"
+  },
+  "captionDialog": {
+    "addTitle": "Add caption",
+    "editTitle": "Edit caption",
+    "text": "Caption text",
+    "start": "Start (s)",
+    "end": "End (s)",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete"
   },
   "preview": {
     "noCaption": "no caption at playhead",
