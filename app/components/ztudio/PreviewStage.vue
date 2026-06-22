@@ -320,41 +320,43 @@ function onResetDrag() {
         {{ store.currentCaption || $t('preview.noCaption') }}
       </span>
 
-      <Button
-        size="sm"
-        variant="secondary"
-        class="shrink-0 ml-auto"
-        :disabled="store.busy"
-        :title="$t('actions.thumbnailHint')"
-        @click="store.exportThumbnail()"
-      >
-        <ImageDownIcon class="size-4" />
-        <span class="hidden sm:inline">{{ $t('actions.thumbnail') }}</span>
-      </Button>
+      <div class="ml-auto flex items-center gap-1.5 sm:gap-2">
+        <Button
+          size="icon"
+          variant="secondary"
+          class="shrink-0"
+          :disabled="store.busy"
+          :aria-label="$t('actions.thumbnail')"
+          :title="$t('actions.thumbnailHint')"
+          @click="store.exportThumbnail()"
+        >
+          <ImageDownIcon class="size-4" />
+        </Button>
 
-      <Button
-        size="icon"
-        :variant="showSafeArea ? 'default' : 'secondary'"
-        class="shrink-0"
-        :aria-label="$t('preview.safeArea')"
-        :aria-pressed="showSafeArea"
-        :title="$t('preview.safeAreaHint')"
-        @click="showSafeArea = !showSafeArea"
-      >
-        <SquareDashedIcon class="size-4" />
-      </Button>
+        <Button
+          size="icon"
+          :variant="showSafeArea ? 'default' : 'secondary'"
+          class="shrink-0"
+          :aria-label="$t('preview.safeArea')"
+          :aria-pressed="showSafeArea"
+          :title="$t('preview.safeAreaHint')"
+          @click="showSafeArea = !showSafeArea"
+        >
+          <SquareDashedIcon class="size-4" />
+        </Button>
 
-      <Button
-        size="icon"
-        variant="secondary"
-        class="shrink-0"
-        :aria-label="isFullscreen ? $t('preview.exitFullscreen') : $t('preview.fullscreen')"
-        :title="isFullscreen ? $t('preview.exitFullscreen') : $t('preview.fullscreen')"
-        @click="toggleFullscreen()"
-      >
-        <MinimizeIcon v-if="isFullscreen" class="size-4" />
-        <MaximizeIcon v-else class="size-4" />
-      </Button>
+        <Button
+          size="icon"
+          variant="secondary"
+          class="shrink-0"
+          :aria-label="isFullscreen ? $t('preview.exitFullscreen') : $t('preview.fullscreen')"
+          :title="isFullscreen ? $t('preview.exitFullscreen') : $t('preview.fullscreen')"
+          @click="toggleFullscreen()"
+        >
+          <MinimizeIcon v-if="isFullscreen" class="size-4" />
+          <MaximizeIcon v-else class="size-4" />
+        </Button>
+      </div>
     </div>
   </section>
 </template>
