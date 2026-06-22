@@ -5,7 +5,12 @@ import { KHMER_FONTS } from '@/lib/ztudio/khmer-fonts'
 import { captionAt, parseSRT } from '@/lib/ztudio/srt'
 import { imageAt } from '@/lib/ztudio/images'
 import { drawFrame } from '@/lib/ztudio/renderer'
-import { ANIMATED_FIELDS, DEFAULT_EASING, keyframeValues } from '@/lib/ztudio/keyframes'
+import {
+  CAPTION_FIELDS,
+  DEFAULT_EASING,
+  imageFramingAt,
+  keyframeValues,
+} from '@/lib/ztudio/keyframes'
 import {
   decodeAudioFile,
   generateFast,
@@ -65,8 +70,9 @@ export const useZtudioStore = defineStore('ztudio', () => {
   // What canvas-drag on the preview repositions: 'caption' or 'image'.
   const dragTarget = ref('caption')
 
-  // Keyframes animate the ANIMATED_FIELDS over time. Each is a snapshot of those
-  // fields at a time t with an easing for the transition into it. Kept sorted.
+  // Keyframes animate caption position and the active clip's framing over time.
+  // Each is a snapshot of those fields (see animatedSnapshot) at a time t with an
+  // easing for the transition into it. Kept sorted.
   const keyframes = ref([])
   const selectedKeyframeId = ref(null)
 
@@ -229,6 +235,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     const im = selectedImage.value
     if (im) {
       im.zoom = clampZoom(z)
+      autoKeyAtPlayhead()
       redraw()
     }
   }
@@ -238,6 +245,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     if (im) {
       im.offsetXPct = clampPan(xPct)
       im.offsetYPct = clampPan(yPct)
+      autoKeyAtPlayhead()
       redraw()
     }
   }
@@ -272,6 +280,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       im.zoom = 1
       im.offsetXPct = 0
       im.offsetYPct = 0
+      autoKeyAtPlayhead()
       redraw()
     }
   }
@@ -376,38 +385,54 @@ export const useZtudioStore = defineStore('ztudio', () => {
   )
   watch(() => [controls.animation, resolution.value], redraw)
 
+  // A keyframe captures the whole scene at one instant: caption position (global)
+  // plus the framing of the clip on screen (zoom/pan, defaulting when in a gap).
   function animatedSnapshot() {
-    const values = {}
-    for (const field of ANIMATED_FIELDS) {
-      values[field] = controls[field]
+    const im = activeImage.value
+    return {
+      offsetXPct: controls.offsetXPct,
+      offsetYPct: controls.offsetYPct,
+      imageZoom: im ? im.zoom : 1,
+      imageOffsetXPct: im ? im.offsetXPct : 0,
+      imageOffsetYPct: im ? im.offsetYPct : 0,
     }
-    return values
   }
 
-  // Editing an animated control while keyframes exist commits the change to a
+  // Editing an animated property while keyframes exist commits the change to a
   // keyframe at the current playhead (auto-key). Skipped while syncing from a
-  // keyframe (below) so loading a frame's values never spawns a stray keyframe.
-  watch(
-    () => ANIMATED_FIELDS.map(field => controls[field]),
-    () => {
-      if (loadingKeyframe || !keyframes.value.length) {
-        return
-      }
-      upsertKeyframeAt(scrub.value)
-    },
-  )
+  // keyframe so loading a frame's values never spawns a stray keyframe.
+  function autoKeyAtPlayhead() {
+    if (loadingKeyframe || !keyframes.value.length) {
+      return
+    }
+    upsertKeyframeAt(scrub.value)
+  }
 
-  // Scrubbing mirrors the interpolated values back into controls so the panel,
-  // sliders, and drag handles reflect the frame under the playhead.
+  // Caption position auto-keys via its controls (drag / sliders rewrite these).
+  // Image framing auto-keys from its edit functions instead of a watcher, so that
+  // merely scrubbing across a clip boundary (which swaps the active clip) can never
+  // be mistaken for an edit and spawn a stray keyframe.
+  watch(() => [controls.offsetXPct, controls.offsetYPct], autoKeyAtPlayhead)
+
+  // Scrubbing mirrors the interpolated values back so the panel, sliders, and
+  // drag handles reflect the frame under the playhead: caption offsets into
+  // `controls`, and the active clip's framing back onto the clip (only when that
+  // clip has keyframes in its span, so static clips are never touched).
   watch(
     () => scrub.value,
     t => {
       if (!keyframes.value.length) {
         return
       }
-      const values = keyframeValues(keyframes.value, t)
       loadingKeyframe = true
-      Object.assign(controls, values)
+      Object.assign(controls, keyframeValues(keyframes.value, t, CAPTION_FIELDS))
+      const im = imageAt(t, images.value)
+      if (im && keyframes.value.some(k => k.t >= im.start && k.t < im.end)) {
+        const f = imageFramingAt(im, keyframes.value, t)
+        im.zoom = f.zoom
+        im.offsetXPct = f.offsetXPct
+        im.offsetYPct = f.offsetYPct
+      }
       nextTick(() => {
         loadingKeyframe = false
       })
@@ -504,16 +529,17 @@ export const useZtudioStore = defineStore('ztudio', () => {
     }
   }
 
-  // A stable string identifying the undoable state. Caption offsets are derived
-  // from keyframes when any exist, so they're dropped from the key there — that
-  // keeps scrub/playback (which rewrites offsets for display) out of history.
+  // A stable string identifying the undoable state. Caption offsets and a
+  // keyframed clip's framing are derived from keyframes when any exist, so they're
+  // dropped from the key there — that keeps scrub/playback (which rewrites both for
+  // display) out of history while real keyframe edits still register via `keyframes`.
   const historyKey = computed(() => {
     const ctrl = keyframes.value.length ? stripOffsets(controls) : { ...controls }
     return JSON.stringify({
       ctrl,
       cues: cues.value,
       keyframes: keyframes.value,
-      images: images.value.map(stripBitmap),
+      images: images.value.map(stripFramingIfKeyed),
       trimStart: trimStart.value,
       trimEnd: trimEnd.value,
       resolution: resolution.value,
@@ -524,6 +550,18 @@ export const useZtudioStore = defineStore('ztudio', () => {
     const copy = { ...c }
     delete copy.offsetXPct
     delete copy.offsetYPct
+    return copy
+  }
+
+  // For history only: drop a clip's framing when keyframes drive it, so scrubbing
+  // (which rewrites zoom/pan for display) doesn't churn the undo stack.
+  function stripFramingIfKeyed(im) {
+    const copy = stripBitmap(im)
+    if (keyframes.value.some(k => k.t >= im.start && k.t < im.end)) {
+      delete copy.zoom
+      delete copy.offsetXPct
+      delete copy.offsetYPct
+    }
     return copy
   }
 
