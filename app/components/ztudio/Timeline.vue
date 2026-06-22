@@ -311,7 +311,7 @@ watch(
               v-for="m in keyframeMarkers"
               :key="m.id"
               type="button"
-              class="absolute bottom-0.5 size-3 -translate-x-1/2 rotate-45 rounded-[2px] border z-10 cursor-grab active:cursor-grabbing"
+              class="absolute bottom-0.5 size-3 -translate-x-1/2 rotate-45 rounded-[2px] border z-10 touch-none cursor-grab active:cursor-grabbing"
               :class="
                 m.selected
                   ? 'bg-brand border-brand'
@@ -354,7 +354,7 @@ watch(
               <button
                 v-if="trim"
                 type="button"
-                class="absolute inset-y-0.5 z-10 w-2 -translate-x-1/2 rounded-sm border border-brand bg-brand/80 cursor-ew-resize hover:bg-brand"
+                class="absolute inset-y-0.5 z-10 w-2.5 -translate-x-1/2 touch-none rounded-sm border border-brand bg-brand/80 cursor-ew-resize hover:bg-brand"
                 :style="{ left: trim.startX + 'px' }"
                 :title="$t('trim.start')"
                 @pointerdown="onTrimDown($event, 'start')"
@@ -362,7 +362,7 @@ watch(
               <button
                 v-if="trim"
                 type="button"
-                class="absolute inset-y-0.5 z-10 w-2 -translate-x-1/2 rounded-sm border border-brand bg-brand/80 cursor-ew-resize hover:bg-brand"
+                class="absolute inset-y-0.5 z-10 w-2.5 -translate-x-1/2 touch-none rounded-sm border border-brand bg-brand/80 cursor-ew-resize hover:bg-brand"
                 :style="{ left: trim.endX + 'px' }"
                 :title="$t('trim.end')"
                 @pointerdown="onTrimDown($event, 'end')"

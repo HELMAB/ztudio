@@ -14,7 +14,10 @@ const resolutionOptions = computed(() =>
 <template>
   <aside class="flex flex-col min-h-0 bg-background overflow-y-auto lg:overflow-y-hidden">
     <div class="shrink-0 p-4 space-y-4 border-b border-border">
-      <h2 class="flex items-center gap-2 font-mono text-[11px] uppercase text-muted-foreground">
+      <!-- Redundant on mobile: the bottom tab bar already labels this section. -->
+      <h2
+        class="hidden lg:flex items-center gap-2 font-mono text-[11px] uppercase text-muted-foreground"
+      >
         <UploadIcon class="size-3.5 text-brand" />
         {{ $t('media.heading') }}
       </h2>

@@ -76,9 +76,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       enter-from-class="opacity-0"
       leave-to-class="opacity-0"
     >
+      <!-- Bottom-aligned on mobile so the on-screen keyboard doesn't cover the editor;
+           centered from sm up. -->
       <div
         v-if="store.captionDialog.open"
-        class="fixed inset-0 z-50 flex items-center justify-center p-4"
+        class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       >
         <div class="absolute inset-0 bg-black/50" @click="close" />
         <div

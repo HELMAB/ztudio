@@ -254,7 +254,7 @@ function onResetDrag() {
 
 <template>
   <section ref="stageEl" class="flex flex-col min-w-0 bg-neutral-900">
-    <div class="flex-1 min-h-0 flex items-center justify-center p-3 sm:p-6">
+    <div class="flex-1 min-h-0 flex items-center justify-center p-2 sm:p-6">
       <canvas
         ref="canvas"
         width="1080"
@@ -271,7 +271,7 @@ function onResetDrag() {
     </div>
 
     <div
-      class="shrink-0 flex items-center gap-3 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-3 bg-neutral-950 border-t border-neutral-800"
+      class="shrink-0 flex flex-wrap items-center gap-x-3 gap-y-2 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-3 bg-neutral-950 border-t border-neutral-800"
     >
       <Button
         size="icon"
@@ -293,7 +293,9 @@ function onResetDrag() {
       >
         {{ $t('trim.output', { duration: store.outputDurationLabel }) }}
       </span>
-      <span class="font-mono text-[11px] text-neutral-500 truncate min-w-0">
+      <!-- Redundant on mobile (the caption is already on the canvas); hidden there to
+           free toolbar width for the playback controls and target toggle. -->
+      <span class="hidden sm:block font-mono text-[11px] text-neutral-500 truncate min-w-0">
         {{ store.currentCaption || $t('preview.noCaption') }}
       </span>
 
