@@ -178,13 +178,15 @@ function onPointerDown(e) {
   }
   el.setPointerCapture(e.pointerId)
 
-  // Auto-select the layer under the cursor: caption block first (it sits on top),
-  // then the image behind it. The Caption/Image toggle stays as a manual override.
+  // Pick the drag target from where the cursor lands. Caption block first (it
+  // sits on top), then the image behind it. While keyframes are active the user
+  // is animating caption position, so a visible caption always wins — otherwise
+  // a near-miss would pan the background image and silently drop the keyframe.
   const rect = el.getBoundingClientRect()
   const { w, h } = store.dimensions
   const px = ((e.clientX - rect.left) / rect.width) * w
   const py = ((e.clientY - rect.top) / rect.height) * h
-  if (captionHit(px, py)) {
+  if (captionHit(px, py) || (store.hasKeyframes && store.currentCaption)) {
     store.dragTarget = 'caption'
   } else if (store.activeImage) {
     store.selectImage(store.activeImage.id)

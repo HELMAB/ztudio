@@ -35,19 +35,56 @@ function revealLines(lines, type, reveal) {
   return lines
 }
 
-function drawPlaceholder(ctx, w, h) {
-  const cw = Math.min(w, h) * 0.6
-  const ch = cw * 0.66
-  const cx = (w - cw) / 2
-  const cy = (h - ch) / 2
+function roundRectPath(ctx, x, y, w, h, r) {
+  ctx.beginPath()
+  if (ctx.roundRect) {
+    ctx.roundRect(x, y, w, h, r)
+    return
+  }
+  ctx.moveTo(x + r, y)
+  ctx.arcTo(x + w, y, x + w, y + h, r)
+  ctx.arcTo(x + w, y + h, x, y + h, r)
+  ctx.arcTo(x, y + h, x, y, r)
+  ctx.arcTo(x, y, x + w, y, r)
+  ctx.closePath()
+}
 
-  ctx.fillStyle = 'rgba(0,0,0,0.18)'
-  ctx.fillRect(cx, cy, cw, ch)
-  ctx.fillStyle = 'rgba(255,255,255,0.85)'
-  ctx.font = `700 ${Math.round(cw * 0.09)}px system-ui,sans-serif`
+// Branded stand-in shown only when no image is loaded: the ztudio "z" badge over
+// a "ztudio" wordmark, sized off the shorter edge so it scales across formats. A
+// white badge keeps the green mark readable against the chroma background.
+function drawPlaceholder(ctx, w, h) {
+  const u = Math.min(w, h)
+  const badge = u * 0.16
+  const bx = (w - badge) / 2
+  const by = h / 2 - u * 0.13
+
+  ctx.save()
   ctx.textAlign = 'center'
+
+  // White rounded badge with a soft shadow so the mark floats on the green.
+  ctx.shadowColor = 'rgba(0,0,0,0.25)'
+  ctx.shadowBlur = badge * 0.14
+  ctx.shadowOffsetY = badge * 0.04
+  roundRectPath(ctx, bx, by, badge, badge, badge * 0.26)
+  ctx.fillStyle = '#ffffff'
+  ctx.fill()
+  ctx.shadowColor = 'transparent'
+  ctx.shadowBlur = 0
+  ctx.shadowOffsetY = 0
+
+  // Brand-green "z", echoing the app logo.
+  ctx.fillStyle = '#0c9b50'
   ctx.textBaseline = 'middle'
-  ctx.fillText('IMAGE', w / 2, h / 2)
+  ctx.font = `800 ${Math.round(badge * 0.62)}px 'Baloo 2', system-ui, sans-serif`
+  ctx.fillText('z', w / 2, by + badge * 0.54)
+
+  // Wordmark below the badge.
+  ctx.textBaseline = 'top'
+  ctx.fillStyle = 'rgba(255,255,255,0.95)'
+  ctx.font = `700 ${Math.round(u * 0.052)}px 'Baloo 2', system-ui, sans-serif`
+  ctx.fillText('ztudio', w / 2, by + badge + u * 0.04)
+
+  ctx.restore()
 }
 
 // Block geometry for the caption, BEFORE the user reposition offset is applied

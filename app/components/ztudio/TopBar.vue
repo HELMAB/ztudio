@@ -25,10 +25,8 @@ const DOT_CLASS = {
         class="grid place-items-center size-6 rounded-md bg-brand text-brand-foreground font-bold text-xs shadow-sm shadow-brand/30"
         >z</span
       >
-      <span class="text-sm font-semibold tracking-tight">{{ $t('app.name') }}</span>
-      <span
-        class="font-mono text-[10px] uppercase tracking-wider text-muted-foreground hidden lg:inline"
-      >
+      <span class="text-sm font-semibold">{{ $t('app.name') }}</span>
+      <span class="font-mono text-[10px] uppercase text-muted-foreground hidden lg:inline">
         {{ $t('app.tagline') }}
       </span>
     </div>
@@ -36,7 +34,10 @@ const DOT_CLASS = {
     <div
       class="hidden sm:flex items-center gap-2 min-w-0 flex-1 justify-center px-2.5 py-1 rounded-full border border-border bg-background/60 max-w-fit mx-auto"
     >
-      <span class="inline-block size-1.5 rounded-full shrink-0" :class="DOT_CLASS[store.env.level]" />
+      <span
+        class="inline-block size-1.5 rounded-full shrink-0"
+        :class="DOT_CLASS[store.env.level]"
+      />
       <span class="font-mono text-[11px] text-muted-foreground truncate">{{
         store.env.title
       }}</span>
@@ -69,7 +70,12 @@ const DOT_CLASS = {
         <DownloadIcon class="size-4" />
         {{ $t('actions.export') }}
       </Button>
-      <Button v-else variant="outline" class="text-red-500 border-red-500/40" @click="store.cancel()">
+      <Button
+        v-else
+        variant="outline"
+        class="text-red-500 border-red-500/40"
+        @click="store.cancel()"
+      >
         <CircleStopIcon class="size-4" />
         {{ $t('actions.stop') }}
       </Button>

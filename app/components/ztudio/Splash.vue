@@ -16,14 +16,16 @@
       >
 
       <div class="flex flex-col items-center gap-1.5">
-        <span class="text-xl font-semibold tracking-tight">{{ $t('app.name') }}</span>
-        <span class="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+        <span class="text-xl font-semibold">{{ $t('app.name') }}</span>
+        <span class="font-mono text-[10px] uppercase text-muted-foreground">
           {{ $t('app.tagline') }}
         </span>
       </div>
 
       <div class="mt-2 h-0.5 w-40 overflow-hidden rounded-full bg-muted">
-        <span class="block h-full w-1/3 rounded-full bg-brand animate-[splash-slide_1.1s_ease-in-out_infinite]" />
+        <span
+          class="block h-full w-1/3 rounded-full bg-brand animate-[splash-slide_1.1s_ease-in-out_infinite]"
+        />
       </div>
 
       <span class="font-mono text-[11px] text-muted-foreground">{{ $t('app.loading') }}</span>
