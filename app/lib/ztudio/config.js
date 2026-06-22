@@ -37,6 +37,8 @@ export const DEFAULT_STYLE = {
   bottomMarginPct: 0.09,
   animation: 'none',
   animDuration: ANIM_DURATION,
+  overlay: 'none',
+  overlayIntensity: 1,
 }
 
 export const PRESETS = {

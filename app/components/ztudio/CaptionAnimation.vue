@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { DiamondPlusIcon, Trash2Icon } from '@lucide/vue'
 import { ANIMATION_OPTIONS } from '@/lib/ztudio/config'
+import { OVERLAY_OPTIONS } from '@/lib/ztudio/overlays'
 import { EASING_KEYS } from '@/lib/ztudio/keyframes'
 
 const store = useZtudioStore()
@@ -9,6 +10,15 @@ const { t } = useI18n()
 
 const animationOptions = computed(() =>
   ANIMATION_OPTIONS.map(o => ({ value: o.value, label: t(o.labelKey) })),
+)
+
+const overlayOptions = computed(() =>
+  OVERLAY_OPTIONS.map(o => ({ value: o.value, label: t(o.labelKey) })),
+)
+
+const overlayActive = computed(() => store.controls.overlay !== 'none')
+const overlayIntensityLabel = computed(
+  () => Math.round(store.controls.overlayIntensity * 100) + '%',
 )
 
 const easingOptions = computed(() =>
@@ -29,6 +39,32 @@ function fmtTime(s) {
     <ZtudioField :label="$t('controls.animation')">
       <ZtudioSelectField v-model="store.controls.animation" :options="animationOptions" />
     </ZtudioField>
+
+    <div class="pt-2 border-t border-border space-y-3">
+      <span class="font-mono text-[11px] uppercase text-muted-foreground">
+        {{ $t('overlay.heading') }}
+      </span>
+
+      <ZtudioField :label="$t('controls.overlay')">
+        <ZtudioSelectField v-model="store.controls.overlay" :options="overlayOptions" />
+      </ZtudioField>
+
+      <ZtudioField
+        v-if="overlayActive"
+        :label="$t('controls.overlayIntensity')"
+        :value="overlayIntensityLabel"
+      >
+        <Slider
+          :model-value="[store.controls.overlayIntensity]"
+          :min="0.3"
+          :max="2"
+          :step="0.1"
+          @update:model-value="store.controls.overlayIntensity = $event[0]"
+        />
+      </ZtudioField>
+
+      <p v-if="overlayActive" class="text-xs text-muted-foreground">{{ $t('overlay.hint') }}</p>
+    </div>
 
     <div class="pt-2 border-t border-border space-y-3">
       <div class="flex items-center justify-between">

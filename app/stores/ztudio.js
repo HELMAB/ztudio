@@ -65,6 +65,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
     offsetYPct: 0,
     box: false,
     animation: 'blur',
+    overlay: 'none',
+    overlayIntensity: 1,
   })
 
   // What canvas-drag on the preview repositions: 'caption' or 'image'.
@@ -185,6 +187,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
     offsetYPct: controls.offsetYPct,
     box: controls.box,
     animation: controls.animation,
+    overlay: controls.overlay,
+    overlayIntensity: controls.overlayIntensity,
   }))
 
   const audioPill = computed(() =>
@@ -383,7 +387,10 @@ export const useZtudioStore = defineStore('ztudio', () => {
     () => controls.fontKey,
     key => ensureBundledFont(key).then(redraw),
   )
-  watch(() => [controls.animation, resolution.value], redraw)
+  watch(
+    () => [controls.animation, controls.overlay, controls.overlayIntensity, resolution.value],
+    redraw,
+  )
 
   // A keyframe captures the whole scene at one instant: caption position (global)
   // plus the framing of the clip on screen (zoom/pan, defaulting when in a gap).

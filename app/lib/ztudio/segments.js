@@ -21,9 +21,19 @@ export function buildSegments(
   animDur = 0,
   keyframeTimes = [],
   imageTimes = [],
+  overlayActive = false,
 ) {
   const pts = new Set([from, to])
   const animated = animType && animType !== 'none' && animDur > 0
+
+  // A continuous overlay (rain/snow/…) moves every frame, so the whole window
+  // must be sampled at the animation rate — this forgoes the static-frame
+  // speed-up and is the cost of enabling an overlay.
+  if (overlayActive) {
+    for (let t = from; t < to; t += ANIM_FRAME_STEP) {
+      pts.add(+t.toFixed(3))
+    }
+  }
 
   // Each image clip's start/end is a hard cut, so it must land on a frame boundary.
   for (const t of imageTimes) {

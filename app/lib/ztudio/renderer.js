@@ -2,6 +2,7 @@ import { GREEN } from './config'
 import { applyKeyframes, imageFramingAt } from './keyframes'
 import { cueAt } from './srt'
 import { clipCrop, effectFilter, imageAt } from './images'
+import { drawOverlay } from './overlays'
 
 const clamp01 = x => (x < 0 ? 0 : x > 1 ? 1 : x)
 
@@ -253,6 +254,10 @@ export function drawFrame(ctx, w, h, t, { images, cues, style, keyframes }) {
   } else if (!images || !images.length) {
     drawPlaceholder(ctx, w, h)
   }
+
+  // Ambiance particles paint over the background/image but under the caption, so
+  // text stays crisp on top. Deterministic in t, so preview and encode match.
+  drawOverlay(ctx, w, h, t, style)
 
   const cue = cueAt(t, cues)
   drawCaption(ctx, w, h, cue ? cue.text : '', style, captionAnim(t, cue, style))

@@ -1,6 +1,7 @@
 import { MR_TYPES } from './config'
 import { buildSegments } from './segments'
 import { drawFrame } from './renderer'
+import { isOverlayActive } from './overlays'
 
 let mediabunnyPromise = null
 
@@ -129,6 +130,7 @@ export async function generateFast(MB, pipe, w, h, dur, ctx2) {
     style.animDuration,
     (keyframes || []).map(k => k.t),
     (images || []).flatMap(im => [im.start, im.end]),
+    isOverlayActive(style.overlay),
   )
   log(`Frames: ${segs.length} (vs ${Math.ceil(dur * 30)} at naive 30fps).`)
   const t0 = performance.now()
