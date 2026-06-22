@@ -12,6 +12,8 @@
   "actions": {
     "export": "Export",
     "stop": "Stop",
+    "undo": "Undo",
+    "redo": "Redo",
     "play": "Play",
     "pause": "Pause",
     "download": "Download {file}",

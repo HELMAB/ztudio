@@ -1,5 +1,5 @@
 <script setup>
-import { CircleStopIcon, DownloadIcon, LanguagesIcon } from '@lucide/vue'
+import { CircleStopIcon, DownloadIcon, LanguagesIcon, Redo2Icon, Undo2Icon } from '@lucide/vue'
 
 const store = useZtudioStore()
 const { locale, setLocale } = useI18n()
@@ -52,6 +52,26 @@ const DOT_CLASS = {
         :model-value="store.progressPercent"
         class="w-24 hidden md:block"
       />
+      <Button
+        size="icon"
+        variant="ghost"
+        :disabled="!store.canUndo"
+        :aria-label="$t('actions.undo')"
+        :title="$t('actions.undo')"
+        @click="store.undo()"
+      >
+        <Undo2Icon class="size-4" />
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        :disabled="!store.canRedo"
+        :aria-label="$t('actions.redo')"
+        :title="$t('actions.redo')"
+        @click="store.redo()"
+      >
+        <Redo2Icon class="size-4" />
+      </Button>
       <Button
         variant="ghost"
         class="font-mono text-[11px] uppercase px-2.5 sm:px-3"

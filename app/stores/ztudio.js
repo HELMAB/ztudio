@@ -100,9 +100,15 @@ export const useZtudioStore = defineStore('ztudio', () => {
   let cancelRequested = false
   let applyingPreset = false
   let loadingKeyframe = false
+  // True while an undo/redo snapshot is being applied, so the watchers that
+  // would otherwise record history (or re-derive presets/keyframes) stand down.
+  let restoring = false
   let kfCounter = 0
   let fontCounter = 0
   let imageCounter = 0
+  // Decoded bitmaps kept by clip id for the whole session so undo/redo can
+  // restore a removed image clip without re-decoding the file.
+  const bitmapRegistry = new Map()
   let playRaf = null
   let playCtx = null
   let playSource = null
@@ -336,6 +342,9 @@ export const useZtudioStore = defineStore('ztudio', () => {
   }
 
   watch(preset, key => {
+    if (restoring) {
+      return
+    }
     if (key !== 'custom') {
       applyPreset(key)
     }
@@ -459,6 +468,182 @@ export const useZtudioStore = defineStore('ztudio', () => {
     redraw()
   }
 
+  // --- Undo / redo -------------------------------------------------------
+  // History is snapshot-based: a settled change captures the whole editable
+  // document. Media buffers are left out — image clips store metadata only and
+  // re-attach their bitmap from the registry on restore.
+  const HISTORY_LIMIT = 60
+  const past = ref([])
+  const future = ref([])
+  let present = null
+  let historyReady = false
+  let historyTimer = null
+
+  const canUndo = computed(() => past.value.length > 0)
+  const canRedo = computed(() => future.value.length > 0)
+
+  function stripBitmap(im) {
+    const copy = { ...im }
+    delete copy.bitmap
+    return copy
+  }
+
+  function docSnapshot() {
+    return {
+      controls: { ...controls },
+      cues: cues.value.map(c => ({ ...c })),
+      keyframes: keyframes.value.map(k => ({ ...k, values: { ...k.values } })),
+      images: images.value.map(stripBitmap),
+      trimStart: trimStart.value,
+      trimEnd: trimEnd.value,
+      resolution: resolution.value,
+      preset: preset.value,
+      selectedImageId: selectedImageId.value,
+      selectedCueIndex: selectedCueIndex.value,
+      selectedKeyframeId: selectedKeyframeId.value,
+    }
+  }
+
+  // A stable string identifying the undoable state. Caption offsets are derived
+  // from keyframes when any exist, so they're dropped from the key there — that
+  // keeps scrub/playback (which rewrites offsets for display) out of history.
+  const historyKey = computed(() => {
+    const ctrl = keyframes.value.length ? stripOffsets(controls) : { ...controls }
+    return JSON.stringify({
+      ctrl,
+      cues: cues.value,
+      keyframes: keyframes.value,
+      images: images.value.map(stripBitmap),
+      trimStart: trimStart.value,
+      trimEnd: trimEnd.value,
+      resolution: resolution.value,
+    })
+  })
+
+  function stripOffsets(c) {
+    const copy = { ...c }
+    delete copy.offsetXPct
+    delete copy.offsetYPct
+    return copy
+  }
+
+  function commitHistory() {
+    if (!present) {
+      present = docSnapshot()
+      return
+    }
+    past.value.push(present)
+    if (past.value.length > HISTORY_LIMIT) {
+      past.value.shift()
+    }
+    present = docSnapshot()
+    future.value = []
+  }
+
+  watch(historyKey, () => {
+    if (!historyReady || restoring) {
+      return
+    }
+    if (historyTimer) {
+      clearTimeout(historyTimer)
+    }
+    // Coalesce rapid edits (drags, slider sweeps, typing) into one undo step.
+    historyTimer = setTimeout(() => {
+      historyTimer = null
+      if (!restoring) {
+        commitHistory()
+      }
+    }, 400)
+  })
+
+  function applySnapshot(snap) {
+    if (!snap) {
+      return
+    }
+    restoring = true
+    loadingKeyframe = true
+    applyingPreset = true
+
+    Object.assign(controls, snap.controls)
+    cues.value = snap.cues.map(c => ({ ...c }))
+    keyframes.value = snap.keyframes.map(k => ({ ...k, values: { ...k.values } }))
+    images.value = snap.images
+      .map(im => ({ ...im, bitmap: bitmapRegistry.get(im.id) }))
+      .filter(im => im.bitmap)
+    trimStart.value = snap.trimStart
+    trimEnd.value = snap.trimEnd
+    resolution.value = snap.resolution
+    preset.value = snap.preset
+
+    // Restore selections, falling back when the target no longer exists.
+    selectedImageId.value = images.value.some(im => im.id === snap.selectedImageId)
+      ? snap.selectedImageId
+      : (images.value[0]?.id ?? null)
+    selectedCueIndex.value =
+      snap.selectedCueIndex != null && cues.value[snap.selectedCueIndex]
+        ? snap.selectedCueIndex
+        : null
+    selectedKeyframeId.value = keyframes.value.some(k => k.id === snap.selectedKeyframeId)
+      ? snap.selectedKeyframeId
+      : null
+    if (!images.value.length) {
+      dragTarget.value = 'caption'
+    }
+
+    nextTick(() => {
+      restoring = false
+      loadingKeyframe = false
+      applyingPreset = false
+    })
+    redraw()
+    maybeReady()
+  }
+
+  // Commit an edit still inside its debounce window so it's on the stack before
+  // we navigate history (otherwise an in-flight change would be lost).
+  function flushHistory() {
+    if (historyTimer) {
+      clearTimeout(historyTimer)
+      historyTimer = null
+      if (!restoring) {
+        commitHistory()
+      }
+    }
+  }
+
+  function undo() {
+    flushHistory()
+    if (!past.value.length) {
+      return
+    }
+    future.value.unshift(present)
+    present = past.value.pop()
+    applySnapshot(present)
+  }
+
+  function redo() {
+    flushHistory()
+    if (!future.value.length) {
+      return
+    }
+    past.value.push(present)
+    present = future.value.shift()
+    applySnapshot(present)
+  }
+
+  // Begin recording from a clean baseline once startup (demo media, presets) is
+  // settled, so initial loading never lands on the undo stack.
+  function beginHistory() {
+    if (historyTimer) {
+      clearTimeout(historyTimer)
+      historyTimer = null
+    }
+    present = docSnapshot()
+    past.value = []
+    future.value = []
+    historyReady = true
+  }
+
   async function loadAudio(file) {
     if (!file) {
       audioBuffer.value = null
@@ -535,6 +720,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       cropRight: 0,
       effect: 'vivid',
     }
+    bitmapRegistry.set(clip.id, bitmap)
     images.value.push(clip)
     sortImages()
     selectedImageId.value = clip.id
@@ -1110,6 +1296,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     await loadDemo()
     clampScrub()
     maybeReady()
+    beginHistory()
     await runEnvCheck()
   }
 
@@ -1212,6 +1399,10 @@ export const useZtudioStore = defineStore('ztudio', () => {
     openEditCaption,
     closeCaptionDialog,
     dismissResult,
+    canUndo,
+    canRedo,
+    undo,
+    redo,
     init,
   }
 })
