@@ -251,14 +251,17 @@ function onPointerUp(e) {
   dragging.value = false
 }
 
-// Mouse wheel zooms the image when it is the active target.
+// Mouse wheel always zooms the image visible at the playhead, selecting it first
+// so the zoom applies to what's on screen regardless of the last drag target.
 function onWheel(e) {
-  if (store.dragTarget !== 'image' || !store.selectedImage) {
+  const img = store.activeImage
+  if (!img) {
     return
   }
   e.preventDefault()
+  store.selectImage(img.id)
   const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08
-  store.setImageZoom(store.selectedImage.zoom * factor)
+  store.setImageZoom(img.zoom * factor)
 }
 
 function onResetDrag() {

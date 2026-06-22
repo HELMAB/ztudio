@@ -18,7 +18,9 @@ const viewportEl = ref(null)
 const laneArea = ref(null)
 const { width: trackWidth, height: trackHeight } = useElementSize(viewportEl)
 
-const MIN_ZOOM = 1
+// zoom 1 fits the whole duration to the viewport width; below 1 the timeline
+// shrinks to occupy only part of the width for a more compact track.
+const MIN_ZOOM = 0.25
 const MAX_ZOOM = 24
 const zoom = ref(1)
 
