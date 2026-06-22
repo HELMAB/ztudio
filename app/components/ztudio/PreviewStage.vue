@@ -1,12 +1,22 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { ImageDownIcon, MaximizeIcon, MinimizeIcon, PauseIcon, PlayIcon } from '@lucide/vue'
+import {
+  ImageDownIcon,
+  MaximizeIcon,
+  MinimizeIcon,
+  PauseIcon,
+  PlayIcon,
+  SquareDashedIcon,
+} from '@lucide/vue'
 import { captionCenter, drawFrame } from '@/lib/ztudio/renderer'
+import { SAFE_AREA_PCT } from '@/lib/ztudio/config'
 
 const store = useZtudioStore()
 const canvas = ref(null)
 const stageEl = ref(null)
 const isFullscreen = ref(false)
+// Title-safe overlay: a preview-only guide, never drawn into the encode.
+const showSafeArea = ref(false)
 
 // Offset (fraction of frame) within which we snap the caption to a centre axis.
 const SNAP = 0.012
@@ -27,9 +37,27 @@ function paint() {
     style: store.style,
     keyframes: store.keyframes,
   })
+  if (showSafeArea.value) {
+    drawSafeArea(ctx, w, h)
+  }
   if (dragging.value) {
     drawGuides(ctx, w, h)
   }
+}
+
+// Title-safe margin guide: a dashed inset rectangle marking where captions stay
+// clear of frame edges and platform UI. Preview canvas only — the encoder uses
+// its own canvas via drawFrame, so this never appears in the exported video.
+function drawSafeArea(ctx, w, h) {
+  const mx = w * SAFE_AREA_PCT
+  const my = h * SAFE_AREA_PCT
+  const lw = Math.max(2, w * 0.0025)
+  ctx.save()
+  ctx.lineWidth = lw
+  ctx.setLineDash([lw * 4, lw * 4])
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)'
+  ctx.strokeRect(mx, my, w - 2 * mx, h - 2 * my)
+  ctx.restore()
 }
 
 // Centre alignment guides, shown only while dragging. A line lights up when the
@@ -92,6 +120,7 @@ onMounted(() => {
       store.keyframes,
       store.previewTick,
       dragging.value,
+      showSafeArea.value,
     ],
     paint,
     { immediate: true },
@@ -116,17 +145,57 @@ function fmtTime(s) {
 // size, so the offset is resolution-agnostic.
 let drag = null
 
+// Is the canvas point (px, py) inside the rendered caption block? Measures the
+// text with the live style so the hit area matches what's on screen, padded a
+// little so the caption is easy to grab.
+function captionHit(px, py) {
+  const text = store.currentCaption
+  if (!text) {
+    return false
+  }
+  const { w, h } = store.dimensions
+  const style = store.style
+  const c = captionCenter(w, h, text, style)
+  if (!c) {
+    return false
+  }
+  const ctx = canvas.value.getContext('2d')
+  const fontPx = Math.round(h * style.fontSizePct)
+  ctx.font = `${style.fontWeight} ${fontPx}px ${style.fontFamily}`
+  let maxW = 0
+  for (const line of text.split('\n')) {
+    maxW = Math.max(maxW, ctx.measureText(line).width)
+  }
+  const halfW = maxW / 2 + fontPx * 0.6
+  const halfH = c.blockH / 2 + fontPx * 0.4
+  return Math.abs(px - c.cx) <= halfW && Math.abs(py - c.cy) <= halfH
+}
+
 function onPointerDown(e) {
   const el = canvas.value
   if (!el) {
     return
   }
   el.setPointerCapture(e.pointerId)
+
+  // Auto-select the layer under the cursor: caption block first (it sits on top),
+  // then the image behind it. The Caption/Image toggle stays as a manual override.
+  const rect = el.getBoundingClientRect()
+  const { w, h } = store.dimensions
+  const px = ((e.clientX - rect.left) / rect.width) * w
+  const py = ((e.clientY - rect.top) / rect.height) * h
+  if (captionHit(px, py)) {
+    store.dragTarget = 'caption'
+  } else if (store.activeImage) {
+    store.selectImage(store.activeImage.id)
+    store.dragTarget = 'image'
+  }
+
   const image = store.dragTarget === 'image' && !!store.selectedImage
   drag = {
     startX: e.clientX,
     startY: e.clientY,
-    rect: el.getBoundingClientRect(),
+    rect,
     image,
     offX: image ? store.selectedImage.offsetXPct : store.controls.offsetXPct,
     offY: image ? store.selectedImage.offsetYPct : store.controls.offsetYPct,
@@ -246,49 +315,28 @@ function onResetDrag() {
         {{ store.currentCaption || $t('preview.noCaption') }}
       </span>
 
-      <div
-        v-if="store.hasImages"
-        class="ml-auto shrink-0 flex rounded-md border border-neutral-700 overflow-hidden text-[11px] font-mono"
-        role="group"
-        :aria-label="$t('preview.dragTarget')"
-      >
-        <button
-          type="button"
-          class="px-2.5 py-1 transition-colors"
-          :class="
-            store.dragTarget === 'caption'
-              ? 'bg-neutral-200 text-neutral-900'
-              : 'text-neutral-400 hover:text-neutral-200'
-          "
-          @click="store.dragTarget = 'caption'"
-        >
-          {{ $t('preview.targetCaption') }}
-        </button>
-        <button
-          type="button"
-          class="px-2.5 py-1 transition-colors"
-          :class="
-            store.dragTarget === 'image'
-              ? 'bg-neutral-200 text-neutral-900'
-              : 'text-neutral-400 hover:text-neutral-200'
-          "
-          @click="store.dragTarget = 'image'"
-        >
-          {{ $t('preview.targetImage') }}
-        </button>
-      </div>
-
       <Button
         size="sm"
         variant="secondary"
-        class="shrink-0"
-        :class="{ 'ml-auto': !store.hasImages }"
+        class="shrink-0 ml-auto"
         :disabled="store.busy"
         :title="$t('actions.thumbnailHint')"
         @click="store.exportThumbnail()"
       >
         <ImageDownIcon class="size-4" />
         <span class="hidden sm:inline">{{ $t('actions.thumbnail') }}</span>
+      </Button>
+
+      <Button
+        size="icon"
+        :variant="showSafeArea ? 'default' : 'secondary'"
+        class="shrink-0"
+        :aria-label="$t('preview.safeArea')"
+        :aria-pressed="showSafeArea"
+        :title="$t('preview.safeAreaHint')"
+        @click="showSafeArea = !showSafeArea"
+      >
+        <SquareDashedIcon class="size-4" />
       </Button>
 
       <Button

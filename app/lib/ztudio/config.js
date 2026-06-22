@@ -7,6 +7,11 @@ export const ANIM_FRAME_STEP = 1 / 30
 export const GREEN = '#00B140'
 export const KHMER_FONT = '"Noto Sans Khmer", system-ui, sans-serif'
 
+// Title-safe inset (fraction of each edge) for the preview-only safe-area
+// overlay. Captions kept inside this margin won't be clipped or hidden behind
+// platform UI on phones/TVs. This is a guide only — it never affects the encode.
+export const SAFE_AREA_PCT = 0.05
+
 export const MR_TYPES = [
   'video/mp4;codecs=h264,aac',
   'video/mp4',

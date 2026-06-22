@@ -105,11 +105,10 @@
     "noCaption": "no caption at playhead",
     "dragHint": "Drag to reposition the caption · double-click to reset",
     "dragImageHint": "Drag to pan the image · scroll to zoom · double-click to reset",
-    "dragTarget": "Drag target",
-    "targetCaption": "Caption",
-    "targetImage": "Image",
     "fullscreen": "Fullscreen",
-    "exitFullscreen": "Exit fullscreen"
+    "exitFullscreen": "Exit fullscreen",
+    "safeArea": "Safe area guide",
+    "safeAreaHint": "Show a title-safe margin so captions aren't clipped or hidden behind app UI (preview only)"
   },
   "timeline": {
     "zoomOut": "Zoom out",

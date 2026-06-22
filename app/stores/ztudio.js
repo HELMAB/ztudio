@@ -200,7 +200,9 @@ export const useZtudioStore = defineStore('ztudio', () => {
     previewTick.value++
   }
 
-  const clampOffset = v => (v < -0.5 ? -0.5 : v > 0.5 ? 0.5 : v)
+  // ±1 frame so a bottom-anchored caption can be dragged all the way to the top
+  // (and vice versa); half a frame isn't enough to clear the position margins.
+  const clampOffset = v => (v < -1 ? -1 : v > 1 ? 1 : v)
 
   // Drag-to-reposition: offsets are fractions of frame width/height.
   function setCaptionOffset(xPct, yPct) {
