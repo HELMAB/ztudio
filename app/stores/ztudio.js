@@ -1105,6 +1105,17 @@ export const useZtudioStore = defineStore('ztudio', () => {
     }
   }
 
+  // A single AudioContext is created once and reused: iOS rate-limits how many
+  // can exist, and closing/recreating one per play is what causes playback to
+  // silently fail after a few taps.
+  function ensureAudioContext() {
+    if (!playCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext
+      playCtx = new AC()
+    }
+    return playCtx
+  }
+
   function stopPlaybackAudio() {
     if (playSource) {
       try {
@@ -1112,11 +1123,12 @@ export const useZtudioStore = defineStore('ztudio', () => {
       } catch {
         /* already stopped */
       }
+      try {
+        playSource.disconnect()
+      } catch {
+        /* not connected */
+      }
       playSource = null
-    }
-    if (playCtx) {
-      playCtx.close().catch(() => {})
-      playCtx = null
     }
   }
 
@@ -1129,7 +1141,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     isPlaying.value = false
   }
 
-  function play() {
+  async function play() {
     if (isPlaying.value) {
       return
     }
@@ -1143,13 +1155,36 @@ export const useZtudioStore = defineStore('ztudio', () => {
     playStartOffset = scrub.value
 
     if (audioBuffer.value) {
-      const AC = window.AudioContext || window.webkitAudioContext
-      playCtx = new AC()
-      playSource = playCtx.createBufferSource()
+      // iOS routes Web Audio to the ringer channel by default, so the hardware
+      // mute switch / silent mode kills it. Asking for the "playback" session
+      // routes it to the media channel that ignores the mute switch (iOS 16.4+).
+      try {
+        if (navigator.audioSession) {
+          navigator.audioSession.type = 'playback'
+        }
+      } catch {
+        /* audioSession unsupported */
+      }
+
+      const ctx = ensureAudioContext()
+      // iOS hands back a suspended context; it must be resumed within the tap.
+      if (ctx.state === 'suspended') {
+        try {
+          await ctx.resume()
+        } catch {
+          /* resume rejected */
+        }
+      }
+      // The user may have hit stop during the await.
+      if (!isPlaying.value) {
+        return
+      }
+
+      playSource = ctx.createBufferSource()
       playSource.buffer = audioBuffer.value
-      playSource.connect(playCtx.destination)
+      playSource.connect(ctx.destination)
       playSource.start(0, playStartOffset)
-      playStartClock = playCtx.currentTime
+      playStartClock = ctx.currentTime
     } else {
       playStartClock = performance.now() / 1000
     }
