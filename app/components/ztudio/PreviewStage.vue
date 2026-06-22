@@ -145,59 +145,32 @@ function fmtTime(s) {
 // size, so the offset is resolution-agnostic.
 let drag = null
 
-// Is the canvas point (px, py) inside the rendered caption block? Measures the
-// text with the live style so the hit area matches what's on screen, padded a
-// little so the caption is easy to grab.
-function captionHit(px, py) {
-  const text = store.currentCaption
-  if (!text) {
-    return false
-  }
-  const { w, h } = store.dimensions
-  const style = store.style
-  const c = captionCenter(w, h, text, style)
-  if (!c) {
-    return false
-  }
-  const ctx = canvas.value.getContext('2d')
-  const fontPx = Math.round(h * style.fontSizePct)
-  ctx.font = `${style.fontWeight} ${fontPx}px ${style.fontFamily}`
-  let maxW = 0
-  for (const line of text.split('\n')) {
-    maxW = Math.max(maxW, ctx.measureText(line).width)
-  }
-  const halfW = maxW / 2 + fontPx * 0.6
-  const halfH = c.blockH / 2 + fontPx * 0.4
-  return Math.abs(px - c.cx) <= halfW && Math.abs(py - c.cy) <= halfH
-}
-
 function onPointerDown(e) {
   const el = canvas.value
   if (!el) {
     return
   }
-  el.setPointerCapture(e.pointerId)
 
-  // Pick the drag target from where the cursor lands. Caption block first (it
-  // sits on top), then the image behind it. While keyframes are active the user
-  // is animating caption position, so a visible caption always wins — otherwise
-  // a near-miss would pan the background image and silently drop the keyframe.
-  const rect = el.getBoundingClientRect()
-  const { w, h } = store.dimensions
-  const px = ((e.clientX - rect.left) / rect.width) * w
-  const py = ((e.clientY - rect.top) / rect.height) * h
-  if (captionHit(px, py) || (store.hasKeyframes && store.currentCaption)) {
-    store.dragTarget = 'caption'
-  } else if (store.activeImage) {
+  // The layer being edited is chosen explicitly via the toolbar Caption/Image
+  // toggle (store.dragTarget). For an image drag, sync the selection to the clip
+  // on screen so the edit lands on what's visible; with no clip at the playhead
+  // there's nothing to move, so the drag is a no-op.
+  if (store.dragTarget === 'image') {
+    if (!store.activeImage) {
+      return
+    }
     store.selectImage(store.activeImage.id)
-    store.dragTarget = 'image'
+    if (!store.selectedImage) {
+      return
+    }
   }
 
-  const image = store.dragTarget === 'image' && !!store.selectedImage
+  el.setPointerCapture(e.pointerId)
+  const image = store.dragTarget === 'image'
   drag = {
     startX: e.clientX,
     startY: e.clientY,
-    rect,
+    rect: el.getBoundingClientRect(),
     image,
     offX: image ? store.selectedImage.offsetXPct : store.controls.offsetXPct,
     offY: image ? store.selectedImage.offsetYPct : store.controls.offsetYPct,
@@ -253,9 +226,13 @@ function onPointerUp(e) {
   dragging.value = false
 }
 
-// Mouse wheel always zooms the image visible at the playhead, selecting it first
-// so the zoom applies to what's on screen regardless of the last drag target.
+// Mouse wheel zooms the image visible at the playhead, but only while the Image
+// target is selected, so it never fights a caption edit. Selects the on-screen
+// clip first so the zoom lands on what's visible.
 function onWheel(e) {
+  if (store.dragTarget !== 'image') {
+    return
+  }
   const img = store.activeImage
   if (!img) {
     return
@@ -321,6 +298,42 @@ function onResetDrag() {
       </span>
 
       <div class="ml-auto flex items-center gap-1.5 sm:gap-2">
+        <div
+          v-if="store.hasImages"
+          class="flex shrink-0 overflow-hidden rounded-md border border-neutral-700 text-[11px] font-mono"
+          role="group"
+          :aria-label="$t('preview.dragTarget')"
+        >
+          <button
+            type="button"
+            class="px-2.5 py-1 transition-colors"
+            :class="
+              store.dragTarget === 'caption'
+                ? 'bg-brand text-white'
+                : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
+            "
+            :aria-pressed="store.dragTarget === 'caption'"
+            :title="$t('preview.dragHint')"
+            @click="store.dragTarget = 'caption'"
+          >
+            {{ $t('preview.targetCaption') }}
+          </button>
+          <button
+            type="button"
+            class="border-l border-neutral-700 px-2.5 py-1 transition-colors"
+            :class="
+              store.dragTarget === 'image'
+                ? 'bg-brand text-white'
+                : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
+            "
+            :aria-pressed="store.dragTarget === 'image'"
+            :title="$t('preview.dragImageHint')"
+            @click="store.dragTarget = 'image'"
+          >
+            {{ $t('preview.targetImage') }}
+          </button>
+        </div>
+
         <Button
           size="icon"
           variant="secondary"
