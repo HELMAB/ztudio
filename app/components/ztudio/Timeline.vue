@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useElementSize } from '@vueuse/core'
+import { computePeaks, peakBuckets, peaksPath } from '@/lib/ztudio/waveform'
 import {
   DiamondPlusIcon,
   ImageIcon,
@@ -72,6 +73,17 @@ const audioClip = computed(() =>
       }
     : null,
 )
+
+// Waveform peaks are extracted once per loaded buffer (this computed only re-runs
+// when the buffer changes, not on zoom); the SVG path then stretches to the lane.
+const waveform = computed(() => {
+  const buf = store.audioBuffer
+  if (!buf) {
+    return null
+  }
+  const n = peakBuckets(buf.duration)
+  return { n, path: peaksPath(computePeaks(buf, n), 100) }
+})
 const trim = computed(() => {
   if (!store.audioBuffer) {
     return null
@@ -334,7 +346,18 @@ watch(
                 class="absolute inset-y-1 left-0 flex items-center overflow-hidden rounded border border-brand/50 bg-brand/15 px-2"
                 :style="{ width: audioClip.width + 'px' }"
               >
-                <span class="font-mono text-[10px] text-brand truncate">{{ audioClip.label }}</span>
+                <svg
+                  v-if="waveform"
+                  class="absolute inset-0 h-full w-full text-brand/40"
+                  :viewBox="`0 0 ${waveform.n} 100`"
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                >
+                  <path :d="waveform.path" fill="currentColor" />
+                </svg>
+                <span class="relative z-10 font-mono text-[10px] text-brand truncate">
+                  {{ audioClip.label }}
+                </span>
               </div>
 
               <template v-if="trim && trim.active">
