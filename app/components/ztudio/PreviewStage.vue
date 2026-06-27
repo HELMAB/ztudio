@@ -403,8 +403,10 @@ function onResetDrag() {
         {{ $t('trim.output', { duration: store.outputDurationLabel }) }}
       </span>
       <!-- Redundant on mobile (the caption is already on the canvas); hidden there to
-           free toolbar width for the playback controls and target toggle. -->
-      <span class="hidden sm:block font-mono text-[11px] text-neutral-500 truncate min-w-0">
+           free toolbar width for the playback controls and target toggle. flex-1 +
+           min-w-0 lets it take only the leftover width so long captions truncate
+           instead of sprawling/wrapping the row. -->
+      <span class="hidden min-w-0 flex-1 truncate font-mono text-[11px] text-neutral-500 sm:block">
         {{ store.currentCaption || $t('preview.noCaption') }}
       </span>
 

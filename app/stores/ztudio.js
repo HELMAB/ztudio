@@ -68,6 +68,9 @@ export const useZtudioStore = defineStore('ztudio', () => {
   const snapGuide = ref(null)
   // Keyboard-shortcuts help overlay visibility (toggled by '?' and the TopBar).
   const showShortcuts = ref(false)
+  // Right-click context menu: position + the items (each { label, action?,
+  // danger?, separator? }) built by whichever component was right-clicked.
+  const contextMenu = ref({ open: false, x: 0, y: 0, items: [] })
   const selectedCueIndex = ref(null)
   // Add/edit caption dialog: { open, mode: 'add' | 'edit', index }.
   const captionDialog = ref({ open: false, mode: 'add', index: null })
@@ -894,6 +897,52 @@ export const useZtudioStore = defineStore('ztudio', () => {
     maybeReady()
   }
 
+  const r3 = v => Math.round(v * 1000) / 1000
+
+  // Split the clip under the playhead into two halves at the playhead; both keep
+  // the same framing/effect and share the bitmap. No-op unless the playhead sits
+  // comfortably inside the clip.
+  function splitImageAt(id) {
+    const im = images.value.find(c => c.id === id)
+    if (!im) {
+      return
+    }
+    const t = r3(scrub.value)
+    if (t <= im.start + MIN_IMAGE_DUR || t >= im.end - MIN_IMAGE_DUR) {
+      return
+    }
+    const right = { ...im, id: ++imageCounter, start: t }
+    im.end = t
+    bitmapRegistry.set(right.id, im.bitmap)
+    images.value.push(right)
+    sortImages()
+    selectedImageId.value = right.id
+    redraw()
+  }
+
+  // Duplicate a clip, dropping the copy right after it (or at the playhead when
+  // there's no room before the timeline end).
+  function duplicateImage(id) {
+    const im = images.value.find(c => c.id === id)
+    if (!im) {
+      return
+    }
+    const dur = previewDuration.value
+    const len = im.end - im.start
+    let start = im.end
+    let end = Math.min(start + len, dur)
+    if (end - start < MIN_IMAGE_DUR) {
+      start = Math.min(Math.max(0, scrub.value), Math.max(0, dur - len))
+      end = Math.min(start + len, dur)
+    }
+    const copy = { ...im, id: ++imageCounter, start: r3(start), end: r3(end) }
+    bitmapRegistry.set(copy.id, im.bitmap)
+    images.value.push(copy)
+    sortImages()
+    selectedImageId.value = copy.id
+    redraw()
+  }
+
   function selectImage(id) {
     selectedImageId.value = id
     const im = images.value.find(c => c.id === id)
@@ -1494,6 +1543,18 @@ export const useZtudioStore = defineStore('ztudio', () => {
     snapGuide.value = null
   }
 
+  function openContextMenu(event, items) {
+    event.preventDefault()
+    event.stopPropagation()
+    contextMenu.value = { open: true, x: event.clientX, y: event.clientY, items }
+  }
+
+  function closeContextMenu() {
+    if (contextMenu.value.open) {
+      contextMenu.value = { ...contextMenu.value, open: false }
+    }
+  }
+
   const TIMELINE_MIN_ZOOM = 0.25
   const TIMELINE_MAX_ZOOM = 24
   function zoomTimeline(action) {
@@ -1602,6 +1663,44 @@ export const useZtudioStore = defineStore('ztudio', () => {
     maybeReady()
   }
 
+  // Split the caption under the playhead at the playhead; both halves keep the
+  // text (the user retimes/edits each). No-op unless the playhead is inside it.
+  function splitCueAt(index) {
+    const cue = cues.value[index]
+    if (!cue) {
+      return
+    }
+    const t = r3(scrub.value)
+    const MIN = 0.1
+    if (t <= cue.start + MIN || t >= cue.end - MIN) {
+      return
+    }
+    const right = { ...cue, start: t }
+    cue.end = t
+    cues.value.splice(index + 1, 0, right)
+    selectedCueIndex.value = index + 1
+    redraw()
+  }
+
+  function duplicateCue(index) {
+    const cue = cues.value[index]
+    if (!cue) {
+      return
+    }
+    const dur = previewDuration.value
+    const len = cue.end - cue.start
+    let start = cue.end
+    let end = Math.min(start + len, dur)
+    if (end - start < 0.1) {
+      start = Math.max(0, Math.min(scrub.value, dur - len))
+      end = Math.min(start + len, dur)
+    }
+    cues.value.splice(index + 1, 0, { ...cue, start: r3(start), end: r3(end) })
+    selectedCueIndex.value = index + 1
+    redraw()
+    maybeReady()
+  }
+
   function dismissResult() {
     if (result.value?.url) {
       URL.revokeObjectURL(result.value.url)
@@ -1665,6 +1764,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     showShortcuts,
     snapEnabled,
     snapGuide,
+    contextMenu,
     selectedCueIndex,
     controls,
     busy,
@@ -1742,6 +1842,12 @@ export const useZtudioStore = defineStore('ztudio', () => {
     snapEdge,
     snapClip,
     clearSnap,
+    openContextMenu,
+    closeContextMenu,
+    splitImageAt,
+    duplicateImage,
+    splitCueAt,
+    duplicateCue,
     updateCue,
     selectCue,
     setCueText,

@@ -10,7 +10,19 @@ const props = defineProps({
 })
 
 const store = useZtudioStore()
+const { t } = useI18n()
 const MIN = 0.1
+
+function onContextMenu(event) {
+  store.selectCue(props.index)
+  store.openContextMenu(event, [
+    { label: t('ctx.edit'), action: () => store.openEditCaption(props.index) },
+    { label: t('ctx.split'), action: () => store.splitCueAt(props.index) },
+    { label: t('ctx.duplicate'), action: () => store.duplicateCue(props.index) },
+    { separator: true },
+    { label: t('ctx.delete'), danger: true, action: () => store.removeCue(props.index) },
+  ])
+}
 
 let mode = null
 let startX = 0
@@ -73,6 +85,7 @@ onBeforeUnmount(onUp)
     :style="{ left: left + 'px', width: width + 'px' }"
     :title="$t('caption.editHint')"
     @dblclick="store.openEditCaption(index)"
+    @contextmenu="onContextMenu"
   >
     <div
       class="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-amber-500/50 hover:bg-amber-500"

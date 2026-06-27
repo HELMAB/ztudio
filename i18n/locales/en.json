@@ -157,6 +157,14 @@
     "nextCaption": "Next caption",
     "setTime": "Click to set the time"
   },
+  "ctx": {
+    "split": "Split at playhead",
+    "duplicate": "Duplicate",
+    "delete": "Delete",
+    "edit": "Edit text…",
+    "resetFraming": "Reset framing",
+    "goTo": "Go to keyframe"
+  },
   "timeline": {
     "zoomOut": "Zoom out",
     "zoomIn": "Zoom in",

@@ -17,6 +17,7 @@ import {
 } from '@lucide/vue'
 
 const store = useZtudioStore()
+const { t: tr } = useI18n()
 
 const viewportEl = ref(null)
 const laneArea = ref(null)
@@ -203,10 +204,20 @@ function onLaneLeave() {
 const keyframeMarkers = computed(() =>
   store.keyframes.map(k => ({
     id: k.id,
+    t: k.t,
     left: k.t * pxPerSecond.value,
     selected: k.id === store.selectedKeyframeId,
   })),
 )
+
+function onKeyframeContext(event, m) {
+  store.selectKeyframe(m.id)
+  store.openContextMenu(event, [
+    { label: tr('ctx.goTo'), action: () => store.seek(m.t) },
+    { separator: true },
+    { label: tr('ctx.delete'), danger: true, action: () => store.removeKeyframe(m.id) },
+  ])
+}
 
 let kfDrag = null
 function onKeyframeDown(event, id) {
@@ -416,6 +427,7 @@ watch(
               :style="{ left: m.left + 'px' }"
               :title="$t('keyframe.marker')"
               @pointerdown="onKeyframeDown($event, m.id)"
+              @contextmenu="onKeyframeContext($event, m)"
             />
           </div>
 

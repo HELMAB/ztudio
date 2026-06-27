@@ -142,6 +142,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
     <ZtudioResultOverlay />
     <ZtudioCaptionDialog />
     <ZtudioShortcutsOverlay />
+    <ZtudioContextMenu />
 
     <Transition
       enter-active-class="transition-opacity duration-300"

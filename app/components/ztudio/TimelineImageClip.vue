@@ -10,7 +10,19 @@ const props = defineProps({
 })
 
 const store = useZtudioStore()
+const { t } = useI18n()
 const MIN = 0.5
+
+function onContextMenu(event) {
+  store.selectImage(props.id)
+  store.openContextMenu(event, [
+    { label: t('ctx.split'), action: () => store.splitImageAt(props.id) },
+    { label: t('ctx.duplicate'), action: () => store.duplicateImage(props.id) },
+    { label: t('ctx.resetFraming'), action: () => store.resetImageTransform() },
+    { separator: true },
+    { label: t('ctx.delete'), danger: true, action: () => store.removeImage(props.id) },
+  ])
+}
 
 let mode = null
 let startX = 0
@@ -71,6 +83,7 @@ onBeforeUnmount(onUp)
     class="absolute inset-y-1 flex items-center overflow-hidden rounded border bg-sky-500/20"
     :class="isSelected ? 'border-sky-600 ring-2 ring-sky-500 z-10' : 'border-sky-500/60'"
     :style="{ left: left + 'px', width: width + 'px' }"
+    @contextmenu="onContextMenu"
   >
     <div
       class="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-sky-500/50 hover:bg-sky-500"
