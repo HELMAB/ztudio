@@ -131,6 +131,8 @@ export async function generateFast(MB, pipe, w, h, dur, ctx2) {
     (images || []).flatMap(im => [im.start, im.end]),
     isOverlayActive(style.overlay),
     style.highlightWord,
+    style.transition === 'crossfade' ? style.transitionDuration || 0 : 0,
+    (images || []).map(im => im.start),
   )
   log(`Frames: ${segs.length} (vs ${Math.ceil(dur * 30)} at naive 30fps).`)
   const t0 = performance.now()

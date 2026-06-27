@@ -277,6 +277,33 @@ function captionAnim(t, cue, style) {
   return { type: style.animation, enter: Math.min(inP, outP), reveal: inP }
 }
 
+// Draw one slideshow clip at time t with the given opacity. Resolves the clip's
+// framing (keyframed or static), crop, fit and per-clip effect — the same path for
+// preview and encode. alpha < 1 is used to crossfade clips. save/restore isolates
+// globalAlpha and the filter so the caption drawn afterwards stays clean.
+function drawImageClip(ctx, w, h, img, keyframes, t, alpha) {
+  const bmp = img.bitmap
+  const frame = imageFramingAt(img, keyframes, t)
+  // Source-crop rect (normalized 0..1). Fit/zoom/pan operate on the cropped region.
+  const c = clipCrop(img)
+  const sx = c ? c.x * bmp.width : 0
+  const sy = c ? c.y * bmp.height : 0
+  const sw = c ? c.w * bmp.width : bmp.width
+  const sh = c ? c.h * bmp.height : bmp.height
+  const base = img.fit === 'cover' ? Math.max(w / sw, h / sh) : Math.min(w / sw, h / sh)
+  // Per-clip zoom (multiplies the fit scale) and pan (fraction of frame size).
+  const scale = base * (frame.zoom || 1)
+  const dw = sw * scale
+  const dh = sh * scale
+  const ox = w * (frame.offsetXPct || 0)
+  const oy = h * (frame.offsetYPct || 0)
+  ctx.save()
+  ctx.globalAlpha = alpha
+  ctx.filter = effectFilter(img.effect)
+  ctx.drawImage(bmp, sx, sy, sw, sh, (w - dw) / 2 + ox, (h - dh) / 2 + oy, dw, dh)
+  ctx.restore()
+}
+
 export function drawFrame(ctx, w, h, t, { images, cues, style, keyframes }) {
   // Resolve any keyframe animation for this timestamp; static when there are none.
   style = applyKeyframes(style, keyframes, t)
@@ -285,29 +312,29 @@ export function drawFrame(ctx, w, h, t, { images, cues, style, keyframes }) {
   ctx.fillRect(0, 0, w, h)
 
   // The slideshow clip active at this moment, with its own framing; gaps stay green.
-  const img = imageAt(t, images)
-  if (img) {
-    const bmp = img.bitmap
-    // Zoom/pan are keyframe-animated when the clip has keyframes in its span,
-    // otherwise the clip's static framing is used (imageFramingAt handles both).
-    const frame = imageFramingAt(img, keyframes, t)
-    // Source-crop rect (normalized 0..1). Fit/zoom/pan operate on the cropped region.
-    const c = clipCrop(img)
-    const sx = c ? c.x * bmp.width : 0
-    const sy = c ? c.y * bmp.height : 0
-    const sw = c ? c.w * bmp.width : bmp.width
-    const sh = c ? c.h * bmp.height : bmp.height
-    const base = img.fit === 'cover' ? Math.max(w / sw, h / sh) : Math.min(w / sw, h / sh)
-    // Per-clip zoom (multiplies the fit scale) and pan (fraction of frame size).
-    const scale = base * (frame.zoom || 1)
-    const dw = sw * scale
-    const dh = sh * scale
-    const ox = w * (frame.offsetXPct || 0)
-    const oy = h * (frame.offsetYPct || 0)
-    // Effect applies to the image draw only; reset to 'none' so the caption is clean.
-    ctx.filter = effectFilter(img.effect)
-    ctx.drawImage(bmp, sx, sy, sw, sh, (w - dw) / 2 + ox, (h - dh) / 2 + oy, dw, dh)
-    ctx.filter = 'none'
+  const current = imageAt(t, images)
+
+  // Crossfade: during a clip's opening window, dissolve from the clip that was on
+  // screen just before it (an adjacent clip — not a gap, to avoid green flashes)
+  // into this one. The outgoing clip is frozen at its final frame underneath.
+  const dur = style.transition === 'crossfade' ? style.transitionDuration || 0 : 0
+  let outgoing = null
+  let aIn = 1
+  if (current && dur > 0 && t < current.start + dur) {
+    const prev = imageAt(current.start - 1e-4, images)
+    if (prev && prev !== current) {
+      outgoing = prev
+      aIn = clamp01((t - current.start) / dur)
+    }
+  }
+
+  if (current) {
+    if (outgoing) {
+      drawImageClip(ctx, w, h, outgoing, keyframes, Math.min(t, outgoing.end - 1e-4), 1)
+      drawImageClip(ctx, w, h, current, keyframes, t, aIn)
+    } else {
+      drawImageClip(ctx, w, h, current, keyframes, t, 1)
+    }
   } else if (!images || !images.length) {
     drawPlaceholder(ctx, w, h)
   }

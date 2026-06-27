@@ -79,6 +79,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
     animation: 'blur',
     overlay: 'none',
     overlayIntensity: 1,
+    transition: 'none',
+    transitionDuration: 0.5,
   })
 
   // What canvas-drag on the preview repositions: 'caption' or 'image'.
@@ -207,6 +209,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
     animation: controls.animation,
     overlay: controls.overlay,
     overlayIntensity: controls.overlayIntensity,
+    transition: controls.transition,
+    transitionDuration: controls.transitionDuration,
   }))
 
   const audioPill = computed(() =>
@@ -416,7 +420,14 @@ export const useZtudioStore = defineStore('ztudio', () => {
     key => ensureBundledFont(key).then(redraw),
   )
   watch(
-    () => [controls.animation, controls.overlay, controls.overlayIntensity, resolution.value],
+    () => [
+      controls.animation,
+      controls.overlay,
+      controls.overlayIntensity,
+      controls.transition,
+      controls.transitionDuration,
+      resolution.value,
+    ],
     redraw,
   )
 

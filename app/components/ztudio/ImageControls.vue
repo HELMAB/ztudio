@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { FIT_OPTIONS, IMAGE_EFFECTS } from '@/lib/ztudio/config'
+import { FIT_OPTIONS, IMAGE_EFFECTS, TRANSITION_OPTIONS } from '@/lib/ztudio/config'
 
 const store = useZtudioStore()
 const { t } = useI18n()
@@ -10,6 +10,9 @@ const localize = options =>
 
 const fitOptions = localize(FIT_OPTIONS)
 const effectOptions = localize(IMAGE_EFFECTS)
+const transitionOptions = localize(TRANSITION_OPTIONS)
+
+const transitionLabel = computed(() => store.controls.transitionDuration.toFixed(1) + 's')
 
 const showCrop = ref(false)
 
@@ -34,6 +37,30 @@ const pct = v => Math.round(v * 100) + '%'
 
 <template>
   <div class="space-y-4">
+    <!-- Global slideshow setting: applies to every clip boundary, so it lives
+         outside the per-clip block below. -->
+    <template v-if="store.hasImages">
+      <ZtudioField :label="$t('controls.transition')">
+        <ZtudioSelectField v-model="store.controls.transition" :options="transitionOptions" />
+      </ZtudioField>
+
+      <ZtudioField
+        v-if="store.controls.transition !== 'none'"
+        :label="$t('controls.transitionDuration')"
+        :value="transitionLabel"
+      >
+        <Slider
+          :model-value="[store.controls.transitionDuration]"
+          :min="0.2"
+          :max="2"
+          :step="0.1"
+          @update:model-value="store.controls.transitionDuration = $event[0]"
+        />
+      </ZtudioField>
+
+      <div class="border-t border-border" />
+    </template>
+
     <template v-if="store.selectedImage">
       <p class="font-mono text-[11px] uppercase text-brand truncate">
         {{ $t('controls.editingImage', { name: store.selectedImage.name }) }}

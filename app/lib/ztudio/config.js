@@ -42,6 +42,8 @@ export const DEFAULT_STYLE = {
   animDuration: ANIM_DURATION,
   overlay: 'none',
   overlayIntensity: 1,
+  transition: 'none',
+  transitionDuration: 0.5,
 }
 
 export const PRESETS = {
@@ -140,6 +142,13 @@ export const IMAGE_EFFECTS = [
   { value: 'noir', labelKey: 'effect.noir', filter: 'grayscale(1) contrast(1.4) brightness(0.95)' },
   { value: 'dream', labelKey: 'effect.dream', filter: 'blur(6px) brightness(1.1) saturate(1.3)' },
   { value: 'invert', labelKey: 'effect.invert', filter: 'invert(1)' },
+]
+
+// Transitions between adjacent slideshow image clips. `crossfade` dissolves the
+// outgoing clip into the incoming one over `transitionDuration`.
+export const TRANSITION_OPTIONS = [
+  { value: 'none', labelKey: 'transitionOpt.none' },
+  { value: 'crossfade', labelKey: 'transitionOpt.crossfade' },
 ]
 
 // Karaoke word-highlight styles: recolour the spoken word, or put a filled pill

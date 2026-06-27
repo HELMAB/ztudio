@@ -24,6 +24,8 @@ export function buildSegments(
   imageTimes = [],
   overlayActive = false,
   highlightWords = false,
+  transitionDur = 0,
+  transitionStarts = [],
 ) {
   const pts = new Set([from, to])
   const animated = animType && animType !== 'none' && animDur > 0
@@ -84,6 +86,14 @@ export function buildSegments(
   }
   for (let i = 0; i < kfs.length - 1; i++) {
     densify(pts, kfs[i], kfs[i + 1], ANIM_FRAME_STEP, from, to)
+  }
+
+  // Crossfade windows: each clip's opening [start, start+dur] dissolves from the
+  // previous clip, so it needs dense frames or the fade would step in 1s jumps.
+  if (transitionDur > 0) {
+    for (const s of transitionStarts) {
+      densify(pts, s, s + transitionDur, ANIM_FRAME_STEP, from, to)
+    }
   }
 
   for (let t = from + MAX_FRAME_DUR; t < to; t += MAX_FRAME_DUR) {

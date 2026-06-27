@@ -88,6 +88,8 @@
     "imageZoom": "Image zoom",
     "imageDragHint": "Pick “Image” under the preview, then drag to pan or scroll to zoom.",
     "imageEffect": "Image effect",
+    "transition": "Clip transition",
+    "transitionDuration": "Transition length",
     "editingImage": "Editing: {name}",
     "selectImageHint": "Select an image clip in the timeline to frame it.",
     "noImagesHint": "Add images in the Media panel, then select a clip here to frame it.",
@@ -194,6 +196,10 @@
   "fit": {
     "contain": "Contain (fit, green bars)",
     "cover": "Cover (fill, crop)"
+  },
+  "transitionOpt": {
+    "none": "None (hard cut)",
+    "crossfade": "Crossfade"
   },
   "effect": {
     "none": "None",
