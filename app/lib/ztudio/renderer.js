@@ -60,7 +60,10 @@ function drawPlaceholder(ctx, w, h) {
   const by = h / 2 - u * 0.13
 
   ctx.save()
-  ctx.textAlign = 'center'
+  // Centre text manually (measure + offset) rather than textAlign='center',
+  // which older iOS/WebKit ignores — see drawCaption.
+  ctx.textAlign = 'left'
+  const centerText = (s, cx, cy) => ctx.fillText(s, cx - ctx.measureText(s).width / 2, cy)
 
   // White rounded badge with a soft shadow so the mark floats on the green.
   ctx.shadowColor = 'rgba(0,0,0,0.25)'
@@ -77,13 +80,13 @@ function drawPlaceholder(ctx, w, h) {
   ctx.fillStyle = '#0c9b50'
   ctx.textBaseline = 'middle'
   ctx.font = `800 ${Math.round(badge * 0.62)}px 'Baloo 2', system-ui, sans-serif`
-  ctx.fillText('z', w / 2, by + badge * 0.54)
+  centerText('z', w / 2, by + badge * 0.54)
 
   // Wordmark below the badge.
   ctx.textBaseline = 'top'
   ctx.fillStyle = 'rgba(255,255,255,0.95)'
   ctx.font = `700 ${Math.round(u * 0.052)}px 'Baloo 2', system-ui, sans-serif`
-  ctx.fillText('ztudio', w / 2, by + badge + u * 0.04)
+  centerText('ztudio', w / 2, by + badge + u * 0.04)
 
   ctx.restore()
 }
@@ -131,7 +134,10 @@ function drawCaption(ctx, w, h, text, style, anim) {
   const lines = text.split('\n')
   const { fontPx, lineH, blockH, first } = captionLayout(w, h, lines, style)
   ctx.font = `${style.fontWeight} ${fontPx}px ${style.fontFamily}`
-  ctx.textAlign = 'center'
+  // Centre each line manually (measure + offset) instead of relying on
+  // textAlign='center': older iOS/WebKit ignores it and renders as 'left',
+  // pushing the caption off-centre. textAlign='left' is honoured everywhere.
+  ctx.textAlign = 'left'
   ctx.textBaseline = 'middle'
   ctx.lineJoin = 'round'
 
@@ -195,12 +201,13 @@ function drawCaption(ctx, w, h, text, style, anim) {
 
   for (let i = 0; i < displayLines.length; i++) {
     const y = first + i * lineH
+    const x = w / 2 - ctx.measureText(displayLines[i]).width / 2
     if (sw > 0.5) {
       ctx.strokeStyle = style.strokeColor
-      ctx.strokeText(displayLines[i], w / 2, y)
+      ctx.strokeText(displayLines[i], x, y)
     }
     ctx.fillStyle = style.fill
-    ctx.fillText(displayLines[i], w / 2, y)
+    ctx.fillText(displayLines[i], x, y)
   }
 
   ctx.restore()
