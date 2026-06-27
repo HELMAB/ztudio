@@ -60,6 +60,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     fill: '#ffffff',
     strokeColor: '#000000',
     strokePct: 0.16,
+    lineHeight: 1.34,
     position: 'bottom',
     offsetXPct: 0,
     offsetYPct: 0,
@@ -168,6 +169,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
   const progressPercent = computed(() => Math.round(progress.value * 100))
   const sizeLabel = computed(() => (controls.fontSizePct * 100).toFixed(1) + '%')
   const strokeLabel = computed(() => Math.round(controls.strokePct * 100) + '%')
+  const lineHeightLabel = computed(() => controls.lineHeight.toFixed(2) + '×')
   const imageZoomLabel = computed(() => Math.round((selectedImage.value?.zoom || 1) * 100) + '%')
   const timeLabel = computed(() => scrub.value.toFixed(1) + 's')
   const outputDurationLabel = computed(() => fmt(outputDuration.value))
@@ -182,6 +184,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     fill: controls.fill,
     strokeColor: controls.strokeColor,
     strokePct: controls.strokePct,
+    lineHeight: controls.lineHeight,
     position: controls.position,
     offsetXPct: controls.offsetXPct,
     offsetYPct: controls.offsetYPct,
@@ -370,6 +373,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       controls.fill,
       controls.strokeColor,
       controls.strokePct,
+      controls.lineHeight,
       controls.position,
       controls.offsetXPct,
       controls.offsetYPct,
@@ -1421,6 +1425,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     progressPercent,
     sizeLabel,
     strokeLabel,
+    lineHeightLabel,
     imageZoomLabel,
     timeLabel,
     style,

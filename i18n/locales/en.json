@@ -66,6 +66,7 @@
     "textColour": "Text colour",
     "outlineColour": "Outline colour",
     "outlineWidth": "Outline width",
+    "lineHeight": "Line height",
     "position": "Position",
     "animation": "Caption animation",
     "overlay": "Overlay effect",

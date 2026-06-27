@@ -59,9 +59,17 @@ export function buildSegments(
 
   // Keyframes: boundary at each key, and dense frames between adjacent keys where
   // values interpolate. Before the first / after the last key the scene is held.
-  const kfs = [...keyframeTimes].filter(t => t > from && t < to).sort((a, b) => a - b)
+  // Keep ALL keys (sorted) for the pairwise sweep so a key sitting exactly on the
+  // window edge — e.g. the first key at t=0 when untrimmed — still bounds a span
+  // that gets densified; otherwise that whole stretch would encode as static
+  // MAX_FRAME_DUR frames and the motion looks jerky. densify clamps every emitted
+  // point to (from, to), so edge keys are safe to include here. Only strictly
+  // inside keys become their own cut point.
+  const kfs = [...keyframeTimes].sort((a, b) => a - b)
   for (const t of kfs) {
-    pts.add(+t.toFixed(3))
+    if (t > from && t < to) {
+      pts.add(+t.toFixed(3))
+    }
   }
   for (let i = 0; i < kfs.length - 1; i++) {
     densify(pts, kfs[i], kfs[i + 1], ANIM_FRAME_STEP, from, to)

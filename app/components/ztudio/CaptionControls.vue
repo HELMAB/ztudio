@@ -101,6 +101,16 @@ function onFont(files) {
       />
     </ZtudioField>
 
+    <ZtudioField :label="$t('controls.lineHeight')" :value="store.lineHeightLabel">
+      <Slider
+        :model-value="[store.controls.lineHeight]"
+        :min="1"
+        :max="2.2"
+        :step="0.02"
+        @update:model-value="store.controls.lineHeight = $event[0]"
+      />
+    </ZtudioField>
+
     <ZtudioField :label="$t('controls.position')">
       <ZtudioSelectField v-model="store.controls.position" :options="positionOptions" />
     </ZtudioField>
