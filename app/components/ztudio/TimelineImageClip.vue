@@ -26,20 +26,27 @@ function onMove(event) {
     return
   }
   const dt = (event.clientX - startX) / props.pxPerSecond
+  const snap = {
+    pxPerSecond: props.pxPerSecond,
+    exclude: [origStart, origEnd],
+    disabled: event.altKey,
+  }
   if (mode === 'move') {
     const dur = origEnd - origStart
-    const s = Math.max(0, origStart + dt)
+    const s = Math.max(0, store.snapClip(origStart + dt, dur, snap))
     store.updateImageTime(props.id, s, s + dur)
   } else if (mode === 'left') {
-    const s = Math.min(Math.max(0, origStart + dt), origEnd - MIN)
+    const s = Math.min(Math.max(0, store.snapEdge(origStart + dt, snap)), origEnd - MIN)
     store.updateImageTime(props.id, s, origEnd)
   } else if (mode === 'right') {
-    store.updateImageTime(props.id, origStart, Math.max(origEnd + dt, origStart + MIN))
+    const e = Math.max(store.snapEdge(origEnd + dt, snap), origStart + MIN)
+    store.updateImageTime(props.id, origStart, e)
   }
 }
 
 function onUp() {
   mode = null
+  store.clearSnap()
   window.removeEventListener('pointermove', onMove)
   window.removeEventListener('pointerup', onUp)
 }

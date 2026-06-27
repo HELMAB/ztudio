@@ -32,7 +32,7 @@ export const DEFAULT_STYLE = {
   offsetYPct: 0,
   box: false,
   boxColor: 'rgba(0,0,0,0.55)',
-  highlightWord: false,
+  highlightWord: true,
   highlightColor: '#00e0a4',
   highlightStyle: 'text',
   lineHeight: 1.34,

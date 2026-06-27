@@ -5,6 +5,7 @@ import { computePeaks, peakBuckets, peaksPath } from '@/lib/ztudio/waveform'
 import {
   DiamondPlusIcon,
   ImageIcon,
+  MagnetIcon,
   MessageSquarePlusIcon,
   MessageSquareIcon,
   MusicIcon,
@@ -101,7 +102,8 @@ function onTrimMove(event) {
   if (!trimDrag || !el || pps <= 0) {
     return
   }
-  const t = (event.clientX - el.getBoundingClientRect().left) / pps
+  const raw = (event.clientX - el.getBoundingClientRect().left) / pps
+  const t = store.snapEdge(raw, { pxPerSecond: pps, disabled: event.altKey })
   if (trimDrag === 'start') {
     store.setTrim(t, store.trimEnd)
   } else {
@@ -110,6 +112,7 @@ function onTrimMove(event) {
 }
 function onTrimUp() {
   trimDrag = null
+  store.clearSnap()
   window.removeEventListener('pointermove', onTrimMove)
   window.removeEventListener('pointerup', onTrimUp)
 }
@@ -125,6 +128,9 @@ const captionClips = computed(() =>
   store.cues.map((c, i) => ({ key: i, start: c.start, end: c.end, label: c.text.split('\n')[0] })),
 )
 const playheadLeft = computed(() => store.scrub * pxPerSecond.value)
+const snapGuideLeft = computed(() =>
+  store.snapGuide != null ? store.snapGuide * pxPerSecond.value : null,
+)
 
 const keyframeMarkers = computed(() =>
   store.keyframes.map(k => ({
@@ -149,10 +155,12 @@ function onKeyframeMove(event) {
     return
   }
   const rect = el.getBoundingClientRect()
-  store.moveKeyframe(kfDrag, (event.clientX - rect.left) / pps)
+  const raw = (event.clientX - rect.left) / pps
+  store.moveKeyframe(kfDrag, store.snapEdge(raw, { pxPerSecond: pps, disabled: event.altKey }))
 }
 function onKeyframeUp() {
   kfDrag = null
+  store.clearSnap()
   window.removeEventListener('pointermove', onKeyframeMove)
   window.removeEventListener('pointerup', onKeyframeUp)
 }
@@ -165,7 +173,9 @@ function seekFromEvent(event) {
     return
   }
   const rect = el.getBoundingClientRect()
-  store.seek((event.clientX - rect.left) / pps)
+  const raw = (event.clientX - rect.left) / pps
+  // The playhead snaps to cue/clip edges, but not to itself.
+  store.seek(store.snapEdge(raw, { pxPerSecond: pps, includePlayhead: false, disabled: event.altKey }))
 }
 function onLaneMove(event) {
   if (seeking) {
@@ -174,6 +184,7 @@ function onLaneMove(event) {
 }
 function onLaneUp() {
   seeking = false
+  store.clearSnap()
   window.removeEventListener('pointermove', onLaneMove)
   window.removeEventListener('pointerup', onLaneUp)
 }
@@ -230,6 +241,18 @@ watch(
       >
         <DiamondPlusIcon class="size-3.5" />
         <span class="hidden sm:inline">{{ $t('keyframe.add') }}</span>
+      </Button>
+      <Button
+        size="icon"
+        :variant="store.snapEnabled ? 'secondary' : 'ghost'"
+        class="size-6"
+        :class="store.snapEnabled ? 'text-cyan-500' : 'text-muted-foreground'"
+        :aria-label="$t('timeline.snap')"
+        :aria-pressed="store.snapEnabled"
+        :title="$t('timeline.snapHint')"
+        @click="store.snapEnabled = !store.snapEnabled"
+      >
+        <MagnetIcon class="size-3.5" />
       </Button>
       <span class="font-mono text-[10px] text-muted-foreground mr-1 tabular-nums">
         {{ Math.round(store.timelineZoom * 100) }}%
@@ -406,6 +429,12 @@ watch(
               />
             </div>
           </div>
+
+          <div
+            v-if="snapGuideLeft != null"
+            class="absolute top-0 bottom-0 w-px bg-cyan-400 z-20 pointer-events-none"
+            :style="{ left: snapGuideLeft + 'px' }"
+          />
 
           <div
             class="absolute top-0 bottom-0 w-px bg-brand z-10 pointer-events-none"

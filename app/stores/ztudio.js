@@ -60,6 +60,12 @@ export const useZtudioStore = defineStore('ztudio', () => {
   // Timeline zoom lives here (not in the Timeline component) so keyboard shortcuts
   // and the zoom buttons drive the same state. 1 fits the duration to the viewport.
   const timelineZoom = ref(1)
+  // Timeline snapping: when on, dragged playhead/trim/keyframe/clip edges snap to
+  // nearby cue boundaries, clip edges, the playhead, and the timeline ends.
+  // `snapGuide` is the time (seconds) of the active snap line during a drag, or
+  // null — components set it via the snap helpers and clear it on drop.
+  const snapEnabled = ref(true)
+  const snapGuide = ref(null)
   // Keyboard-shortcuts help overlay visibility (toggled by '?' and the TopBar).
   const showShortcuts = ref(false)
   const selectedCueIndex = ref(null)
@@ -74,7 +80,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     strokeColor: '#000000',
     strokePct: 0.16,
     lineHeight: 1.34,
-    highlightWord: false,
+    highlightWord: true,
     highlightColor: '#00e0a4',
     highlightStyle: 'text',
     position: 'bottom',
@@ -1410,6 +1416,84 @@ export const useZtudioStore = defineStore('ztudio', () => {
     }
   }
 
+  // ---- Timeline snapping ----------------------------------------------------
+  // Pixel radius within which a dragged edge sticks to a candidate; converted to
+  // seconds per drag via the current pxPerSecond, so it feels the same at any zoom.
+  const SNAP_PX = 7
+
+  // Candidate snap times: timeline ends, every cue and image-clip edge, and
+  // (optionally) the playhead. `exclude` drops a dragged element's own edges so it
+  // can't snap to itself.
+  function snapCandidates(exclude, includePlayhead) {
+    const ex = v => exclude.some(e => Math.abs(e - v) < 1e-4)
+    const out = [0, previewDuration.value]
+    for (const c of cues.value) {
+      out.push(c.start, c.end)
+    }
+    for (const im of images.value) {
+      out.push(im.start, im.end)
+    }
+    if (includePlayhead) {
+      out.push(scrub.value)
+    }
+    return out.filter(v => !ex(v))
+  }
+
+  function nearestSnap(t, candidates, tol) {
+    let best = null
+    let bestDist = tol
+    for (const c of candidates) {
+      const d = Math.abs(c - t)
+      if (d <= bestDist) {
+        bestDist = d
+        best = c
+      }
+    }
+    return best
+  }
+
+  // Snap a single edge/time (playhead, trim handle, keyframe, or a resized clip
+  // edge). Sets the guide to the snapped point (or clears it) and returns the
+  // resolved time. `disabled` (Alt held / snapping off) is a passthrough.
+  function snapEdge(t, { pxPerSecond, exclude = [], includePlayhead = true, disabled = false }) {
+    if (disabled || !snapEnabled.value || !pxPerSecond) {
+      snapGuide.value = null
+      return t
+    }
+    const best = nearestSnap(t, snapCandidates(exclude, includePlayhead), SNAP_PX / pxPerSecond)
+    snapGuide.value = best
+    return best != null ? best : t
+  }
+
+  // Snap a whole clip being moved: try snapping either edge and apply whichever
+  // sticks closer, keeping the clip's duration. Returns the resolved start.
+  function snapClip(rawStart, dur, { pxPerSecond, exclude = [], disabled = false }) {
+    if (disabled || !snapEnabled.value || !pxPerSecond) {
+      snapGuide.value = null
+      return rawStart
+    }
+    const tol = SNAP_PX / pxPerSecond
+    const cand = snapCandidates(exclude, true)
+    const snapS = nearestSnap(rawStart, cand, tol)
+    const snapE = nearestSnap(rawStart + dur, cand, tol)
+    const dS = snapS != null ? Math.abs(snapS - rawStart) : Infinity
+    const dE = snapE != null ? Math.abs(snapE - (rawStart + dur)) : Infinity
+    if (snapS != null && dS <= dE) {
+      snapGuide.value = snapS
+      return snapS
+    }
+    if (snapE != null) {
+      snapGuide.value = snapE
+      return snapE - dur
+    }
+    snapGuide.value = null
+    return rawStart
+  }
+
+  function clearSnap() {
+    snapGuide.value = null
+  }
+
   const TIMELINE_MIN_ZOOM = 0.25
   const TIMELINE_MAX_ZOOM = 24
   function zoomTimeline(action) {
@@ -1579,6 +1663,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
     previewTick,
     timelineZoom,
     showShortcuts,
+    snapEnabled,
+    snapGuide,
     selectedCueIndex,
     controls,
     busy,
@@ -1653,6 +1739,9 @@ export const useZtudioStore = defineStore('ztudio', () => {
     jumpCue,
     zoomTimeline,
     deleteSelected,
+    snapEdge,
+    snapClip,
+    clearSnap,
     updateCue,
     selectCue,
     setCueText,

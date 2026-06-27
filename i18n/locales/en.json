@@ -154,6 +154,8 @@
     "zoomOut": "Zoom out",
     "zoomIn": "Zoom in",
     "fit": "Fit timeline",
+    "snap": "Snapping",
+    "snapHint": "Snap edges to cues, clips & the playhead (hold Alt to disable)",
     "audio": "Audio",
     "image": "Image",
     "caption": "Caption"
