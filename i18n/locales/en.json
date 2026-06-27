@@ -150,6 +150,13 @@
     "safeArea": "Safe area guide",
     "safeAreaHint": "Show a title-safe margin so captions aren't clipped or hidden behind app UI (preview only)"
   },
+  "transport": {
+    "start": "Go to start",
+    "end": "Go to end",
+    "prevCaption": "Previous caption",
+    "nextCaption": "Next caption",
+    "setTime": "Click to set the time"
+  },
   "timeline": {
     "zoomOut": "Zoom out",
     "zoomIn": "Zoom in",

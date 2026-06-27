@@ -1,11 +1,15 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
   ImageDownIcon,
   MaximizeIcon,
   MinimizeIcon,
   PauseIcon,
   PlayIcon,
+  SkipBackIcon,
+  SkipForwardIcon,
   SquareDashedIcon,
 } from '@lucide/vue'
 import { captionCenter, drawFrame } from '@/lib/ztudio/renderer'
@@ -138,6 +142,49 @@ function fmtTime(s) {
   const m = Math.floor(s / 60)
   const sec = (s % 60).toFixed(1).padStart(4, '0')
   return `${m}:${sec}`
+}
+
+// Click-to-edit current time. Accepts "m:ss(.s)" or plain seconds; commits on
+// Enter/blur, cancels on Escape.
+const editingTime = ref(false)
+const timeInput = ref('')
+const timeField = ref(null)
+
+function parseTime(str) {
+  const s = str.trim()
+  if (!s) {
+    return null
+  }
+  if (s.includes(':')) {
+    const [m, sec] = s.split(':')
+    const mm = parseFloat(m)
+    const ss = parseFloat(sec)
+    return Number.isNaN(mm) || Number.isNaN(ss) ? null : mm * 60 + ss
+  }
+  const v = parseFloat(s)
+  return Number.isNaN(v) ? null : v
+}
+
+function beginEditTime() {
+  store.pause()
+  timeInput.value = fmtTime(store.scrub)
+  editingTime.value = true
+  nextTick(() => timeField.value?.select())
+}
+
+function commitTime() {
+  if (!editingTime.value) {
+    return
+  }
+  const t = parseTime(timeInput.value)
+  if (t != null) {
+    store.seek(t)
+  }
+  editingTime.value = false
+}
+
+function cancelTime() {
+  editingTime.value = false
 }
 
 // Drag to reposition the active target (caption or image) anywhere on the
@@ -273,18 +320,80 @@ function onResetDrag() {
     <div
       class="shrink-0 flex flex-wrap items-center gap-x-3 gap-y-2 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-3 bg-neutral-950 border-t border-neutral-800"
     >
-      <Button
-        size="icon"
-        variant="secondary"
-        class="rounded-full"
-        :aria-label="store.isPlaying ? $t('actions.pause') : $t('actions.play')"
-        @click="store.togglePlay()"
-      >
-        <PauseIcon v-if="store.isPlaying" class="size-4" />
-        <PlayIcon v-else class="size-4" />
-      </Button>
+      <div class="flex items-center gap-0.5 shrink-0">
+        <Button
+          size="icon"
+          variant="ghost"
+          class="size-7 text-neutral-300"
+          :aria-label="$t('transport.start')"
+          :title="$t('transport.start')"
+          @click="store.seek(0)"
+        >
+          <SkipBackIcon class="size-4" />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          class="size-7 text-neutral-300"
+          :aria-label="$t('transport.prevCaption')"
+          :title="$t('transport.prevCaption')"
+          @click="store.jumpCue(-1)"
+        >
+          <ChevronLeftIcon class="size-4" />
+        </Button>
+        <Button
+          size="icon"
+          variant="secondary"
+          class="rounded-full"
+          :aria-label="store.isPlaying ? $t('actions.pause') : $t('actions.play')"
+          @click="store.togglePlay()"
+        >
+          <PauseIcon v-if="store.isPlaying" class="size-4" />
+          <PlayIcon v-else class="size-4" />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          class="size-7 text-neutral-300"
+          :aria-label="$t('transport.nextCaption')"
+          :title="$t('transport.nextCaption')"
+          @click="store.jumpCue(1)"
+        >
+          <ChevronRightIcon class="size-4" />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          class="size-7 text-neutral-300"
+          :aria-label="$t('transport.end')"
+          :title="$t('transport.end')"
+          @click="store.seek(store.previewDuration)"
+        >
+          <SkipForwardIcon class="size-4" />
+        </Button>
+      </div>
       <span class="font-mono text-xs text-neutral-300 tabular-nums shrink-0">
-        {{ fmtTime(store.scrub) }} / {{ fmtTime(store.previewDuration) }}
+        <input
+          v-if="editingTime"
+          ref="timeField"
+          v-model="timeInput"
+          type="text"
+          inputmode="decimal"
+          class="w-14 rounded bg-neutral-800 px-1 py-0.5 text-center text-neutral-100 outline-none ring-1 ring-brand"
+          @keydown.enter.prevent="commitTime"
+          @keydown.esc.prevent="cancelTime"
+          @blur="commitTime"
+        />
+        <button
+          v-else
+          type="button"
+          class="rounded px-1 py-0.5 hover:bg-neutral-800 hover:text-white"
+          :title="$t('transport.setTime')"
+          @click="beginEditTime"
+        >
+          {{ fmtTime(store.scrub) }}
+        </button>
+        / {{ fmtTime(store.previewDuration) }}
       </span>
       <span
         v-if="store.hasTrim"
