@@ -52,6 +52,23 @@
   "settings": {
     "heading": "Settings"
   },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "playback": "Playback",
+    "editing": "Editing",
+    "view": "View",
+    "playPause": "Play / pause",
+    "stepFrame": "Step one frame",
+    "stepSecond": "Step one second",
+    "prevNextCaption": "Previous / next caption",
+    "startEnd": "Go to start / end",
+    "deleteSelected": "Delete selected clip, caption, or keyframe",
+    "undo": "Undo",
+    "redo": "Redo",
+    "zoom": "Zoom timeline in / out",
+    "zoomFit": "Fit timeline",
+    "toggleHelp": "Show / hide this help"
+  },
   "caption": {
     "heading": "Caption",
     "tabStyle": "Style",

@@ -1,5 +1,12 @@
 <script setup>
-import { CircleStopIcon, DownloadIcon, LanguagesIcon, Redo2Icon, Undo2Icon } from '@lucide/vue'
+import {
+  CircleStopIcon,
+  DownloadIcon,
+  KeyboardIcon,
+  LanguagesIcon,
+  Redo2Icon,
+  Undo2Icon,
+} from '@lucide/vue'
 
 const store = useZtudioStore()
 const { locale, setLocale } = useI18n()
@@ -52,6 +59,16 @@ const DOT_CLASS = {
         :model-value="store.progressPercent"
         class="w-24 hidden md:block"
       />
+      <Button
+        size="icon"
+        variant="ghost"
+        class="hidden sm:inline-flex"
+        :aria-label="$t('shortcuts.title')"
+        :title="$t('shortcuts.title')"
+        @click="store.showShortcuts = true"
+      >
+        <KeyboardIcon class="size-4" />
+      </Button>
       <Button
         size="icon"
         variant="ghost"

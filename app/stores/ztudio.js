@@ -57,6 +57,11 @@ export const useZtudioStore = defineStore('ztudio', () => {
   const preset = ref('clean')
   const scrub = ref(0)
   const previewTick = ref(0)
+  // Timeline zoom lives here (not in the Timeline component) so keyboard shortcuts
+  // and the zoom buttons drive the same state. 1 fits the duration to the viewport.
+  const timelineZoom = ref(1)
+  // Keyboard-shortcuts help overlay visibility (toggled by '?' and the TopBar).
+  const showShortcuts = ref(false)
   const selectedCueIndex = ref(null)
   // Add/edit caption dialog: { open, mode: 'add' | 'edit', index }.
   const captionDialog = ref({ open: false, mode: 'add', index: null })
@@ -1382,6 +1387,56 @@ export const useZtudioStore = defineStore('ztudio', () => {
     scrub.value = Math.min(Math.max(t, 0), previewDuration.value)
   }
 
+  // Keyboard transport: nudge the playhead by a frame (≈1/30s) or a second.
+  function nudge(seconds) {
+    seek(scrub.value + seconds)
+  }
+
+  // Jump the playhead to the previous/next caption boundary (cue start or end),
+  // falling back to the clip start/end at the extremes.
+  function jumpCue(dir) {
+    const eps = 1e-3
+    const bounds = []
+    for (const c of cues.value) {
+      bounds.push(c.start, c.end)
+    }
+    bounds.sort((a, b) => a - b)
+    if (dir > 0) {
+      const next = bounds.find(b => b > scrub.value + eps)
+      seek(next != null ? next : previewDuration.value)
+    } else {
+      const prev = bounds.filter(b => b < scrub.value - eps).pop()
+      seek(prev != null ? prev : 0)
+    }
+  }
+
+  const TIMELINE_MIN_ZOOM = 0.25
+  const TIMELINE_MAX_ZOOM = 24
+  function zoomTimeline(action) {
+    if (action === 'in') {
+      timelineZoom.value = Math.min(timelineZoom.value * 1.5, TIMELINE_MAX_ZOOM)
+    } else if (action === 'out') {
+      timelineZoom.value = Math.max(timelineZoom.value / 1.5, TIMELINE_MIN_ZOOM)
+    } else {
+      timelineZoom.value = 1
+    }
+  }
+
+  // Delete whatever is selected in the timeline (keyframe takes priority over a
+  // caption cue). Returns true when something was removed, so the key handler can
+  // swallow the event only then.
+  function deleteSelected() {
+    if (selectedKeyframeId.value != null) {
+      removeKeyframe(selectedKeyframeId.value)
+      return true
+    }
+    if (selectedCueIndex.value != null) {
+      removeCue(selectedCueIndex.value)
+      return true
+    }
+    return false
+  }
+
   function updateCue(index, start, end) {
     const cue = cues.value[index]
     if (!cue) {
@@ -1522,6 +1577,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
     preset,
     scrub,
     previewTick,
+    timelineZoom,
+    showShortcuts,
     selectedCueIndex,
     controls,
     busy,
@@ -1592,6 +1649,10 @@ export const useZtudioStore = defineStore('ztudio', () => {
     pause,
     togglePlay,
     seek,
+    nudge,
+    jumpCue,
+    zoomTimeline,
+    deleteSelected,
     updateCue,
     selectCue,
     setCueText,

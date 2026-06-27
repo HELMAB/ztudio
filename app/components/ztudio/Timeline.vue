@@ -19,27 +19,17 @@ const viewportEl = ref(null)
 const laneArea = ref(null)
 const { width: trackWidth, height: trackHeight } = useElementSize(viewportEl)
 
-// zoom 1 fits the whole duration to the viewport width; below 1 the timeline
-// shrinks to occupy only part of the width for a more compact track.
+// Zoom state lives in the store (shared with keyboard shortcuts). 1 fits the whole
+// duration to the viewport width; below 1 the timeline shrinks to occupy only part
+// of the width for a more compact track.
 const MIN_ZOOM = 0.25
 const MAX_ZOOM = 24
-const zoom = ref(1)
 
 const duration = computed(() => store.previewDuration)
 const pxPerSecond = computed(() =>
-  duration.value > 0 ? (trackWidth.value * zoom.value) / duration.value : 0,
+  duration.value > 0 ? (trackWidth.value * store.timelineZoom) / duration.value : 0,
 )
-const contentWidth = computed(() => trackWidth.value * zoom.value)
-
-function zoomIn() {
-  zoom.value = Math.min(zoom.value * 1.5, MAX_ZOOM)
-}
-function zoomOut() {
-  zoom.value = Math.max(zoom.value / 1.5, MIN_ZOOM)
-}
-function zoomFit() {
-  zoom.value = 1
-}
+const contentWidth = computed(() => trackWidth.value * store.timelineZoom)
 
 const NICE_STEPS = [0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300]
 const ticks = computed(() => {
@@ -242,15 +232,15 @@ watch(
         <span class="hidden sm:inline">{{ $t('keyframe.add') }}</span>
       </Button>
       <span class="font-mono text-[10px] text-muted-foreground mr-1 tabular-nums">
-        {{ Math.round(zoom * 100) }}%
+        {{ Math.round(store.timelineZoom * 100) }}%
       </span>
       <Button
         size="icon"
         variant="ghost"
         class="size-6"
-        :disabled="zoom <= MIN_ZOOM"
+        :disabled="store.timelineZoom <= MIN_ZOOM"
         :aria-label="$t('timeline.zoomOut')"
-        @click="zoomOut"
+        @click="store.zoomTimeline('out')"
       >
         <ZoomOutIcon class="size-3.5" />
       </Button>
@@ -259,7 +249,7 @@ watch(
         variant="ghost"
         class="size-6"
         :aria-label="$t('timeline.fit')"
-        @click="zoomFit"
+        @click="store.zoomTimeline('fit')"
       >
         <ScanIcon class="size-3.5" />
       </Button>
@@ -267,9 +257,9 @@ watch(
         size="icon"
         variant="ghost"
         class="size-6"
-        :disabled="zoom >= MAX_ZOOM"
+        :disabled="store.timelineZoom >= MAX_ZOOM"
         :aria-label="$t('timeline.zoomIn')"
-        @click="zoomIn"
+        @click="store.zoomTimeline('in')"
       >
         <ZoomInIcon class="size-3.5" />
       </Button>
