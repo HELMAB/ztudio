@@ -885,6 +885,74 @@ export const useZtudioStore = defineStore('ztudio', () => {
     maybeReady()
   }
 
+  // Route a dropped/selected set of files to the right loader by type: images →
+  // slideshow clips, the first audio → voice (a second → the music bed), .srt →
+  // captions, fonts → caption fonts. Unsupported files are logged and skipped.
+  async function importFiles(fileList) {
+    const files = Array.from(fileList || [])
+    if (!files.length) {
+      return
+    }
+    const imgs = []
+    const fonts = []
+    let audio = null
+    let music = null
+    let srt = null
+    for (const f of files) {
+      const name = (f.name || '').toLowerCase()
+      const type = f.type || ''
+      if (type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp|avif)$/.test(name)) {
+        imgs.push(f)
+      } else if (type.startsWith('audio/') || /\.(mp3|wav|m4a|aac|ogg|flac)$/.test(name)) {
+        if (!audio) {
+          audio = f
+        } else if (!music) {
+          music = f
+        }
+      } else if (name.endsWith('.srt')) {
+        srt = srt || f
+      } else if (/\.(ttf|otf)$/.test(name) || type.includes('font')) {
+        fonts.push(f)
+      } else {
+        log(`Skipped unsupported file: ${f.name}`)
+      }
+    }
+    if (audio) {
+      await loadAudio(audio)
+    }
+    if (music) {
+      await loadMusic(music)
+    }
+    if (imgs.length) {
+      await addImages(imgs)
+    }
+    if (srt) {
+      await loadSrt(srt)
+    }
+    if (fonts.length) {
+      await loadFonts(fonts)
+    }
+    const parts = []
+    if (audio) {
+      parts.push('audio')
+    }
+    if (music) {
+      parts.push('music')
+    }
+    if (imgs.length) {
+      parts.push(`${imgs.length} image${imgs.length > 1 ? 's' : ''}`)
+    }
+    if (srt) {
+      parts.push('captions')
+    }
+    if (fonts.length) {
+      parts.push(`${fonts.length} font${fonts.length > 1 ? 's' : ''}`)
+    }
+    if (parts.length) {
+      log(`Imported ${parts.join(', ')}.`)
+    }
+  }
+
   function removeImage(id) {
     images.value = images.value.filter(im => im.id !== id)
     if (selectedImageId.value === id) {
@@ -1824,6 +1892,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     applyPreset,
     loadAudio,
     loadMusic,
+    importFiles,
     loadSrt,
     loadFont,
     loadFonts,

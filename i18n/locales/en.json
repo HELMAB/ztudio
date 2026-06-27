@@ -165,6 +165,10 @@
     "resetFraming": "Reset framing",
     "goTo": "Go to keyframe"
   },
+  "dropzone": {
+    "title": "Drop to import",
+    "hint": "Audio, images, .srt, and fonts — sorted automatically"
+  },
   "timeline": {
     "zoomOut": "Zoom out",
     "zoomIn": "Zoom in",

@@ -14,7 +14,6 @@ const props = defineProps({
 const emit = defineEmits(['select', 'clear'])
 
 const input = ref(null)
-const dragging = ref(false)
 
 function pick(files) {
   if (files && files.length) {
@@ -27,11 +26,8 @@ function onChange(event) {
   // Reset so picking the same file again still fires a change event.
   event.target.value = ''
 }
-
-function onDrop(event) {
-  dragging.value = false
-  pick(event.dataTransfer?.files)
-}
+// Drag-and-drop is handled globally by ZtudioDropZone (drop anywhere, routed by
+// type), so this box only needs click-to-browse.
 </script>
 
 <template>
@@ -49,16 +45,11 @@ function onDrop(event) {
       type="button"
       class="group flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-7 text-center transition-colors"
       :class="
-        dragging
-          ? 'border-brand bg-brand/5'
-          : ok
-            ? 'border-brand/40 hover:border-brand/70'
-            : 'border-border hover:border-muted-foreground/40 hover:bg-muted/30'
+        ok
+          ? 'border-brand/40 hover:border-brand/70'
+          : 'border-border hover:border-muted-foreground/40 hover:bg-muted/30'
       "
       @click="input?.click()"
-      @dragover.prevent="dragging = true"
-      @dragleave.prevent="dragging = false"
-      @drop.prevent="onDrop"
     >
       <component
         :is="icon"
