@@ -2,6 +2,8 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useElementSize } from '@vueuse/core'
 import { computePeaks, peakBuckets, peaksPath } from '@/lib/ztudio/waveform'
+import { drawFrame } from '@/lib/ztudio/renderer'
+import { captionAt } from '@/lib/ztudio/srt'
 import {
   DiamondPlusIcon,
   ImageIcon,
@@ -132,6 +134,72 @@ const snapGuideLeft = computed(() =>
   store.snapGuide != null ? store.snapGuide * pxPerSecond.value : null,
 )
 
+// Hover-scrub: while the mouse moves over the lanes (and nothing is being
+// dragged), preview that moment without committing the playhead — a guideline on
+// the track plus a floating thumbnail rendered from the same drawFrame the encoder
+// uses, with the timecode and the caption at that point.
+const hover = ref(null)
+const thumbCanvas = ref(null)
+const hoverCaption = computed(() => (hover.value ? captionAt(hover.value.t, store.cues) : ''))
+
+let thumbRaf = null
+function drawHoverThumb(t) {
+  const cv = thumbCanvas.value
+  if (!cv) {
+    return
+  }
+  const { w, h } = store.dimensions
+  const tw = 144
+  const th = Math.max(1, Math.round((tw * h) / w))
+  if (cv.width !== tw) {
+    cv.width = tw
+  }
+  if (cv.height !== th) {
+    cv.height = th
+  }
+  drawFrame(cv.getContext('2d'), tw, th, t, {
+    images: store.images,
+    cues: store.cues,
+    style: store.style,
+    keyframes: store.keyframes,
+  })
+}
+
+// Throttle thumbnail redraws to one per frame; rAF also lets the teleported canvas
+// mount before the first draw.
+function scheduleThumb() {
+  if (thumbRaf) {
+    return
+  }
+  thumbRaf = requestAnimationFrame(() => {
+    thumbRaf = null
+    if (hover.value) {
+      drawHoverThumb(hover.value.t)
+    }
+  })
+}
+
+function onLaneHover(event) {
+  // Skip on touch (no hover) and during any drag (a button is held).
+  if (event.pointerType === 'touch' || event.buttons !== 0) {
+    hover.value = null
+    return
+  }
+  const el = laneArea.value
+  const pps = pxPerSecond.value
+  if (!el || pps <= 0) {
+    return
+  }
+  const rect = el.getBoundingClientRect()
+  const t = Math.min(Math.max(0, (event.clientX - rect.left) / pps), duration.value)
+  hover.value = { x: t * pps, t, clientX: event.clientX, top: rect.top }
+  scheduleThumb()
+}
+
+function onLaneLeave() {
+  hover.value = null
+}
+
 const keyframeMarkers = computed(() =>
   store.keyframes.map(k => ({
     id: k.id,
@@ -199,6 +267,9 @@ onBeforeUnmount(() => {
   onLaneUp()
   onKeyframeUp()
   onTrimUp()
+  if (thumbRaf) {
+    cancelAnimationFrame(thumbRaf)
+  }
 })
 
 watch(
@@ -352,6 +423,8 @@ watch(
             ref="laneArea"
             class="relative flex-1 flex flex-col cursor-pointer"
             @pointerdown="onLaneDown"
+            @pointermove="onLaneHover"
+            @pointerleave="onLaneLeave"
           >
             <div class="relative flex-1 border-b border-border">
               <div
@@ -431,6 +504,12 @@ watch(
           </div>
 
           <div
+            v-if="hover"
+            class="absolute top-0 bottom-0 w-px bg-foreground/40 z-10 pointer-events-none"
+            :style="{ left: hover.x + 'px' }"
+          />
+
+          <div
             v-if="snapGuideLeft != null"
             class="absolute top-0 bottom-0 w-px bg-cyan-400 z-20 pointer-events-none"
             :style="{ left: snapGuideLeft + 'px' }"
@@ -445,5 +524,30 @@ watch(
         </div>
       </div>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="hover"
+        class="pointer-events-none fixed z-50"
+        :style="{
+          left: hover.clientX + 'px',
+          top: hover.top + 'px',
+          transform: 'translate(-50%, calc(-100% - 10px))',
+        }"
+      >
+        <div class="rounded-md border border-border bg-background/95 p-1 shadow-xl backdrop-blur-sm">
+          <canvas ref="thumbCanvas" class="block rounded-sm bg-black" style="width: 120px" />
+          <div class="mt-1 text-center font-mono text-[10px] text-foreground tabular-nums">
+            {{ fmtTime(hover.t) }}
+          </div>
+          <div
+            v-if="hoverCaption"
+            class="mx-auto max-w-[120px] truncate text-center text-[10px] text-muted-foreground"
+          >
+            {{ hoverCaption }}
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
