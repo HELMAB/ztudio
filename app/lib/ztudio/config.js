@@ -32,6 +32,9 @@ export const DEFAULT_STYLE = {
   offsetYPct: 0,
   box: false,
   boxColor: 'rgba(0,0,0,0.55)',
+  highlightWord: false,
+  highlightColor: '#00e0a4',
+  highlightStyle: 'text',
   lineHeight: 1.34,
   topMarginPct: 0.09,
   bottomMarginPct: 0.09,
@@ -137,6 +140,13 @@ export const IMAGE_EFFECTS = [
   { value: 'noir', labelKey: 'effect.noir', filter: 'grayscale(1) contrast(1.4) brightness(0.95)' },
   { value: 'dream', labelKey: 'effect.dream', filter: 'blur(6px) brightness(1.1) saturate(1.3)' },
   { value: 'invert', labelKey: 'effect.invert', filter: 'invert(1)' },
+]
+
+// Karaoke word-highlight styles: recolour the spoken word, or put a filled pill
+// behind it (Hormozi-style).
+export const HIGHLIGHT_STYLE_OPTIONS = [
+  { value: 'text', labelKey: 'highlight.styleText' },
+  { value: 'fill', labelKey: 'highlight.styleFill' },
 ]
 
 export const ANIMATION_OPTIONS = [

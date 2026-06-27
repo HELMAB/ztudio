@@ -130,6 +130,7 @@ export async function generateFast(MB, pipe, w, h, dur, ctx2) {
     (keyframes || []).map(k => k.t),
     (images || []).flatMap(im => [im.start, im.end]),
     isOverlayActive(style.overlay),
+    style.highlightWord,
   )
   log(`Frames: ${segs.length} (vs ${Math.ceil(dur * 30)} at naive 30fps).`)
   const t0 = performance.now()

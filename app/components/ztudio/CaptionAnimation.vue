@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { DiamondPlusIcon, Trash2Icon } from '@lucide/vue'
-import { ANIMATION_OPTIONS } from '@/lib/ztudio/config'
+import { ANIMATION_OPTIONS, HIGHLIGHT_STYLE_OPTIONS } from '@/lib/ztudio/config'
 import { OVERLAY_OPTIONS } from '@/lib/ztudio/overlays'
 import { EASING_KEYS } from '@/lib/ztudio/keyframes'
 
@@ -10,6 +10,10 @@ const { t } = useI18n()
 
 const animationOptions = computed(() =>
   ANIMATION_OPTIONS.map(o => ({ value: o.value, label: t(o.labelKey) })),
+)
+
+const highlightStyleOptions = computed(() =>
+  HIGHLIGHT_STYLE_OPTIONS.map(o => ({ value: o.value, label: t(o.labelKey) })),
 )
 
 const overlayOptions = computed(() =>
@@ -39,6 +43,38 @@ function fmtTime(s) {
     <ZtudioField :label="$t('controls.animation')">
       <ZtudioSelectField v-model="store.controls.animation" :options="animationOptions" />
     </ZtudioField>
+
+    <div class="pt-2 border-t border-border space-y-3">
+      <span class="font-mono text-[11px] uppercase text-muted-foreground">
+        {{ $t('highlight.heading') }}
+      </span>
+
+      <ZtudioField :label="$t('highlight.toggle')">
+        <label class="flex items-center gap-2.5 text-sm py-1.5 select-none">
+          <Switch v-model="store.controls.highlightWord" /> {{ $t('highlight.toggleHint') }}
+        </label>
+      </ZtudioField>
+
+      <div v-if="store.controls.highlightWord" class="grid grid-cols-2 gap-3">
+        <ZtudioField :label="$t('highlight.colour')">
+          <input
+            v-model="store.controls.highlightColor"
+            type="color"
+            class="h-9 w-full cursor-pointer rounded-md border border-border bg-background p-1"
+          />
+        </ZtudioField>
+        <ZtudioField :label="$t('highlight.style')">
+          <ZtudioSelectField
+            v-model="store.controls.highlightStyle"
+            :options="highlightStyleOptions"
+          />
+        </ZtudioField>
+      </div>
+
+      <p v-if="store.controls.highlightWord" class="text-xs text-muted-foreground">
+        {{ $t('highlight.hint') }}
+      </p>
+    </div>
 
     <div class="pt-2 border-t border-border space-y-3">
       <span class="font-mono text-[11px] uppercase text-muted-foreground">

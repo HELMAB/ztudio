@@ -221,6 +221,16 @@
     "typewriter": "Typewriter",
     "wordByWord": "Word by word"
   },
+  "highlight": {
+    "heading": "Word highlight",
+    "toggle": "Highlight spoken word",
+    "toggleHint": "Karaoke-style active word",
+    "colour": "Highlight colour",
+    "style": "Highlight style",
+    "styleText": "Colour the word",
+    "styleFill": "Filled pill",
+    "hint": "Each word lights up as it's spoken, timed evenly across the caption's duration."
+  },
   "overlay": {
     "heading": "Scene overlay",
     "hint": "Animated particles fill the whole frame. They sit behind captions, and enabling one makes the export encode every frame (slower, larger file).",

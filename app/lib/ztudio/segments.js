@@ -1,4 +1,5 @@
 import { ANIM_FRAME_STEP, MAX_FRAME_DUR } from './config'
+import { wordBoundaryTimes } from './srt'
 
 // Sample [start, end] at a fixed step so animated stretches encode smoothly,
 // keeping every point strictly inside the (lo, hi) window.
@@ -22,6 +23,7 @@ export function buildSegments(
   keyframeTimes = [],
   imageTimes = [],
   overlayActive = false,
+  highlightWords = false,
 ) {
   const pts = new Set([from, to])
   const animated = animType && animType !== 'none' && animDur > 0
@@ -54,6 +56,15 @@ export function buildSegments(
       const mid = (cue.start + cue.end) / 2
       densify(pts, cue.start, Math.min(cue.start + animDur, mid), ANIM_FRAME_STEP, from, to)
       densify(pts, Math.max(cue.end - animDur, mid), cue.end, ANIM_FRAME_STEP, from, to)
+    }
+    // Karaoke highlight advances at each word; a boundary per word is enough since
+    // the highlight is static between words (no need for full 30fps densifying).
+    if (highlightWords) {
+      for (const wt of wordBoundaryTimes(cue)) {
+        if (wt > from && wt < to) {
+          pts.add(+wt.toFixed(3))
+        }
+      }
     }
   }
 

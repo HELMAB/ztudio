@@ -1,6 +1,6 @@
 import { GREEN } from './config'
 import { applyKeyframes, imageFramingAt } from './keyframes'
-import { cueAt } from './srt'
+import { activeWordIndex, cueAt } from './srt'
 import { clipCrop, effectFilter, imageAt } from './images'
 import { drawOverlay } from './overlays'
 
@@ -126,7 +126,50 @@ export function captionCenter(w, h, text, style) {
   }
 }
 
-function drawCaption(ctx, w, h, text, style, anim) {
+// Draw caption lines word-by-word, emphasising the currently-spoken word
+// (karaoke highlight). Each line is laid out centred by measuring its words, then
+// the active word is either recoloured ('text' mode) or given a filled pill
+// behind it ('fill' mode). `highlight` is { index, color, mode }; word indices run
+// in reading order across all lines so they match activeWordIndex.
+function drawHighlightedLines(ctx, lines, geom, style, highlight) {
+  const { fontPx, lineH, first, w, sw } = geom
+  const spaceW = ctx.measureText(' ').width
+  let wordIdx = 0
+  for (let i = 0; i < lines.length; i++) {
+    const y = first + i * lineH
+    const words = lines[i] ? lines[i].split(/\s+/).filter(Boolean) : []
+    const widths = words.map(word => ctx.measureText(word).width)
+    const lineW = widths.reduce((a, b) => a + b, 0) + spaceW * Math.max(0, words.length - 1)
+    let x = w / 2 - lineW / 2
+    for (let j = 0; j < words.length; j++) {
+      const ww = widths[j]
+      const active = wordIdx === highlight.index
+
+      if (active && highlight.mode === 'fill') {
+        const padX = fontPx * 0.18
+        const pillH = fontPx * 1.18
+        const r = pillH * 0.22
+        ctx.save()
+        ctx.fillStyle = highlight.color
+        roundRectPath(ctx, x - padX, y - pillH / 2, ww + 2 * padX, pillH, r)
+        ctx.fill()
+        ctx.restore()
+      }
+
+      if (sw > 0.5) {
+        ctx.strokeStyle = style.strokeColor
+        ctx.strokeText(words[j], x, y)
+      }
+      ctx.fillStyle = active && highlight.mode === 'text' ? highlight.color : style.fill
+      ctx.fillText(words[j], x, y)
+
+      x += ww + spaceW
+      wordIdx++
+    }
+  }
+}
+
+function drawCaption(ctx, w, h, text, style, anim, highlight) {
   if (!text) {
     return
   }
@@ -141,7 +184,10 @@ function drawCaption(ctx, w, h, text, style, anim) {
   ctx.textBaseline = 'middle'
   ctx.lineJoin = 'round'
 
-  const isReveal = anim && (anim.type === 'typewriter' || anim.type === 'wordByWord')
+  // Karaoke highlight shows the full caption (so the reveal animations don't fight
+  // it) and colours the spoken word itself; block transforms still apply.
+  const isReveal =
+    !highlight && anim && (anim.type === 'typewriter' || anim.type === 'wordByWord')
   const displayLines = isReveal ? revealLines(lines, anim.type, anim.reveal) : lines
 
   ctx.save()
@@ -199,15 +245,19 @@ function drawCaption(ctx, w, h, text, style, anim) {
   const sw = fontPx * style.strokePct
   ctx.lineWidth = sw
 
-  for (let i = 0; i < displayLines.length; i++) {
-    const y = first + i * lineH
-    const x = w / 2 - ctx.measureText(displayLines[i]).width / 2
-    if (sw > 0.5) {
-      ctx.strokeStyle = style.strokeColor
-      ctx.strokeText(displayLines[i], x, y)
+  if (highlight) {
+    drawHighlightedLines(ctx, displayLines, { fontPx, lineH, first, w, sw }, style, highlight)
+  } else {
+    for (let i = 0; i < displayLines.length; i++) {
+      const y = first + i * lineH
+      const x = w / 2 - ctx.measureText(displayLines[i]).width / 2
+      if (sw > 0.5) {
+        ctx.strokeStyle = style.strokeColor
+        ctx.strokeText(displayLines[i], x, y)
+      }
+      ctx.fillStyle = style.fill
+      ctx.fillText(displayLines[i], x, y)
     }
-    ctx.fillStyle = style.fill
-    ctx.fillText(displayLines[i], x, y)
   }
 
   ctx.restore()
@@ -267,5 +317,13 @@ export function drawFrame(ctx, w, h, t, { images, cues, style, keyframes }) {
   drawOverlay(ctx, w, h, t, style)
 
   const cue = cueAt(t, cues)
-  drawCaption(ctx, w, h, cue ? cue.text : '', style, captionAnim(t, cue, style))
+  // Karaoke highlight: which word is spoken right now, plus its colour/style.
+  let highlight = null
+  if (cue && style.highlightWord) {
+    const index = activeWordIndex(t, cue)
+    if (index >= 0) {
+      highlight = { index, color: style.highlightColor, mode: style.highlightStyle }
+    }
+  }
+  drawCaption(ctx, w, h, cue ? cue.text : '', style, captionAnim(t, cue, style), highlight)
 }
