@@ -13,7 +13,12 @@ const resolutionOptions = computed(() =>
 
 <template>
   <aside class="flex flex-col min-h-0 bg-background overflow-y-auto lg:overflow-y-hidden">
-    <div class="shrink-0 p-4 space-y-4 border-b border-border">
+    <!-- On desktop this section scrolls on its own (the panel height is fixed), so
+         the controls never clip as more are added; on mobile the whole aside
+         scrolls. -->
+    <div
+      class="max-lg:shrink-0 lg:flex-1 lg:min-h-0 lg:overflow-y-auto p-4 space-y-4 border-b border-border"
+    >
       <!-- Redundant on mobile: the bottom tab bar already labels this section. -->
       <h2
         class="hidden lg:flex items-center gap-2 font-mono text-[11px] uppercase text-muted-foreground"
@@ -33,7 +38,7 @@ const resolutionOptions = computed(() =>
           <TabsTrigger value="caption">{{ $t('media.tabCaption') }}</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="audio" class="pt-4">
+        <TabsContent value="audio" class="space-y-4 pt-4">
           <ZtudioMediaUploader
             accept="audio/*"
             :title="$t('media.audio')"
@@ -43,6 +48,7 @@ const resolutionOptions = computed(() =>
             @select="store.loadAudio($event)"
             @clear="store.loadAudio(null)"
           />
+          <ZtudioAudioControls />
         </TabsContent>
 
         <TabsContent value="image" class="pt-4">
@@ -74,6 +80,6 @@ const resolutionOptions = computed(() =>
 
       <ZtudioReadinessPills />
     </div>
-    <ZtudioActivityLog class="h-64 shrink-0 lg:h-auto lg:flex-1 lg:min-h-0" />
+    <ZtudioActivityLog class="h-64 shrink-0 lg:h-80" />
   </aside>
 </template>

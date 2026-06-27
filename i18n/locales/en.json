@@ -33,6 +33,19 @@
     "dropHint": "Drop a file here or click to browse",
     "clear": "Remove file"
   },
+  "audio": {
+    "voiceVolume": "Voice volume",
+    "fadeIn": "Fade in",
+    "fadeOut": "Fade out",
+    "music": "Background music — optional",
+    "musicHint": "Plays under the voice. Loops to fill the video and ducks while the voice talks.",
+    "musicVolume": "Music volume",
+    "loop": "Loop music",
+    "loopHint": "Repeat to fill the video",
+    "ducking": "Auto-duck",
+    "duckingHint": "Lower music under the voice",
+    "duckAmount": "Duck amount"
+  },
   "activity": {
     "heading": "Activity"
   },
@@ -231,6 +244,8 @@
   "pill": {
     "noAudio": "no audio",
     "audio": "audio {time}",
+    "noMusic": "no music",
+    "music": "music {time}",
     "noImage": "no image",
     "image": "image {dimensions}",
     "images": "{count} images",

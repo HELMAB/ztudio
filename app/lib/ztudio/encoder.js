@@ -103,8 +103,7 @@ export async function pickPipeline(MB, width, height) {
 }
 
 export async function generateFast(MB, pipe, w, h, dur, ctx2) {
-  const { audioBuffer, cues, style, images, keyframes, onProgress, onStatus, log, isCancelled } =
-    ctx2
+  const { mixedAudio, cues, style, images, keyframes, onProgress, onStatus, log, isCancelled } = ctx2
   // Trim window in absolute media time; defaults to the whole clip.
   const from = ctx2.from || 0
   const to = ctx2.to != null ? ctx2.to : from + dur
@@ -154,7 +153,8 @@ export async function generateFast(MB, pipe, w, h, dur, ctx2) {
   }
 
   onStatus('Adding audio…')
-  await audioSource.add(sliceAudioBuffer(audioBuffer, from, to))
+  // mixedAudio already spans [from, to] with voice+music mixed down.
+  await audioSource.add(mixedAudio)
   onStatus('Finalizing…')
   await output.finalize()
 
@@ -170,8 +170,7 @@ export async function generateFast(MB, pipe, w, h, dur, ctx2) {
 }
 
 export async function generateRealtime(w, h, dur, ctx2) {
-  const { audioBuffer, cues, style, images, keyframes, onProgress, onStatus, log, isCancelled } =
-    ctx2
+  const { mixedAudio, cues, style, images, keyframes, onProgress, onStatus, log, isCancelled } = ctx2
 
   const from = ctx2.from || 0
 
@@ -191,7 +190,8 @@ export async function generateRealtime(w, h, dur, ctx2) {
   const ac = new AC()
   await ac.resume()
   const src = ac.createBufferSource()
-  src.buffer = audioBuffer
+  // mixedAudio already spans [from, to], so it plays from its own time 0.
+  src.buffer = mixedAudio
   const dest = ac.createMediaStreamDestination()
   src.connect(dest)
 
@@ -212,7 +212,7 @@ export async function generateRealtime(w, h, dur, ctx2) {
   const t0 = performance.now()
   rec.start(100)
   const startAt = ac.currentTime
-  src.start(0, from, dur)
+  src.start(0, 0, dur)
   log('Recording in real time…')
 
   await new Promise(res => {

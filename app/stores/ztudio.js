@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { DEFAULT_STYLE, KHMER_FONT, MAX_AUDIO_SEC, PRESETS } from '@/lib/ztudio/config'
+import { AUDIO_DEFAULTS, renderMix } from '@/lib/ztudio/audio'
 import { KHMER_FONTS } from '@/lib/ztudio/khmer-fonts'
 import { captionAt, parseSRT } from '@/lib/ztudio/srt'
 import { imageAt } from '@/lib/ztudio/images'
@@ -34,6 +35,13 @@ export const useZtudioStore = defineStore('ztudio', () => {
   const { entries: logEntries, log } = useActivityLog()
 
   const audioBuffer = ref(null)
+  // Optional background-music bed mixed under the voice (see `audio` controls and
+  // renderMix). Held decoded like audioBuffer; not part of undo history.
+  const musicBuffer = ref(null)
+  const musicName = ref('')
+  // Audio mixing controls: voice level + fades, music level + fades + loop, and
+  // auto-ducking (music dips while the voice talks). Drives both preview and export.
+  const audio = reactive({ ...AUDIO_DEFAULTS })
   // The image track: a sorted array of slideshow clips, each with its own time
   // range and framing. Replaces the former single image.
   const images = ref([])
@@ -121,6 +129,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
   let playRaf = null
   let playCtx = null
   let playSource = null
+  let playMusicSource = null
   let playStartClock = 0
   let playStartOffset = 0
 
@@ -199,6 +208,12 @@ export const useZtudioStore = defineStore('ztudio', () => {
       ? { ok: true, text: t('pill.audio', { time: fmt(audioBuffer.value.duration) }) }
       : { ok: false, text: t('pill.noAudio') },
   )
+  const musicPill = computed(() =>
+    musicBuffer.value
+      ? { ok: true, text: t('pill.music', { time: fmt(musicBuffer.value.duration) }) }
+      : { ok: false, text: t('pill.noMusic') },
+  )
+  const hasMusic = computed(() => !!musicBuffer.value)
   const imagePill = computed(() =>
     images.value.length
       ? { ok: true, text: t('pill.images', { count: images.value.length }) }
@@ -527,6 +542,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
   function docSnapshot() {
     return {
       controls: { ...controls },
+      audio: { ...audio },
       cues: cues.value.map(c => ({ ...c })),
       keyframes: keyframes.value.map(k => ({ ...k, values: { ...k.values } })),
       images: images.value.map(stripBitmap),
@@ -548,6 +564,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     const ctrl = keyframes.value.length ? stripOffsets(controls) : { ...controls }
     return JSON.stringify({
       ctrl,
+      audio: { ...audio },
       cues: cues.value,
       keyframes: keyframes.value,
       images: images.value.map(stripFramingIfKeyed),
@@ -614,6 +631,9 @@ export const useZtudioStore = defineStore('ztudio', () => {
     applyingPreset = true
 
     Object.assign(controls, snap.controls)
+    if (snap.audio) {
+      Object.assign(audio, snap.audio)
+    }
     cues.value = snap.cues.map(c => ({ ...c }))
     keyframes.value = snap.keyframes.map(k => ({ ...k, values: { ...k.values } }))
     images.value = snap.images
@@ -723,6 +743,37 @@ export const useZtudioStore = defineStore('ztudio', () => {
       clampScrub()
       redraw()
       maybeReady()
+    }
+    return true
+  }
+
+  async function loadMusic(file) {
+    if (!file) {
+      musicBuffer.value = null
+      musicName.value = ''
+      redraw()
+      return true
+    }
+    setStatus('status.decoding')
+    try {
+      const buf = await decodeAudioFile(file)
+      if (buf.duration > MAX_AUDIO_SEC) {
+        musicBuffer.value = null
+        setStatus('status.overLimit', { duration: fmt(buf.duration) })
+        log(`Rejected music: ${buf.duration.toFixed(1)}s`)
+        return false
+      }
+      musicBuffer.value = buf
+      musicName.value = file.name || 'music'
+      maybeReady()
+      log(`Music: ${buf.duration.toFixed(2)}s, ${buf.numberOfChannels}ch, ${buf.sampleRate}Hz`)
+    } catch (err) {
+      musicBuffer.value = null
+      setStatus('status.decodeFailed')
+      log('Music decode error: ' + (err?.message || err))
+      return false
+    } finally {
+      redraw()
     }
     return true
   }
@@ -1056,8 +1107,25 @@ export const useZtudioStore = defineStore('ztudio', () => {
         )
       }
 
+      // Pre-mix voice + music (gain, fades, loop, ducking) into one buffer spanning
+      // the trim window, so both encode paths just mux a finished audio track.
+      setStatusRaw('Mixing audio…')
+      const mixedAudio = await renderMix({
+        voice: audioBuffer.value,
+        music: musicBuffer.value,
+        from,
+        to,
+        ...audio,
+      })
+      if (musicBuffer.value) {
+        log(
+          `Audio mix: voice ${audio.voiceGain.toFixed(2)}× + music ${audio.musicGain.toFixed(2)}×` +
+            `${audio.ducking ? ' (ducked)' : ''}${audio.musicLoop ? ' (looped)' : ''}.`,
+        )
+      }
+
       const renderCtx = {
-        audioBuffer: audioBuffer.value,
+        mixedAudio,
         from,
         to,
         cues: cues.value,
@@ -1166,19 +1234,23 @@ export const useZtudioStore = defineStore('ztudio', () => {
   }
 
   function stopPlaybackAudio() {
-    if (playSource) {
-      try {
-        playSource.stop()
-      } catch {
-        /* already stopped */
+    for (const ref of ['playSource', 'playMusicSource']) {
+      const node = ref === 'playSource' ? playSource : playMusicSource
+      if (node) {
+        try {
+          node.stop()
+        } catch {
+          /* already stopped */
+        }
+        try {
+          node.disconnect()
+        } catch {
+          /* not connected */
+        }
       }
-      try {
-        playSource.disconnect()
-      } catch {
-        /* not connected */
-      }
-      playSource = null
     }
+    playSource = null
+    playMusicSource = null
   }
 
   function pause() {
@@ -1229,10 +1301,32 @@ export const useZtudioStore = defineStore('ztudio', () => {
         return
       }
 
+      // Voice through a gain node so the preview reflects the mix level. Fades and
+      // ducking are render-time shaping (they depend on the absolute window) and
+      // are not reproduced here, where playback can start at any scrubbed point.
       playSource = ctx.createBufferSource()
       playSource.buffer = audioBuffer.value
-      playSource.connect(ctx.destination)
+      const voiceGain = ctx.createGain()
+      voiceGain.gain.value = audio.voiceGain
+      playSource.connect(voiceGain).connect(ctx.destination)
       playSource.start(0, playStartOffset)
+
+      // Background-music bed, aligned to the timeline so it stays in sync with the
+      // voice as you scrub: offset into the loop by how far past `from` we start.
+      if (musicBuffer.value) {
+        const m = ctx.createBufferSource()
+        m.buffer = musicBuffer.value
+        m.loop = audio.musicLoop
+        const mGain = ctx.createGain()
+        mGain.gain.value = audio.musicGain
+        m.connect(mGain).connect(ctx.destination)
+        const into = Math.max(0, playStartOffset - from)
+        const offset = audio.musicLoop ? into % musicBuffer.value.duration : into
+        if (audio.musicLoop || offset < musicBuffer.value.duration) {
+          m.start(0, offset)
+          playMusicSource = m
+        }
+      }
       playStartClock = ctx.currentTime
     } else {
       playStartClock = performance.now() / 1000
@@ -1359,13 +1453,13 @@ export const useZtudioStore = defineStore('ztudio', () => {
 
   async function loadDemo() {
     try {
-      const [audio, image, srt] = await Promise.all([
+      const [audioBlob, image, srt] = await Promise.all([
         fetch('/demo/sound.mp3').then(r => r.blob()),
         fetch('/demo/image.png').then(r => r.blob()),
         fetch('/demo/caption.srt').then(r => r.blob()),
       ])
       // Audio first so the demo image clip can span the full known duration.
-      await loadAudio(audio)
+      await loadAudio(audioBlob)
       await Promise.all([addImages([image]), loadSrt(srt)])
       log('Loaded demo media.')
     } catch (err) {
@@ -1429,7 +1523,11 @@ export const useZtudioStore = defineStore('ztudio', () => {
     imageZoomLabel,
     timeLabel,
     style,
+    audio,
     audioPill,
+    musicPill,
+    hasMusic,
+    musicName,
     imagePill,
     srtPill,
     fontPill,
@@ -1462,6 +1560,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     moveKeyframe,
     applyPreset,
     loadAudio,
+    loadMusic,
     loadSrt,
     loadFont,
     loadFonts,
