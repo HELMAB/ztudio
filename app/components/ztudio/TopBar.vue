@@ -54,6 +54,19 @@ const DOT_CLASS = {
       <span class="font-mono text-[11px] text-muted-foreground hidden xl:inline">{{
         store.status
       }}</span>
+      <span
+        v-if="store.autosaveStatus !== 'idle'"
+        class="hidden font-mono text-[10px] lg:inline"
+        :class="store.autosaveStatus === 'error' ? 'text-amber-600' : 'text-muted-foreground'"
+      >
+        {{
+          store.autosaveStatus === 'saving'
+            ? $t('autosave.saving')
+            : store.autosaveStatus === 'error'
+              ? $t('autosave.error')
+              : $t('autosave.saved')
+        }}
+      </span>
       <Progress
         v-if="store.showProgress"
         :model-value="store.progressPercent"

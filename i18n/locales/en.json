@@ -169,6 +169,17 @@
     "title": "Drop to import",
     "hint": "Audio, images, .srt, and fonts — sorted automatically"
   },
+  "autosave": {
+    "saving": "Saving…",
+    "saved": "Saved",
+    "error": "Save failed"
+  },
+  "restore": {
+    "title": "Resume your last project?",
+    "body": "We found a project from your previous session — media, captions, and styling. Resume it, or start fresh.",
+    "resume": "Resume",
+    "fresh": "Start fresh"
+  },
   "timeline": {
     "zoomOut": "Zoom out",
     "zoomIn": "Zoom in",

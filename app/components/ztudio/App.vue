@@ -144,6 +144,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
     <ZtudioShortcutsOverlay />
     <ZtudioContextMenu />
     <ZtudioDropZone />
+    <ZtudioRestoreDialog />
 
     <Transition
       enter-active-class="transition-opacity duration-300"

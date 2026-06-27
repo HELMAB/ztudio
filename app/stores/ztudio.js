@@ -25,6 +25,15 @@ import {
   getAllFonts as idbGetAllFonts,
   putFont as idbPutFont,
 } from '@/lib/ztudio/font-store'
+import {
+  allBlobKeys,
+  clearProject as idbClearProject,
+  deleteBlob,
+  getBlob,
+  loadDoc,
+  putBlob,
+  saveDoc,
+} from '@/lib/ztudio/project-store'
 import { useActivityLog } from '@/composables/useActivityLog'
 
 const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
@@ -145,6 +154,18 @@ export const useZtudioStore = defineStore('ztudio', () => {
   // Decoded bitmaps kept by clip id for the whole session so undo/redo can
   // restore a removed image clip without re-decoding the file.
   const bitmapRegistry = new Map()
+  // Raw encoded media kept for persistence (the decoded AudioBuffer/ImageBitmap
+  // can't be re-serialised, so we stash the original bytes to re-decode on resume).
+  let rawAudio = null
+  let rawMusic = null
+  const imageBlobs = new Map() // image clip id -> Blob
+  const persistedBlobs = new Map() // IDB key -> the blob currently written, to skip rewrites
+  // Autosave: 'idle' until the first save, then 'saving' | 'saved' | 'error'.
+  const autosaveStatus = ref('idle')
+  // A previously-saved project found on launch, awaiting the user's Resume/Discard.
+  const pendingRestore = ref(null)
+  // True during init/restore so those bulk changes don't trigger an autosave.
+  let initializing = true
   let playRaf = null
   let playCtx = null
   let playSource = null
@@ -750,6 +771,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
   async function loadAudio(file) {
     if (!file) {
       audioBuffer.value = null
+      rawAudio = null
       trimStart.value = 0
       trimEnd.value = 0
       maybeReady()
@@ -765,6 +787,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
         return false
       }
       audioBuffer.value = buf
+      rawAudio = file
       trimStart.value = 0
       trimEnd.value = buf.duration
       log(`Audio: ${buf.duration.toFixed(2)}s, ${buf.numberOfChannels}ch, ${buf.sampleRate}Hz`)
@@ -785,6 +808,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     if (!file) {
       musicBuffer.value = null
       musicName.value = ''
+      rawMusic = null
       redraw()
       return true
     }
@@ -798,6 +822,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
         return false
       }
       musicBuffer.value = buf
+      rawMusic = file
       musicName.value = file.name || 'music'
       maybeReady()
       log(`Music: ${buf.duration.toFixed(2)}s, ${buf.numberOfChannels}ch, ${buf.sampleRate}Hz`)
@@ -855,6 +880,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       effect: 'vivid',
     }
     bitmapRegistry.set(clip.id, bitmap)
+    imageBlobs.set(clip.id, file)
     images.value.push(clip)
     sortImages()
     selectedImageId.value = clip.id
@@ -879,6 +905,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
 
   function clearImages() {
     images.value = []
+    imageBlobs.clear()
     selectedImageId.value = null
     dragTarget.value = 'caption'
     redraw()
@@ -955,6 +982,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
 
   function removeImage(id) {
     images.value = images.value.filter(im => im.id !== id)
+    imageBlobs.delete(id)
     if (selectedImageId.value === id) {
       selectedImageId.value = images.value.length ? images.value[0].id : null
     }
@@ -982,6 +1010,9 @@ export const useZtudioStore = defineStore('ztudio', () => {
     const right = { ...im, id: ++imageCounter, start: t }
     im.end = t
     bitmapRegistry.set(right.id, im.bitmap)
+    if (imageBlobs.has(im.id)) {
+      imageBlobs.set(right.id, imageBlobs.get(im.id))
+    }
     images.value.push(right)
     sortImages()
     selectedImageId.value = right.id
@@ -1005,6 +1036,9 @@ export const useZtudioStore = defineStore('ztudio', () => {
     }
     const copy = { ...im, id: ++imageCounter, start: r3(start), end: r3(end) }
     bitmapRegistry.set(copy.id, im.bitmap)
+    if (imageBlobs.has(im.id)) {
+      imageBlobs.set(copy.id, imageBlobs.get(im.id))
+    }
     images.value.push(copy)
     sortImages()
     selectedImageId.value = copy.id
@@ -1793,14 +1827,207 @@ export const useZtudioStore = defineStore('ztudio', () => {
     }
   }
 
+  // ---- Project autosave / resume --------------------------------------------
+  // The serialisable project: edit state + which media is present (the bytes live
+  // in IndexedDB under stable keys: 'audio', 'music', and 'img:<id>').
+  function projectDoc() {
+    return {
+      v: 1,
+      controls: { ...controls },
+      audio: { ...audio },
+      resolution: resolution.value,
+      preset: preset.value,
+      trimStart: trimStart.value,
+      trimEnd: trimEnd.value,
+      cues: cues.value.map(c => ({ ...c })),
+      keyframes: keyframes.value.map(k => ({ ...k, values: { ...k.values } })),
+      images: images.value.map(stripBitmap),
+      hasAudio: !!rawAudio,
+      hasMusic: !!rawMusic,
+      musicName: musicName.value,
+      selectedImageId: selectedImageId.value,
+    }
+  }
+
+  // Write a blob only when it actually changed (ref compare), so large unchanged
+  // media isn't rewritten on every keystroke-debounced save.
+  async function syncBlob(key, blob) {
+    if (persistedBlobs.get(key) === blob) {
+      return
+    }
+    await putBlob(key, blob)
+    persistedBlobs.set(key, blob)
+  }
+
+  async function saveProject() {
+    autosaveStatus.value = 'saving'
+    try {
+      const desired = new Set()
+      if (rawAudio) {
+        await syncBlob('audio', rawAudio)
+        desired.add('audio')
+      }
+      if (rawMusic) {
+        await syncBlob('music', rawMusic)
+        desired.add('music')
+      }
+      for (const im of images.value) {
+        const blob = imageBlobs.get(im.id)
+        if (blob) {
+          const key = 'img:' + im.id
+          await syncBlob(key, blob)
+          desired.add(key)
+        }
+      }
+      // Drop blobs no longer referenced (removed media / cleared clips).
+      for (const key of await allBlobKeys()) {
+        if (!desired.has(key)) {
+          await deleteBlob(key)
+          persistedBlobs.delete(key)
+        }
+      }
+      await saveDoc(projectDoc())
+      autosaveStatus.value = 'saved'
+    } catch (err) {
+      autosaveStatus.value = 'error'
+      log('Autosave failed: ' + (err?.message || err))
+    }
+  }
+
+  let saveTimer = null
+  watch(
+    () => [historyKey.value, audioBuffer.value, musicBuffer.value, musicName.value],
+    () => {
+      if (initializing || restoring) {
+        return
+      }
+      if (saveTimer) {
+        clearTimeout(saveTimer)
+      }
+      autosaveStatus.value = 'saving'
+      saveTimer = setTimeout(() => {
+        saveTimer = null
+        saveProject()
+      }, 1000)
+    },
+  )
+
+  // Rehydrate a saved project: re-decode media from IndexedDB, then apply the doc.
+  async function loadProject(doc) {
+    restoring = true
+    loadingKeyframe = true
+    applyingPreset = true
+    try {
+      if (doc.hasAudio) {
+        const blob = await getBlob('audio')
+        if (blob) {
+          audioBuffer.value = await decodeAudioFile(blob)
+          rawAudio = blob
+          persistedBlobs.set('audio', blob)
+        }
+      }
+      if (doc.hasMusic) {
+        const blob = await getBlob('music')
+        if (blob) {
+          musicBuffer.value = await decodeAudioFile(blob)
+          rawMusic = blob
+          musicName.value = doc.musicName || 'music'
+          persistedBlobs.set('music', blob)
+        }
+      }
+      const restored = []
+      let maxId = 0
+      for (const meta of doc.images || []) {
+        try {
+          const blob = await getBlob('img:' + meta.id)
+          if (!blob) {
+            continue
+          }
+          const bitmap = await createImageBitmap(blob)
+          bitmapRegistry.set(meta.id, bitmap)
+          imageBlobs.set(meta.id, blob)
+          persistedBlobs.set('img:' + meta.id, blob)
+          restored.push({ ...meta, bitmap })
+          maxId = Math.max(maxId, meta.id)
+        } catch (err) {
+          log('Could not restore an image: ' + (err?.message || err))
+        }
+      }
+      images.value = restored
+      imageCounter = Math.max(imageCounter, maxId)
+
+      cues.value = (doc.cues || []).map(c => ({ ...c }))
+      keyframes.value = (doc.keyframes || []).map(k => ({ ...k, values: { ...k.values } }))
+      kfCounter = keyframes.value.reduce((m, k) => Math.max(m, k.id), kfCounter)
+      Object.assign(controls, doc.controls || {})
+      Object.assign(audio, doc.audio || {})
+      resolution.value = doc.resolution || resolution.value
+      preset.value = doc.preset || 'custom'
+      trimStart.value = doc.trimStart ?? 0
+      trimEnd.value = doc.trimEnd ?? (audioBuffer.value ? audioBuffer.value.duration : 0)
+      selectedImageId.value = images.value.some(im => im.id === doc.selectedImageId)
+        ? doc.selectedImageId
+        : (images.value[0]?.id ?? null)
+      selectedCueIndex.value = null
+      if (!images.value.length) {
+        dragTarget.value = 'caption'
+      }
+      log('Restored your last project.')
+    } catch (err) {
+      log('Restore failed: ' + (err?.message || err))
+    } finally {
+      nextTick(() => {
+        restoring = false
+        loadingKeyframe = false
+        applyingPreset = false
+      })
+      scrub.value = 0
+      redraw()
+      maybeReady()
+    }
+  }
+
+  async function restoreProject() {
+    const doc = pendingRestore.value
+    pendingRestore.value = null
+    if (doc) {
+      await loadProject(doc)
+      saveProject()
+    }
+  }
+
+  async function discardRestore() {
+    pendingRestore.value = null
+    initializing = true
+    try {
+      await idbClearProject()
+      persistedBlobs.clear()
+      await loadDemo()
+    } finally {
+      initializing = false
+    }
+  }
+
   async function init() {
     await ensureDefaultFonts()
     applyPreset('clean')
     await restoreCustomFonts()
-    await loadDemo()
+    // Offer to resume a saved project; otherwise fall back to the demo.
+    let saved = null
+    try {
+      saved = await loadDoc()
+    } catch {
+      /* persistence unavailable */
+    }
+    if (saved && (saved.hasAudio || (saved.images && saved.images.length))) {
+      pendingRestore.value = saved
+    } else {
+      await loadDemo()
+    }
     clampScrub()
     maybeReady()
     beginHistory()
+    initializing = false
     await runEnvCheck()
   }
 
@@ -1833,6 +2060,10 @@ export const useZtudioStore = defineStore('ztudio', () => {
     snapEnabled,
     snapGuide,
     contextMenu,
+    autosaveStatus,
+    pendingRestore,
+    restoreProject,
+    discardRestore,
     selectedCueIndex,
     controls,
     busy,
