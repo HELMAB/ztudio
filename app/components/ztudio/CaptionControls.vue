@@ -120,5 +120,10 @@ function onFont(files) {
         <Checkbox v-model="store.controls.box" /> {{ $t('controls.boxBehindText') }}
       </label>
     </ZtudioField>
+
+    <div class="border-t border-border" />
+
+    <!-- Standalone title-text overlays, edited alongside the caption style. -->
+    <ZtudioTitleTextControls />
   </div>
 </template>

@@ -217,5 +217,11 @@ const pct = v => Math.round(v * 100) + '%'
     <p v-else class="text-xs text-muted-foreground">
       {{ $t('controls.noImagesHint') }}
     </p>
+
+    <div class="border-t border-border" />
+
+    <!-- Watermark / logo: a scene element pinned over every frame, independent of
+         the image clips above, so it always shows here. -->
+    <ZtudioLogoControls />
   </div>
 </template>

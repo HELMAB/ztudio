@@ -2038,7 +2038,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
   function selectText(id) {
     selectedTextId.value = id
     selectedCueIndex.value = null
-    inspectorTab.value = 'titles'
+    // Title overlays are edited in the Style tab now (the Titles tab was removed).
+    inspectorTab.value = 'style'
     const tx = texts.value.find(item => item.id === id)
     // Bring the title on screen so inspector edits are visible (WYSIWYG).
     if (tx && (scrub.value < tx.start || scrub.value >= tx.end)) {

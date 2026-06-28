@@ -1,19 +1,16 @@
 <script setup>
 import { computed } from 'vue'
-import { ImageIcon, PlusIcon, Trash2Icon, TypeIcon } from '@lucide/vue'
-import { LOGO_POSITION_OPTIONS, TEXT_ANCHOR_OPTIONS } from '@/lib/ztudio/config'
+import { PlusIcon, Trash2Icon, TypeIcon } from '@lucide/vue'
+import { TEXT_ANCHOR_OPTIONS } from '@/lib/ztudio/config'
 
 const store = useZtudioStore()
 const { t } = useI18n()
 
-const localize = options =>
-  computed(() => options.map(o => ({ value: o.value, label: t(o.labelKey) })))
-
-const logoPositionOptions = localize(LOGO_POSITION_OPTIONS)
-const anchorOptions = localize(TEXT_ANCHOR_OPTIONS)
+const anchorOptions = computed(() =>
+  TEXT_ANCHOR_OPTIONS.map(o => ({ value: o.value, label: t(o.labelKey) })),
+)
 
 const sel = computed(() => store.selectedText)
-const pct = v => Math.round(v * 100) + '%'
 
 // Match a title to one of the anchor presets (or '' when freely positioned), so
 // picking a preset snaps the centre while the sliders still allow fine tuning.
@@ -47,48 +44,6 @@ const snippet = tx => {
 
 <template>
   <div class="space-y-4">
-    <!-- Persistent watermark / logo -->
-    <ZtudioMediaUploader
-      accept="image/*"
-      :title="$t('logo.upload')"
-      :hint="$t('logo.hint')"
-      :icon="ImageIcon"
-      :ok="store.logoPill.ok"
-      :status="store.logoPill.text"
-      @select="store.loadLogo($event)"
-      @clear="store.loadLogo(null)"
-    />
-
-    <template v-if="store.hasLogo">
-      <ZtudioField :label="$t('logo.position')">
-        <ZtudioSelectField v-model="store.logo.position" :options="logoPositionOptions" />
-      </ZtudioField>
-
-      <div class="grid grid-cols-2 gap-3">
-        <ZtudioField :label="$t('logo.size')" :value="pct(store.logo.scalePct)">
-          <Slider
-            :model-value="[store.logo.scalePct]"
-            :min="0.05"
-            :max="0.5"
-            :step="0.01"
-            @update:model-value="store.logo.scalePct = $event[0]"
-          />
-        </ZtudioField>
-        <ZtudioField :label="$t('logo.opacity')" :value="pct(store.logo.opacity)">
-          <Slider
-            :model-value="[store.logo.opacity]"
-            :min="0.1"
-            :max="1"
-            :step="0.05"
-            @update:model-value="store.logo.opacity = $event[0]"
-          />
-        </ZtudioField>
-      </div>
-    </template>
-
-    <div class="border-t border-border" />
-
-    <!-- Title text overlays -->
     <div class="flex items-center justify-between">
       <span class="font-mono text-[11px] uppercase text-muted-foreground">
         {{ $t('textOverlay.heading') }}
