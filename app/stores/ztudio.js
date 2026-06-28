@@ -135,7 +135,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     offsetYPct: 0,
     box: false,
     animation: 'blur',
-    overlay: 'none',
+    overlay: 'leaves',
     overlayIntensity: 1,
     transition: 'none',
     transitionDuration: 0.5,
@@ -2092,6 +2092,11 @@ export const useZtudioStore = defineStore('ztudio', () => {
       await loadAudio(audioBlob)
       const logoFile = new File([logoBlob], 'ztudio-logo.svg', { type: 'image/svg+xml' })
       await Promise.all([addImages([image]), loadSrt(srt), loadLogo(logoFile)])
+      // Seed a default title overlay so the Title track isn't empty on first run.
+      if (!texts.value.length) {
+        addText()
+        selectedTextId.value = null
+      }
       log('Loaded demo media.')
     } catch (err) {
       log('Could not load demo media: ' + (err?.message || err))

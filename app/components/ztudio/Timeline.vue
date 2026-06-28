@@ -143,7 +143,7 @@ const titleClips = computed(() =>
     id: tx.id,
     start: tx.start,
     end: tx.end,
-    label: (tx.text || '').split('\n')[0],
+    label: (tx.text || '').split('\n')[0] || tr('textOverlay.untitled'),
   })),
 )
 const playheadLeft = computed(() => store.scrub * pxPerSecond.value)

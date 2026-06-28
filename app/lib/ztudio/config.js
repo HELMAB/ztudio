@@ -46,7 +46,7 @@ export const DEFAULT_STYLE = {
   bottomMarginPct: 0.09,
   animation: 'none',
   animDuration: ANIM_DURATION,
-  overlay: 'none',
+  overlay: 'leaves',
   overlayIntensity: 1,
   transition: 'none',
   transitionDuration: 0.5,
@@ -221,7 +221,7 @@ export const LOGO_POSITION_OPTIONS = [
 // a fresh logo shows for the whole video until its timeline clip is trimmed.
 export const LOGO_DEFAULTS = {
   position: 'topRight',
-  scalePct: 0.18,
+  scalePct: 0.10,
   opacity: 0.9,
   marginPct: 0.04,
   start: 0,
