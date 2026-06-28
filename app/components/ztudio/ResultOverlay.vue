@@ -8,6 +8,7 @@ const store = useZtudioStore()
   <Teleport to="body">
     <div
       v-if="store.result"
+      data-testid="result-overlay"
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       @click.self="store.dismissResult()"
     >

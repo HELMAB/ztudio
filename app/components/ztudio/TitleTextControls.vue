@@ -43,7 +43,7 @@ const snippet = tx => {
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div data-testid="title-controls" class="space-y-4">
     <div class="flex items-center justify-between">
       <span class="font-mono text-[11px] uppercase text-muted-foreground">
         {{ $t('textOverlay.heading') }}

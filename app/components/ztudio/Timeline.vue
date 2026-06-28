@@ -338,6 +338,7 @@ watch(
       <Button
         size="sm"
         variant="ghost"
+        data-testid="timeline-add-keyframe"
         class="h-6 text-[11px] text-muted-foreground"
         :title="$t('keyframe.addHint')"
         @click="store.addKeyframe()"

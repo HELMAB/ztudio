@@ -47,16 +47,31 @@ setup, so stubbing globals before `useZtudioStore()` is enough — no DOM needed
 logic paths. The encode/render/audio-mix paths (WebCodecs, canvas, OfflineAudioContext)
 are integration-level and not unit-tested — they're exercised by E2E instead.
 
-**E2E tests** use **Playwright** (Chromium) and live in `tests/e2e/*.spec.js`
-(`playwright.config.js` auto-starts `npm run dev` and uses a 1440×900 desktop viewport
-so `App.vue` renders `DesktopWorkspace`). Each test runs in a fresh context (empty
-IndexedDB), so the bundled demo media loads and the restore prompt never appears. The
-suite covers smoke + UI flows: boot, inspector tabs, cue-list view/edit, add-caption
-dialog, add-title, locale toggle, and playback. Tests target stable `data-testid`
-hooks (`export-button`, `preview-canvas`, `current-time`, `inspector`, `cue-list`,
-`cue-text`, `timeline-add-caption`/`-title`, `caption-dialog-*`, `locale-toggle`,
-`splash`) — prefer adding a `data-testid` over matching i18n text, and scope inspector
-tab queries to the `inspector` testid (the Media panel has its own Image/Caption tabs).
+**E2E tests** use **Playwright** (Chromium) and live in `tests/e2e/*.spec.js`, one file
+per feature area (boot/smoke, styling, animation, image+logo, titles, audio, media,
+transport, timeline, preview, history, export). `playwright.config.js` auto-starts
+`npm run dev` and uses a 1440×900 desktop viewport so `App.vue` renders
+`DesktopWorkspace`. Each test runs in a fresh context (empty IndexedDB), so the bundled
+demo media loads (incl. one seeded title) and the restore prompt never appears. The
+`export.spec.js` test drives the real WebCodecs encode end-to-end (mediabunny loads from
+a CDN at runtime, so that test needs network and gets a long timeout).
+
+How the tests assert: a **dev-only** Nuxt plugin (`app/plugins/expose-store.client.js`,
+guarded by `import.meta.dev`) puts the Pinia store on `window.__ztudio`, and
+`tests/e2e/helpers.js` reads it via `state(page, 'controls.fontSizePct')` etc. — so a
+slider/select/switch change is verified against real store state rather than the canvas.
+Helpers: `boot`, `state`, `field` (a control by its Field label), `selectOption`,
+`toggleSwitch`, `nudgeSlider` (keyboard), `inspectorTab`, and `DEMO` asset paths.
+
+Selector conventions: prefer a `data-testid` over matching i18n text. Existing hooks:
+`splash`, `inspector`, `export-button`, `preview-canvas`, `current-time`, `cue-list`,
+`cue-text`, `caption-dialog-*`, `locale-toggle`, `title-controls`,
+`timeline-add-caption`/`-title`/`-keyframe`, `result-overlay`/`-video`/`-download`.
+Gotchas: the Media panel has its own Audio/Image/Caption tabs (scope inspector tab
+queries to the `inspector` testid); the Style tab hosts BOTH caption and title controls
+(scope title queries to `title-controls`); reka Switches sit inside their `<label>`, so
+click the label hint text to toggle once; music-only controls (loop/ducking) render only
+after a music bed is loaded.
 
 Prettier: no semicolons, single quotes, width 100, trailing commas, no-parens arrow args. The codebase is **JavaScript, not TypeScript** (`components.json` has `typescript: false`); `tsconfig.json` only wires up Nuxt's generated configs.
 

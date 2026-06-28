@@ -9,6 +9,7 @@ const store = useZtudioStore()
     <div>
       <video
         :src="store.result.url"
+        data-testid="result-video"
         controls
         playsinline
         class="block w-full max-w-[260px] border border-border"
@@ -36,6 +37,7 @@ const store = useZtudioStore()
       <a
         :href="store.result.url"
         :download="$t('result.downloadName', { ext: store.result.ext })"
+        data-testid="result-download"
         class="inline-flex items-center gap-1.5 mt-2.5 font-semibold text-brand border-b border-brand pb-px"
       >
         <DownloadIcon class="size-4" />
