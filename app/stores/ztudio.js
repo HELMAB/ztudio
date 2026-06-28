@@ -199,6 +199,82 @@ export const useZtudioStore = defineStore('ztudio', () => {
     note: envState.value.noteKey ? t(envState.value.noteKey) : '',
   }))
   const isPlaying = ref(false)
+  // Loop the active play region (the trim window, or the whole clip when nothing
+  // is trimmed): when playback reaches the end it jumps back to the start instead
+  // of stopping. Used to review caption timing over and over.
+  const loopPlayback = ref(false)
+  // Preview-monitor volume (0..1) and mute. These shape only what you hear while
+  // previewing — they never touch the exported mix (that's the inspector's
+  // voiceGain/musicGain). Applied live during playback via a master gain node.
+  const previewVolume = ref(1)
+  const muted = ref(false)
+  const monitorGain = computed(() => (muted.value ? 0 : previewVolume.value))
+
+  // Desktop workspace layout: side-panel widths, timeline height, and whether the
+  // side panels are open. Resizable via drag handles and collapsible from the top
+  // bar; persisted to localStorage so the editor remembers your layout.
+  const LAYOUT_KEY = 'ztudio_layout'
+  const LAYOUT_DEFAULTS = {
+    mediaWidth: 288,
+    inspectorWidth: 320,
+    timelineHeight: 192,
+    mediaOpen: true,
+    inspectorOpen: true,
+  }
+  const LAYOUT_LIMITS = {
+    mediaWidth: [220, 480],
+    inspectorWidth: [260, 560],
+    timelineHeight: [120, 520],
+  }
+  const layout = reactive({ ...LAYOUT_DEFAULTS })
+
+  function loadLayout() {
+    if (typeof localStorage === 'undefined') {
+      return
+    }
+    try {
+      const saved = JSON.parse(localStorage.getItem(LAYOUT_KEY) || 'null')
+      if (saved && typeof saved === 'object') {
+        Object.assign(layout, LAYOUT_DEFAULTS, saved)
+      }
+    } catch {
+      /* ignore malformed/blocked storage */
+    }
+  }
+
+  function saveLayout() {
+    if (typeof localStorage === 'undefined') {
+      return
+    }
+    try {
+      localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout))
+    } catch {
+      /* storage full/blocked — layout just won't persist */
+    }
+  }
+
+  // Set a resizable dimension, clamped to its [min, max]. `commit` writes the new
+  // size to storage (pass false during a live drag, true on release).
+  function setPanelSize(key, value, commit = false) {
+    const limit = LAYOUT_LIMITS[key]
+    if (!limit) {
+      return
+    }
+    layout[key] = Math.min(Math.max(value, limit[0]), limit[1])
+    if (commit) {
+      saveLayout()
+    }
+  }
+
+  function toggleMediaPanel() {
+    layout.mediaOpen = !layout.mediaOpen
+    saveLayout()
+  }
+
+  function toggleInspectorPanel() {
+    layout.inspectorOpen = !layout.inspectorOpen
+    saveLayout()
+  }
 
   let cancelRequested = false
   let applyingPreset = false
@@ -228,6 +304,9 @@ export const useZtudioStore = defineStore('ztudio', () => {
   let playCtx = null
   let playSource = null
   let playMusicSource = null
+  // Master gain that both voice and music route through during playback, so the
+  // preview-monitor volume/mute can be applied (and updated live) in one place.
+  let playMasterGain = null
   let playStartClock = 0
   let playStartOffset = 0
 
@@ -1566,8 +1645,16 @@ export const useZtudioStore = defineStore('ztudio', () => {
         }
       }
     }
+    if (playMasterGain) {
+      try {
+        playMasterGain.disconnect()
+      } catch {
+        /* not connected */
+      }
+    }
     playSource = null
     playMusicSource = null
+    playMasterGain = null
   }
 
   function pause() {
@@ -1618,6 +1705,13 @@ export const useZtudioStore = defineStore('ztudio', () => {
         return
       }
 
+      // Master gain carries the preview-monitor volume/mute; voice and music both
+      // route through it, so a slider/mute change applies live (see the watcher).
+      const master = ctx.createGain()
+      master.gain.value = monitorGain.value
+      master.connect(ctx.destination)
+      playMasterGain = master
+
       // Voice through a gain node so the preview reflects the mix level. Fades and
       // ducking are render-time shaping (they depend on the absolute window) and
       // are not reproduced here, where playback can start at any scrubbed point.
@@ -1625,7 +1719,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       playSource.buffer = audioBuffer.value
       const voiceGain = ctx.createGain()
       voiceGain.gain.value = audio.voiceGain
-      playSource.connect(voiceGain).connect(ctx.destination)
+      playSource.connect(voiceGain).connect(master)
       playSource.start(0, playStartOffset)
 
       // Background-music bed, aligned to the timeline so it stays in sync with the
@@ -1636,7 +1730,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
         m.loop = audio.musicLoop
         const mGain = ctx.createGain()
         mGain.gain.value = audio.musicGain
-        m.connect(mGain).connect(ctx.destination)
+        m.connect(mGain).connect(master)
         const into = Math.max(0, playStartOffset - from)
         const offset = audio.musicLoop ? into % musicBuffer.value.duration : into
         if (audio.musicLoop || offset < musicBuffer.value.duration) {
@@ -1656,6 +1750,20 @@ export const useZtudioStore = defineStore('ztudio', () => {
       const now = audioBuffer.value && playCtx ? playCtx.currentTime : performance.now() / 1000
       const t = playStartOffset + (now - playStartClock)
       if (t >= dur) {
+        // Loop the play region instead of stopping, when the region is long
+        // enough to be worth replaying. Tear down the current audio/raf and
+        // restart from the region start.
+        if (loopPlayback.value && dur - from > 0.05) {
+          stopPlaybackAudio()
+          if (playRaf) {
+            cancelAnimationFrame(playRaf)
+            playRaf = null
+          }
+          isPlaying.value = false
+          scrub.value = from
+          play()
+          return
+        }
         scrub.value = dur
         pause()
         return
@@ -1673,6 +1781,18 @@ export const useZtudioStore = defineStore('ztudio', () => {
       play()
     }
   }
+
+  function toggleMute() {
+    muted.value = !muted.value
+  }
+
+  // Push monitor volume/mute changes to the live master gain so they take effect
+  // mid-playback without restarting the audio graph.
+  watch(monitorGain, g => {
+    if (playMasterGain && playCtx) {
+      playMasterGain.gain.value = g
+    }
+  })
 
   function seek(t) {
     pause()
@@ -2338,6 +2458,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
   }
 
   async function init() {
+    loadLayout()
     await ensureDefaultFonts()
     applyPreset('clean')
     await restoreCustomFonts()
@@ -2486,6 +2607,15 @@ export const useZtudioStore = defineStore('ztudio', () => {
     play,
     pause,
     togglePlay,
+    loopPlayback,
+    previewVolume,
+    muted,
+    toggleMute,
+    layout,
+    setPanelSize,
+    saveLayout,
+    toggleMediaPanel,
+    toggleInspectorPanel,
     seek,
     nudge,
     jumpCue,

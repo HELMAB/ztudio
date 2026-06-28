@@ -40,3 +40,61 @@ test('play advances the playhead and pause stops it', async ({ page }) => {
   await page.waitForTimeout(400)
   expect(await state(page, 'scrub')).toBeCloseTo(paused, 1)
 })
+
+test('loop button toggles loop playback', async ({ page }) => {
+  expect(await state(page, 'loopPlayback')).toBe(false)
+  await page.getByTestId('transport-loop').click()
+  await expect.poll(() => state(page, 'loopPlayback')).toBe(true)
+  await page.getByTestId('transport-loop').click()
+  await expect.poll(() => state(page, 'loopPlayback')).toBe(false)
+})
+
+test('the L key toggles loop playback', async ({ page }) => {
+  await page.locator('body').click()
+  await page.keyboard.press('l')
+  await expect.poll(() => state(page, 'loopPlayback')).toBe(true)
+  await page.keyboard.press('l')
+  await expect.poll(() => state(page, 'loopPlayback')).toBe(false)
+})
+
+test('mute button toggles the preview mute', async ({ page }) => {
+  expect(await state(page, 'muted')).toBe(false)
+  await page.getByTestId('transport-mute').click()
+  await expect.poll(() => state(page, 'muted')).toBe(true)
+  await page.getByTestId('transport-mute').click()
+  await expect.poll(() => state(page, 'muted')).toBe(false)
+})
+
+test('the volume popover reveals on hover and shows a readout', async ({ page }) => {
+  await expect(page.getByTestId('volume-popover')).toBeHidden()
+  await page.getByTestId('transport-mute').hover()
+  await expect(page.getByTestId('volume-popover')).toBeVisible()
+  await expect(page.getByTestId('volume-readout')).toHaveText('100%')
+})
+
+test('the readout shows Muted while muted', async ({ page }) => {
+  await page.getByTestId('transport-mute').click()
+  await page.getByTestId('transport-mute').hover()
+  await expect(page.getByTestId('volume-readout')).toHaveText('Muted')
+})
+
+test('moving the volume slider lowers the monitor volume and lifts mute', async ({ page }) => {
+  // Start muted, then nudge the slider — it should set a volume and unmute.
+  await page.getByTestId('transport-mute').click()
+  await expect.poll(() => state(page, 'muted')).toBe(true)
+
+  await page.getByTestId('transport-mute').hover()
+  const slider = page.getByTestId('transport-volume').getByRole('slider').first()
+  await slider.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect.poll(() => state(page, 'previewVolume')).toBeGreaterThan(0)
+  await expect.poll(() => state(page, 'previewVolume')).toBeLessThan(1)
+  await expect.poll(() => state(page, 'muted')).toBe(false)
+})
+
+test('scrolling over the control adjusts the volume', async ({ page }) => {
+  expect(await state(page, 'previewVolume')).toBe(1)
+  await page.getByTestId('transport-mute').hover()
+  await page.mouse.wheel(0, 120)
+  await expect.poll(() => state(page, 'previewVolume')).toBeLessThan(1)
+})

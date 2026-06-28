@@ -4,6 +4,8 @@ import {
   DownloadIcon,
   KeyboardIcon,
   LanguagesIcon,
+  PanelLeftIcon,
+  PanelRightIcon,
   Redo2Icon,
   Undo2Icon,
 } from '@lucide/vue'
@@ -72,6 +74,30 @@ const DOT_CLASS = {
         :model-value="store.progressPercent"
         class="w-24 hidden md:block"
       />
+      <Button
+        size="icon"
+        :variant="store.layout.mediaOpen ? 'secondary' : 'ghost'"
+        class="hidden lg:inline-flex"
+        :aria-label="$t('layout.toggleMedia')"
+        :aria-pressed="store.layout.mediaOpen"
+        :title="$t('layout.toggleMedia')"
+        data-testid="toggle-media"
+        @click="store.toggleMediaPanel()"
+      >
+        <PanelLeftIcon class="size-4" />
+      </Button>
+      <Button
+        size="icon"
+        :variant="store.layout.inspectorOpen ? 'secondary' : 'ghost'"
+        class="hidden lg:inline-flex"
+        :aria-label="$t('layout.toggleInspector')"
+        :aria-pressed="store.layout.inspectorOpen"
+        :title="$t('layout.toggleInspector')"
+        data-testid="toggle-inspector"
+        @click="store.toggleInspectorPanel()"
+      >
+        <PanelRightIcon class="size-4" />
+      </Button>
       <Button
         size="icon"
         variant="ghost"

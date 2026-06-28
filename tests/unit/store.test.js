@@ -351,6 +351,75 @@ describe('store: presets & style', () => {
   })
 })
 
+describe('store: preview monitor & loop', () => {
+  it('defaults: not looping, full volume, not muted', async () => {
+    const store = await makeStore()
+    expect(store.loopPlayback).toBe(false)
+    expect(store.previewVolume).toBe(1)
+    expect(store.muted).toBe(false)
+  })
+
+  it('toggles loop playback', async () => {
+    const store = await makeStore()
+    store.loopPlayback = true
+    expect(store.loopPlayback).toBe(true)
+    store.loopPlayback = false
+    expect(store.loopPlayback).toBe(false)
+  })
+
+  it('toggleMute flips the muted state', async () => {
+    const store = await makeStore()
+    store.toggleMute()
+    expect(store.muted).toBe(true)
+    store.toggleMute()
+    expect(store.muted).toBe(false)
+  })
+
+  it('accepts a monitor volume level', async () => {
+    const store = await makeStore()
+    store.previewVolume = 0.5
+    expect(store.previewVolume).toBe(0.5)
+  })
+})
+
+describe('store: workspace layout', () => {
+  it('defaults to both side panels open at their base sizes', async () => {
+    const store = await makeStore()
+    expect(store.layout.mediaOpen).toBe(true)
+    expect(store.layout.inspectorOpen).toBe(true)
+    expect(store.layout.mediaWidth).toBe(288)
+    expect(store.layout.inspectorWidth).toBe(320)
+    expect(store.layout.timelineHeight).toBe(192)
+  })
+
+  it('sets a panel size and clamps it to the allowed range', async () => {
+    const store = await makeStore()
+    store.setPanelSize('mediaWidth', 360)
+    expect(store.layout.mediaWidth).toBe(360)
+    // Below the minimum clamps to the floor, above the max to the ceiling.
+    store.setPanelSize('mediaWidth', 50)
+    expect(store.layout.mediaWidth).toBe(220)
+    store.setPanelSize('mediaWidth', 9999)
+    expect(store.layout.mediaWidth).toBe(480)
+  })
+
+  it('ignores an unknown layout dimension', async () => {
+    const store = await makeStore()
+    expect(() => store.setPanelSize('bogus', 100)).not.toThrow()
+    expect(store.layout.bogus).toBeUndefined()
+  })
+
+  it('toggles the media and inspector panels', async () => {
+    const store = await makeStore()
+    store.toggleMediaPanel()
+    expect(store.layout.mediaOpen).toBe(false)
+    store.toggleMediaPanel()
+    expect(store.layout.mediaOpen).toBe(true)
+    store.toggleInspectorPanel()
+    expect(store.layout.inspectorOpen).toBe(false)
+  })
+})
+
 describe('store: undo/redo public surface', () => {
   it('starts with nothing to undo or redo, and undo/redo are safe no-ops', async () => {
     const store = await makeStore()

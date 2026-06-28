@@ -106,6 +106,16 @@ function onKeydown(e) {
       e.preventDefault()
       store.zoomTimeline('fit')
       break
+    case 'l':
+    case 'L':
+      e.preventDefault()
+      store.loopPlayback = !store.loopPlayback
+      break
+    case 'm':
+    case 'M':
+      e.preventDefault()
+      store.toggleMute()
+      break
     case '?':
       e.preventDefault()
       store.showShortcuts = true

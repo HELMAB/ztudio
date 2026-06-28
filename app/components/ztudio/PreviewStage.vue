@@ -8,6 +8,7 @@ import {
   MinimizeIcon,
   PauseIcon,
   PlayIcon,
+  Repeat2Icon,
   SkipBackIcon,
   SkipForwardIcon,
   SquareDashedIcon,
@@ -430,7 +431,22 @@ function onResetDrag() {
         >
           <SkipForwardIcon class="size-4" />
         </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          class="size-7"
+          :class="store.loopPlayback ? 'text-brand' : 'text-neutral-300'"
+          :aria-label="$t('transport.loop')"
+          :aria-pressed="store.loopPlayback"
+          :title="$t('transport.loopHint')"
+          data-testid="transport-loop"
+          @click="store.loopPlayback = !store.loopPlayback"
+        >
+          <Repeat2Icon class="size-4" />
+        </Button>
       </div>
+
+      <ZtudioVolumeControl />
       <span class="font-mono text-xs text-neutral-300 tabular-nums shrink-0">
         <input
           v-if="editingTime"

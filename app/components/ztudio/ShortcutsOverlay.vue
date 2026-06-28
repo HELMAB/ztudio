@@ -16,6 +16,8 @@ const groups = computed(() => [
       { keys: ['Alt', '←', '→'], action: t('shortcuts.stepSecond') },
       { keys: ['⇧', '←', '→'], action: t('shortcuts.prevNextCaption') },
       { keys: ['Home', 'End'], action: t('shortcuts.startEnd') },
+      { keys: ['L'], action: t('shortcuts.toggleLoop') },
+      { keys: ['M'], action: t('shortcuts.mute') },
     ],
   },
   {
