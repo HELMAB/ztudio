@@ -161,27 +161,7 @@ const snippet = tx => {
           @update:model-value="setAnchor"
         />
       </ZtudioField>
-
-      <div class="grid grid-cols-2 gap-3">
-        <ZtudioField :label="$t('textOverlay.posX')" :value="pct(sel.x)">
-          <Slider
-            :model-value="[sel.x]"
-            :min="0"
-            :max="1"
-            :step="0.01"
-            @update:model-value="patch('x', $event[0])"
-          />
-        </ZtudioField>
-        <ZtudioField :label="$t('textOverlay.posY')" :value="pct(sel.y)">
-          <Slider
-            :model-value="[sel.y]"
-            :min="0"
-            :max="1"
-            :step="0.01"
-            @update:model-value="patch('y', $event[0])"
-          />
-        </ZtudioField>
-      </div>
+      <p class="text-xs text-muted-foreground -mt-1.5">{{ $t('textOverlay.dragHint') }}</p>
 
       <ZtudioField
         :label="$t('textOverlay.size')"

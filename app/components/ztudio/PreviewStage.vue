@@ -75,6 +75,10 @@ function drawGuides(ctx, w, h) {
   if (store.dragTarget === 'image') {
     xCentered = (store.selectedImage?.offsetXPct ?? 0) === 0
     yCentered = (store.selectedImage?.offsetYPct ?? 0) === 0
+  } else if (store.dragTarget === 'title') {
+    const tx = store.selectedText
+    xCentered = !!tx && (tx.x ?? 0.5) === 0.5
+    yCentered = !!tx && (tx.y ?? 0.5) === 0.5
   } else {
     const c = captionCenter(w, h, store.currentCaption, store.style)
     xCentered = store.controls.offsetXPct === 0
@@ -124,6 +128,8 @@ onMounted(() => {
       store.selectedImageId,
       store.cues,
       store.keyframes,
+      store.texts,
+      store.selectedTextId,
       store.previewTick,
       dragging.value,
       showSafeArea.value,
@@ -200,6 +206,33 @@ function onPointerDown(e) {
     return
   }
 
+  // Title drag: move the selected title if it's on screen, otherwise whichever
+  // title is showing at the playhead. With none showing the drag is a no-op.
+  if (store.dragTarget === 'title') {
+    let tx = store.selectedText
+    if (!tx || store.scrub < tx.start || store.scrub >= tx.end) {
+      tx = store.activeText
+    }
+    if (!tx) {
+      return
+    }
+    if (store.selectedTextId !== tx.id) {
+      store.selectText(tx.id)
+    }
+    el.setPointerCapture(e.pointerId)
+    drag = {
+      startX: e.clientX,
+      startY: e.clientY,
+      rect: el.getBoundingClientRect(),
+      title: true,
+      textId: tx.id,
+      offX: tx.x ?? 0.5,
+      offY: tx.y ?? 0.5,
+    }
+    dragging.value = true
+    return
+  }
+
   // The layer being edited is chosen explicitly via the toolbar Caption/Image
   // toggle (store.dragTarget). For an image drag, sync the selection to the clip
   // on screen so the edit lands on what's visible; with no clip at the playhead
@@ -244,6 +277,18 @@ function onPointerMove(e) {
   }
   let x = drag.offX + (e.clientX - drag.startX) / drag.rect.width
   let y = drag.offY + (e.clientY - drag.startY) / drag.rect.height
+
+  if (drag.title) {
+    // Title x/y are the centre as a fraction of the frame; snap to the mid-axes.
+    if (Math.abs(x - 0.5) < SNAP) {
+      x = 0.5
+    }
+    if (Math.abs(y - 0.5) < SNAP) {
+      y = 0.5
+    }
+    store.setTextPos(drag.textId, x, y)
+    return
+  }
 
   if (drag.image) {
     if (Math.abs(x) < SNAP) {
@@ -295,6 +340,11 @@ function onWheel(e) {
 function onResetDrag() {
   if (store.dragTarget === 'image') {
     store.resetImageTransform()
+  } else if (store.dragTarget === 'title') {
+    const tx = store.selectedText
+    if (tx) {
+      store.setTextPos(tx.id, 0.5, 0.5)
+    }
   } else {
     store.resetCaptionOffset()
   }
@@ -309,7 +359,13 @@ function onResetDrag() {
         width="1080"
         height="1920"
         class="max-w-full max-h-full object-contain border border-neutral-700 shadow-lg cursor-grab touch-none select-none active:cursor-grabbing"
-        :title="store.dragTarget === 'image' ? $t('preview.dragImageHint') : $t('preview.dragHint')"
+        :title="
+          store.dragTarget === 'image'
+            ? $t('preview.dragImageHint')
+            : store.dragTarget === 'title'
+              ? $t('preview.dragTitleHint')
+              : $t('preview.dragHint')
+        "
         @pointerdown="onPointerDown"
         @pointermove="onPointerMove"
         @pointerup="onPointerUp"
@@ -414,7 +470,7 @@ function onResetDrag() {
 
       <div class="ml-auto flex items-center gap-1.5 sm:gap-2">
         <div
-          v-if="store.hasImages"
+          v-if="store.hasImages || store.hasTexts"
           class="flex shrink-0 overflow-hidden rounded-md border border-neutral-700 text-[11px] font-mono"
           role="group"
           :aria-label="$t('preview.dragTarget')"
@@ -434,6 +490,7 @@ function onResetDrag() {
             {{ $t('preview.targetCaption') }}
           </button>
           <button
+            v-if="store.hasImages"
             type="button"
             class="border-l border-neutral-700 px-2.5 py-1 transition-colors"
             :class="
@@ -446,6 +503,21 @@ function onResetDrag() {
             @click="store.dragTarget = 'image'"
           >
             {{ $t('preview.targetImage') }}
+          </button>
+          <button
+            v-if="store.hasTexts"
+            type="button"
+            class="border-l border-neutral-700 px-2.5 py-1 transition-colors"
+            :class="
+              store.dragTarget === 'title'
+                ? 'bg-brand text-white'
+                : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
+            "
+            :aria-pressed="store.dragTarget === 'title'"
+            :title="$t('preview.dragTitleHint')"
+            @click="store.dragTarget = 'title'"
+          >
+            {{ $t('preview.targetTitle') }}
           </button>
         </div>
 

@@ -47,6 +47,34 @@ import { useActivityLog } from '@/composables/useActivityLog'
 
 const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 
+// Decode an image blob to an ImageBitmap. Raster formats decode directly; SVG
+// goes through an <img> + canvas because createImageBitmap on an SVG blob is
+// unreliable across browsers — so logos can be PNG/JPG or SVG.
+async function bitmapFromBlob(blob) {
+  if (blob.type !== 'image/svg+xml') {
+    return createImageBitmap(blob)
+  }
+  const url = URL.createObjectURL(blob)
+  try {
+    const img = new Image()
+    img.decoding = 'async'
+    await new Promise((resolve, reject) => {
+      img.onload = resolve
+      img.onerror = reject
+      img.src = url
+    })
+    const w = img.naturalWidth || 512
+    const h = img.naturalHeight || 512
+    const cv = document.createElement('canvas')
+    cv.width = w
+    cv.height = h
+    cv.getContext('2d').drawImage(img, 0, 0, w, h)
+    return await createImageBitmap(cv)
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
+
 export const useZtudioStore = defineStore('ztudio', () => {
   const { entries: logEntries, log } = useActivityLog()
 
@@ -280,6 +308,17 @@ export const useZtudioStore = defineStore('ztudio', () => {
   const selectedText = computed(
     () => texts.value.find(tx => tx.id === selectedTextId.value) || null,
   )
+  // The title on screen at the playhead (topmost when several overlap), used to
+  // pick a drag target on the preview. Null when none is showing.
+  const activeText = computed(() => {
+    let found = null
+    for (const tx of texts.value) {
+      if (scrub.value >= tx.start && scrub.value < tx.end) {
+        found = tx
+      }
+    }
+    return found
+  })
   const hasTexts = computed(() => texts.value.length > 0)
   const hasLogo = computed(() => !!logoBitmap.value)
   // The resolved logo passed to the renderer (bitmap + framing), or null when none.
@@ -1956,10 +1995,21 @@ export const useZtudioStore = defineStore('ztudio', () => {
     updateText(id, { start: r3(s), end: r3(e) })
   }
 
+  // Reposition a title by dragging it on the preview. x/y are the centre as
+  // fractions of the frame, clamped to stay on-screen.
+  function setTextPos(id, x, y) {
+    const c = v => (v < 0 ? 0 : v > 1 ? 1 : v)
+    updateText(id, { x: c(x), y: c(y) })
+  }
+
   function removeText(id) {
     texts.value = texts.value.filter(tx => tx.id !== id)
     if (selectedTextId.value === id) {
       selectedTextId.value = null
+    }
+    // Fall back to caption dragging when the last title (the drag target) is gone.
+    if (!texts.value.length && dragTarget.value === 'title') {
+      dragTarget.value = 'caption'
     }
     redraw()
     maybeReady()
@@ -1985,11 +2035,11 @@ export const useZtudioStore = defineStore('ztudio', () => {
       return true
     }
     try {
-      const bitmap = await createImageBitmap(file)
+      const bitmap = await bitmapFromBlob(file)
       logoBitmap.value = bitmap
       rawLogo = file
       logoName.value = file.name || 'logo'
-      log(`Logo: ${file.name} ${bitmap.width}×${bitmap.height}.`)
+      log(`Logo: ${file.name || 'logo'} ${bitmap.width}×${bitmap.height}.`)
     } catch (err) {
       logoBitmap.value = null
       log('Logo load failed: ' + (err?.message || err))
@@ -2031,14 +2081,17 @@ export const useZtudioStore = defineStore('ztudio', () => {
 
   async function loadDemo() {
     try {
-      const [audioBlob, image, srt] = await Promise.all([
+      const [audioBlob, image, srt, logoBlob] = await Promise.all([
         fetch('/demo/sound.mp3').then(r => r.blob()),
         fetch('/demo/image.png').then(r => r.blob()),
         fetch('/demo/caption.srt').then(r => r.blob()),
+        // The ztudio brand mark, set as the default watermark to showcase the feature.
+        fetch('/logo.svg').then(r => r.blob()),
       ])
       // Audio first so the demo image clip can span the full known duration.
       await loadAudio(audioBlob)
-      await Promise.all([addImages([image]), loadSrt(srt)])
+      const logoFile = new File([logoBlob], 'ztudio-logo.svg', { type: 'image/svg+xml' })
+      await Promise.all([addImages([image]), loadSrt(srt), loadLogo(logoFile)])
       log('Loaded demo media.')
     } catch (err) {
       log('Could not load demo media: ' + (err?.message || err))
@@ -2173,7 +2226,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       if (doc.hasLogo) {
         const blob = await getBlob('logo')
         if (blob) {
-          logoBitmap.value = await createImageBitmap(blob)
+          logoBitmap.value = await bitmapFromBlob(blob)
           rawLogo = blob
           logoName.value = doc.logoName || 'logo'
           persistedBlobs.set('logo', blob)
@@ -2346,11 +2399,13 @@ export const useZtudioStore = defineStore('ztudio', () => {
     exportSettings,
     texts,
     selectedText,
+    activeText,
     selectedTextId,
     hasTexts,
     addText,
     updateText,
     updateTextTime,
+    setTextPos,
     removeText,
     selectText,
     setTextFont,
