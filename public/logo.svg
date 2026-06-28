@@ -1,12 +1,10 @@
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ztudio">
   <rect width="512" height="512" rx="112" fill="#00B140" />
   <path
-    d="M198 152 L356 232 L198 312 Z"
+    d="M140 148 L372 148 L372 204 L196 308 L372 308 L372 364 L140 364 L140 308 L316 204 L140 204 Z"
     fill="#ffffff"
     stroke="#ffffff"
-    stroke-width="26"
+    stroke-width="20"
     stroke-linejoin="round"
   />
-  <rect x="150" y="356" width="212" height="34" rx="17" fill="#ffffff" />
-  <rect x="150" y="410" width="150" height="34" rx="17" fill="#ffffff" fill-opacity="0.82" />
 </svg>

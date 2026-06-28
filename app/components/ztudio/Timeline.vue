@@ -61,6 +61,12 @@ function fmtTick(t) {
   return Number.isInteger(t) ? `${t}s` : `${t.toFixed(1)}s`
 }
 
+function fmtTime(s) {
+  const m = Math.floor(s / 60)
+  const sec = (s % 60).toFixed(1).padStart(4, '0')
+  return `${m}:${sec}`
+}
+
 const audioClip = computed(() =>
   store.audioBuffer
     ? {
