@@ -16,12 +16,16 @@ const store = useZtudioStore()
       {{ $t('settings.heading') }}
     </h2>
     <Tabs v-model="store.inspectorTab" class="flex-1 min-h-0 gap-0">
-      <TabsList class="m-4 mb-0 grid w-auto grid-cols-4">
+      <TabsList class="m-4 mb-0 grid w-auto grid-cols-5">
+        <TabsTrigger value="cues">{{ $t('caption.tabCues') }}</TabsTrigger>
         <TabsTrigger value="style">{{ $t('caption.tabStyle') }}</TabsTrigger>
         <TabsTrigger value="animation">{{ $t('caption.tabAnimation') }}</TabsTrigger>
         <TabsTrigger value="image">{{ $t('caption.tabImage') }}</TabsTrigger>
         <TabsTrigger value="titles">{{ $t('caption.tabTitles') }}</TabsTrigger>
       </TabsList>
+      <TabsContent value="cues" class="flex min-h-0 flex-col p-4">
+        <ZtudioCueList />
+      </TabsContent>
       <TabsContent value="style" class="min-h-0 overflow-y-auto p-4">
         <ZtudioCaptionControls />
       </TabsContent>

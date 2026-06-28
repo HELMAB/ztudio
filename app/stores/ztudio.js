@@ -1854,6 +1854,19 @@ export const useZtudioStore = defineStore('ztudio', () => {
     redraw()
   }
 
+  // Navigate to a cue from the cue-list panel: seek to its start and select it,
+  // but keep the active inspector tab (the list lives in its own tab, so a row
+  // click shouldn't bounce the panel to Style like selectCue does).
+  function goToCue(index) {
+    const cue = cues.value[index]
+    if (!cue) {
+      return
+    }
+    selectedCueIndex.value = index
+    selectedTextId.value = null
+    seek(cue.start)
+  }
+
   function addCue() {
     const dur = previewDuration.value
     const start = Math.min(scrub.value, Math.max(0, dur - 1))
@@ -2488,6 +2501,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     duplicateCue,
     updateCue,
     selectCue,
+    goToCue,
     setCueText,
     addCue,
     addCaption,
