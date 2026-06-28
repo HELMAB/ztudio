@@ -112,6 +112,10 @@ export const useZtudioStore = defineStore('ztudio', () => {
   const snapGuide = ref(null)
   // Keyboard-shortcuts help overlay visibility (toggled by '?' and the TopBar).
   const showShortcuts = ref(false)
+  // Which Inspector tab is shown. Selection drives it: clicking a clip on the
+  // timeline (or the preview) opens that object's properties — see the select*
+  // actions below. Values match the InspectorPanel tab triggers.
+  const inspectorTab = ref('style')
   // Right-click context menu: position + the items (each { label, action?,
   // danger?, separator? }) built by whichever component was right-clicked.
   const contextMenu = ref({ open: false, x: 0, y: 0, items: [] })
@@ -657,6 +661,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
 
   function selectKeyframe(id) {
     selectedKeyframeId.value = id
+    inspectorTab.value = 'animation'
     const kf = keyframes.value.find(k => k.id === id)
     if (kf) {
       seek(kf.t)
@@ -1158,6 +1163,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
 
   function selectImage(id) {
     selectedImageId.value = id
+    inspectorTab.value = 'image'
     const im = images.value.find(c => c.id === id)
     // Bring the clip on screen so inspector edits are visible (WYSIWYG).
     if (im && (scrub.value < im.start || scrub.value >= im.end)) {
@@ -1835,6 +1841,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     // Caption and title selection are mutually exclusive, so Delete is unambiguous.
     if (index != null) {
       selectedTextId.value = null
+      inspectorTab.value = 'style'
     }
   }
 
@@ -2018,6 +2025,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
   function selectText(id) {
     selectedTextId.value = id
     selectedCueIndex.value = null
+    inspectorTab.value = 'titles'
     const tx = texts.value.find(item => item.id === id)
     // Bring the title on screen so inspector edits are visible (WYSIWYG).
     if (tx && (scrub.value < tx.start || scrub.value >= tx.end)) {
@@ -2364,6 +2372,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     previewTick,
     timelineZoom,
     showShortcuts,
+    inspectorTab,
     snapEnabled,
     snapGuide,
     contextMenu,
