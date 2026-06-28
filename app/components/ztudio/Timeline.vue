@@ -12,6 +12,8 @@ import {
   MessageSquareIcon,
   MusicIcon,
   ScanIcon,
+  StampIcon,
+  TypeIcon,
   ZoomInIcon,
   ZoomOutIcon,
 } from '@lucide/vue'
@@ -130,6 +132,14 @@ const imageClips = computed(() =>
 const captionClips = computed(() =>
   store.cues.map((c, i) => ({ key: i, start: c.start, end: c.end, label: c.text.split('\n')[0] })),
 )
+const titleClips = computed(() =>
+  store.texts.map(tx => ({
+    id: tx.id,
+    start: tx.start,
+    end: tx.end,
+    label: (tx.text || '').split('\n')[0],
+  })),
+)
 const playheadLeft = computed(() => store.scrub * pxPerSecond.value)
 const snapGuideLeft = computed(() =>
   store.snapGuide != null ? store.snapGuide * pxPerSecond.value : null,
@@ -163,6 +173,8 @@ function drawHoverThumb(t) {
     cues: store.cues,
     style: store.style,
     keyframes: store.keyframes,
+    texts: store.texts,
+    logo: store.logoResolved,
   })
 }
 
@@ -254,7 +266,9 @@ function seekFromEvent(event) {
   const rect = el.getBoundingClientRect()
   const raw = (event.clientX - rect.left) / pps
   // The playhead snaps to cue/clip edges, but not to itself.
-  store.seek(store.snapEdge(raw, { pxPerSecond: pps, includePlayhead: false, disabled: event.altKey }))
+  store.seek(
+    store.snapEdge(raw, { pxPerSecond: pps, includePlayhead: false, disabled: event.altKey }),
+  )
 }
 function onLaneMove(event) {
   if (seeking) {
@@ -317,12 +331,22 @@ watch(
       <Button
         size="sm"
         variant="ghost"
-        class="h-6 mr-auto text-[11px] text-muted-foreground"
+        class="h-6 text-[11px] text-muted-foreground"
         :title="$t('keyframe.addHint')"
         @click="store.addKeyframe()"
       >
         <DiamondPlusIcon class="size-3.5" />
         <span class="hidden sm:inline">{{ $t('keyframe.add') }}</span>
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        class="h-6 mr-auto text-[11px] text-muted-foreground"
+        :title="$t('textOverlay.addHint')"
+        @click="store.addText()"
+      >
+        <TypeIcon class="size-3.5" />
+        <span class="hidden sm:inline">{{ $t('textOverlay.add') }}</span>
       </Button>
       <Button
         size="icon"
@@ -387,10 +411,22 @@ watch(
             {{ $t('timeline.image') }}
           </div>
           <div
-            class="flex-1 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 overflow-hidden font-mono text-[10px] uppercase text-muted-foreground"
+            class="flex-1 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 overflow-hidden font-mono text-[10px] uppercase text-muted-foreground border-b border-border"
           >
             <MessageSquareIcon class="size-3" />
             {{ $t('timeline.caption') }}
+          </div>
+          <div
+            class="flex-1 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 overflow-hidden font-mono text-[10px] uppercase text-muted-foreground border-b border-border"
+          >
+            <TypeIcon class="size-3" />
+            {{ $t('timeline.title') }}
+          </div>
+          <div
+            class="flex-1 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 overflow-hidden font-mono text-[10px] uppercase text-muted-foreground"
+          >
+            <StampIcon class="size-3" />
+            {{ $t('timeline.logo') }}
           </div>
         </div>
       </div>
@@ -502,7 +538,7 @@ watch(
               />
             </div>
 
-            <div class="relative flex-1">
+            <div class="relative flex-1 border-b border-border">
               <ZtudioTimelineCaptionClip
                 v-for="c in captionClips"
                 :key="c.key"
@@ -510,6 +546,27 @@ watch(
                 :start="c.start"
                 :end="c.end"
                 :label="c.label"
+                :px-per-second="pxPerSecond"
+              />
+            </div>
+
+            <div class="relative flex-1 border-b border-border">
+              <ZtudioTimelineTitleClip
+                v-for="c in titleClips"
+                :id="c.id"
+                :key="c.id"
+                :start="c.start"
+                :end="c.end"
+                :label="c.label"
+                :px-per-second="pxPerSecond"
+              />
+            </div>
+
+            <div class="relative flex-1">
+              <ZtudioTimelineLogoClip
+                v-if="store.hasLogo"
+                :start="store.logoWindow.start"
+                :end="store.logoWindow.end"
                 :px-per-second="pxPerSecond"
               />
             </div>
@@ -547,7 +604,9 @@ watch(
           transform: 'translate(-50%, calc(-100% - 10px))',
         }"
       >
-        <div class="rounded-md border border-border bg-background/95 p-1 shadow-xl backdrop-blur-sm">
+        <div
+          class="rounded-md border border-border bg-background/95 p-1 shadow-xl backdrop-blur-sm"
+        >
           <canvas ref="thumbCanvas" class="block rounded-sm bg-black" style="width: 120px" />
           <div class="mt-1 text-center font-mono text-[10px] text-foreground tabular-nums">
             {{ fmtTime(hover.t) }}

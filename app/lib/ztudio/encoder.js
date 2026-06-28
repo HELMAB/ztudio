@@ -160,10 +160,11 @@ export async function generateFast(MB, pipe, w, h, dur, ctx2) {
     style.animation,
     style.animDuration,
     (keyframes || []).map(k => k.t),
-    // Image cuts plus title-overlay show/hide boundaries all land on a frame.
+    // Image cuts plus title-overlay and logo show/hide boundaries all land on a frame.
     [
       ...(images || []).flatMap(im => [im.start, im.end]),
       ...(texts || []).flatMap(tx => [tx.start, tx.end]),
+      ...(logo && logo.bitmap ? [logo.start || 0, logo.end || 0] : []),
     ],
     isOverlayActive(style.overlay),
     style.highlightWord,

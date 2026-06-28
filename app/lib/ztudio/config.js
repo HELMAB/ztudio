@@ -217,7 +217,16 @@ export const LOGO_POSITION_OPTIONS = [
   { value: 'bottomRight', labelKey: 'logo.bottomRight' },
 ]
 
-export const LOGO_DEFAULTS = { position: 'topRight', scalePct: 0.18, opacity: 0.9, marginPct: 0.04 }
+// `start`/`end` bound when the logo is visible; end === 0 means "to the end", so
+// a fresh logo shows for the whole video until its timeline clip is trimmed.
+export const LOGO_DEFAULTS = {
+  position: 'topRight',
+  scalePct: 0.18,
+  opacity: 0.9,
+  marginPct: 0.04,
+  start: 0,
+  end: 0,
+}
 
 // Anchor presets for a text overlay, mapped to normalized (x, y) centre points.
 export const TEXT_ANCHOR_OPTIONS = [

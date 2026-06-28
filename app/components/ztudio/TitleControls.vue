@@ -39,13 +39,6 @@ function patch(field, value) {
   }
 }
 
-function setNumber(field, event) {
-  const v = parseFloat(event.target.value)
-  if (!Number.isNaN(v)) {
-    patch(field, Math.max(0, v))
-  }
-}
-
 const snippet = tx => {
   const line = (tx.text || '').split('\n')[0]
   return line.length > 24 ? line.slice(0, 24) + '…' : line || t('textOverlay.untitled')
@@ -158,28 +151,7 @@ const snippet = tx => {
         />
       </ZtudioField>
 
-      <div class="grid grid-cols-2 gap-3">
-        <ZtudioField :label="$t('captionDialog.start')">
-          <input
-            :value="sel.start"
-            type="number"
-            min="0"
-            step="0.1"
-            class="h-9 w-full rounded-md border border-border bg-background px-2 text-sm"
-            @change="setNumber('start', $event)"
-          />
-        </ZtudioField>
-        <ZtudioField :label="$t('captionDialog.end')">
-          <input
-            :value="sel.end"
-            type="number"
-            min="0"
-            step="0.1"
-            class="h-9 w-full rounded-md border border-border bg-background px-2 text-sm"
-            @change="setNumber('end', $event)"
-          />
-        </ZtudioField>
-      </div>
+      <p class="text-xs text-muted-foreground">{{ $t('textOverlay.timingHint') }}</p>
 
       <ZtudioField :label="$t('textOverlay.anchor')">
         <ZtudioSelectField

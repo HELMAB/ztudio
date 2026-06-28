@@ -189,10 +189,16 @@ function drawTextOverlays(ctx, w, h, t, texts) {
   }
 }
 
-// Persistent watermark/logo pinned to a corner. Sized as a fraction of the frame
-// width with a margin off the shorter edge so it sits the same across formats.
-function drawLogo(ctx, w, h, logo) {
+// Watermark/logo pinned to a corner, visible only within its [start, end) window
+// (end === 0 means the whole video). Sized as a fraction of the frame width with
+// a margin off the shorter edge so it sits the same across formats.
+function drawLogo(ctx, w, h, t, logo) {
   if (!logo || !logo.bitmap) {
+    return
+  }
+  const start = logo.start || 0
+  const end = logo.end || 0
+  if (t < start || (end > start && t >= end)) {
     return
   }
   const bmp = logo.bitmap
@@ -492,5 +498,5 @@ export function drawFrame(ctx, w, h, t, { images, cues, style, keyframes, texts,
 
   // Title overlays sit above captions; the watermark/logo is always top-most.
   drawTextOverlays(ctx, w, h, t, texts)
-  drawLogo(ctx, w, h, logo)
+  drawLogo(ctx, w, h, t, logo)
 }

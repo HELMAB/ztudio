@@ -1767,6 +1767,10 @@ export const useZtudioStore = defineStore('ztudio', () => {
       removeKeyframe(selectedKeyframeId.value)
       return true
     }
+    if (selectedTextId.value != null) {
+      removeText(selectedTextId.value)
+      return true
+    }
     if (selectedCueIndex.value != null) {
       removeCue(selectedCueIndex.value)
       return true
@@ -1789,6 +1793,10 @@ export const useZtudioStore = defineStore('ztudio', () => {
 
   function selectCue(index) {
     selectedCueIndex.value = index
+    // Caption and title selection are mutually exclusive, so Delete is unambiguous.
+    if (index != null) {
+      selectedTextId.value = null
+    }
   }
 
   function setCueText(index, text) {
@@ -1935,6 +1943,19 @@ export const useZtudioStore = defineStore('ztudio', () => {
     ensureBundledFont(fontKey).then(redraw)
   }
 
+  // Retime a title from the timeline (drag/resize), clamped to the clip and a
+  // minimum length — the inspector no longer carries start/end number inputs.
+  function updateTextTime(id, start, end) {
+    const tx = texts.value.find(x => x.id === id)
+    if (!tx) {
+      return
+    }
+    const dur = previewDuration.value
+    const s = Math.max(0, Math.min(start, dur - MIN_TEXT_DUR))
+    const e = Math.min(dur, Math.max(end, s + MIN_TEXT_DUR))
+    updateText(id, { start: r3(s), end: r3(e) })
+  }
+
   function removeText(id) {
     texts.value = texts.value.filter(tx => tx.id !== id)
     if (selectedTextId.value === id) {
@@ -1946,6 +1967,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
 
   function selectText(id) {
     selectedTextId.value = id
+    selectedCueIndex.value = null
     const tx = texts.value.find(item => item.id === id)
     // Bring the title on screen so inspector edits are visible (WYSIWYG).
     if (tx && (scrub.value < tx.start || scrub.value >= tx.end)) {
@@ -1976,6 +1998,27 @@ export const useZtudioStore = defineStore('ztudio', () => {
       redraw()
     }
     return true
+  }
+
+  // The logo's visibility window, shown as a single timeline clip. A full-span
+  // logo keeps end at 0 until the user trims it; once trimmed it holds concrete
+  // seconds. The clip's effective end falls back to the clip duration.
+  const logoWindow = computed(() => {
+    const dur = previewDuration.value
+    const start = Math.max(0, Math.min(logo.start || 0, dur))
+    const end = logo.end && logo.end > start ? Math.min(logo.end, dur) : dur
+    return { start, end }
+  })
+
+  function setLogoTime(start, end) {
+    const dur = previewDuration.value
+    const MIN = 0.3
+    const s = Math.max(0, Math.min(start, dur - MIN))
+    const e = Math.min(dur, Math.max(end, s + MIN))
+    logo.start = r3(s)
+    // A window reaching the clip end collapses back to the "full" sentinel, so it
+    // keeps spanning the video if a longer audio track is loaded later.
+    logo.end = e >= dur - 1e-3 ? 0 : r3(e)
   }
 
   function dismissResult() {
@@ -2307,14 +2350,17 @@ export const useZtudioStore = defineStore('ztudio', () => {
     hasTexts,
     addText,
     updateText,
+    updateTextTime,
     removeText,
     selectText,
     setTextFont,
     hasLogo,
     logoName,
     logo,
+    logoWindow,
     logoResolved,
     loadLogo,
+    setLogoTime,
     redraw,
     dragTarget,
     setCaptionOffset,

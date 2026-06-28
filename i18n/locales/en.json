@@ -166,7 +166,9 @@
   },
   "textOverlay": {
     "heading": "Title text",
-    "add": "Add title",
+    "add": "Title",
+    "addHint": "Add a title at the playhead",
+    "timingHint": "Drag the clip on the Title track to set when it shows.",
     "empty": "Add a title to show free-floating text over the video, independent of captions.",
     "text": "Text",
     "font": "Font",
@@ -257,7 +259,9 @@
     "snapHint": "Snap edges to cues, clips & the playhead (hold Alt to disable)",
     "audio": "Audio",
     "image": "Image",
-    "caption": "Caption"
+    "caption": "Caption",
+    "title": "Title",
+    "logo": "Logo"
   },
   "keyframe": {
     "heading": "Keyframes",
