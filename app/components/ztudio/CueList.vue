@@ -50,7 +50,12 @@ watch(activeIndex, i => {
       </Button>
     </div>
 
-    <div v-if="rows.length" ref="listEl" class="min-h-0 flex-1 space-y-1.5 overflow-y-auto">
+    <div
+      v-if="rows.length"
+      ref="listEl"
+      data-testid="cue-list"
+      class="min-h-0 flex-1 space-y-1.5 overflow-y-auto"
+    >
       <div
         v-for="{ cue, index } in rows"
         :key="index"
@@ -86,6 +91,7 @@ watch(activeIndex, i => {
         </div>
         <textarea
           :value="cue.text"
+          data-testid="cue-text"
           :rows="index === store.selectedCueIndex ? 2 : 1"
           class="w-full resize-none bg-transparent px-2 pb-1.5 pt-0.5 text-sm leading-snug outline-none"
           :placeholder="$t('caption.placeholder')"

@@ -99,6 +99,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <Textarea
               ref="textareaEl"
               v-model="draft.text"
+              data-testid="caption-dialog-text"
               rows="3"
               :placeholder="$t('caption.placeholder')"
             />
@@ -128,7 +129,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
             <Button variant="ghost" class="ml-auto" @click="close">
               {{ $t('captionDialog.cancel') }}
             </Button>
-            <Button :disabled="!draft.text.trim()" @click="save">
+            <Button data-testid="caption-dialog-save" :disabled="!draft.text.trim()" @click="save">
               {{ $t('captionDialog.save') }}
             </Button>
           </div>

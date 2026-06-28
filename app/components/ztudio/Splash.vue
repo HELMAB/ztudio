@@ -8,6 +8,7 @@
     class="fixed inset-0 z-50 grid place-items-center bg-background text-foreground"
     role="status"
     aria-live="polite"
+    data-testid="splash"
   >
     <div class="flex flex-col items-center gap-5">
       <span

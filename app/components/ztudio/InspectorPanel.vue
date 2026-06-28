@@ -7,7 +7,7 @@ const store = useZtudioStore()
 </script>
 
 <template>
-  <aside class="flex flex-col min-h-0 bg-background">
+  <aside data-testid="inspector" class="flex flex-col min-h-0 bg-background">
     <!-- Redundant on mobile: the bottom tab bar already labels this section. -->
     <h2
       class="hidden lg:flex shrink-0 items-center gap-2 px-4 py-3 font-mono text-[11px] uppercase text-muted-foreground border-b border-border"

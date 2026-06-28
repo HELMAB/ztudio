@@ -19,9 +19,44 @@ npm run lint         # eslint
 npm run lint:fix     # eslint --fix
 npm run format       # prettier --write .
 npm run format:check # prettier --check .
+npm test             # vitest run (unit tests)
+npm run test:watch   # vitest in watch mode
+npm run test:e2e     # playwright (E2E, auto-starts the dev server)
+npm run test:e2e:ui  # playwright in UI mode
 ```
 
-There is **no test suite** configured.
+Tests live under `tests/`: unit tests in `tests/unit/`, E2E specs in `tests/e2e/`.
+
+Unit tests use **Vitest** and live in `tests/unit/*.test.js` (run in the default Node
+environment; the `@` alias resolves to `app/` — see `vitest.config.js`). Coverage:
+
+- **`app/lib/ztudio/*`** pure logic — SRT parsing, segment building, keyframe
+  interpolation, image/effect resolution, waveform peaks, caption geometry
+  (`captionCenter`), ambiance overlays (`drawOverlay` against a mock 2D context),
+  audio defaults, `sliceAudioBuffer`/`mrType`, the Khmer font registry, and
+  config/overlay option consistency.
+- **The Pinia store** (`tests/unit/store.test.js`) — instantiated with lightweight global
+  stubs (`tests/unit/helpers/store.js` stubs `useNuxtApp`/`$i18n`, `createImageBitmap`, and
+  `window.AudioContext`). Exercises the feature logic: trim clamping, caption CRUD
+  (add/split/duplicate/remove/edit), titles, keyframes, image clips, presets ↔ custom,
+  the normalized `style`, duration/dimension computeds, and selection-driven
+  `inspectorTab`.
+
+Notes for extending: the store calls its composables only inside the `defineStore`
+setup, so stubbing globals before `useZtudioStore()` is enough — no DOM needed for the
+logic paths. The encode/render/audio-mix paths (WebCodecs, canvas, OfflineAudioContext)
+are integration-level and not unit-tested — they're exercised by E2E instead.
+
+**E2E tests** use **Playwright** (Chromium) and live in `tests/e2e/*.spec.js`
+(`playwright.config.js` auto-starts `npm run dev` and uses a 1440×900 desktop viewport
+so `App.vue` renders `DesktopWorkspace`). Each test runs in a fresh context (empty
+IndexedDB), so the bundled demo media loads and the restore prompt never appears. The
+suite covers smoke + UI flows: boot, inspector tabs, cue-list view/edit, add-caption
+dialog, add-title, locale toggle, and playback. Tests target stable `data-testid`
+hooks (`export-button`, `preview-canvas`, `current-time`, `inspector`, `cue-list`,
+`cue-text`, `timeline-add-caption`/`-title`, `caption-dialog-*`, `locale-toggle`,
+`splash`) — prefer adding a `data-testid` over matching i18n text, and scope inspector
+tab queries to the `inspector` testid (the Media panel has its own Image/Caption tabs).
 
 Prettier: no semicolons, single quotes, width 100, trailing commas, no-parens arrow args. The codebase is **JavaScript, not TypeScript** (`components.json` has `typescript: false`); `tsconfig.json` only wires up Nuxt's generated configs.
 

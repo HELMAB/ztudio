@@ -356,6 +356,7 @@ function onResetDrag() {
     <div class="flex-1 min-h-0 flex items-center justify-center p-2 sm:p-6">
       <canvas
         ref="canvas"
+        data-testid="preview-canvas"
         width="1080"
         height="1920"
         class="max-w-full max-h-full object-contain border border-neutral-700 shadow-lg cursor-grab touch-none select-none active:cursor-grabbing"
@@ -445,6 +446,7 @@ function onResetDrag() {
         <button
           v-else
           type="button"
+          data-testid="current-time"
           class="rounded px-1 py-0.5 hover:bg-neutral-800 hover:text-white"
           :title="$t('transport.setTime')"
           @click="beginEditTime"

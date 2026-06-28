@@ -104,6 +104,7 @@ const DOT_CLASS = {
       </Button>
       <Button
         variant="ghost"
+        data-testid="locale-toggle"
         class="font-mono text-[11px] uppercase px-2.5 sm:px-3"
         :aria-label="locale === 'en' ? 'ភាសាខ្មែរ' : 'English'"
         @click="toggleLocale"
@@ -113,6 +114,7 @@ const DOT_CLASS = {
       </Button>
       <Button
         v-if="!store.busy"
+        data-testid="export-button"
         :disabled="!store.canRender"
         class="bg-brand text-brand-foreground font-semibold hover:bg-brand/90 shadow-sm shadow-brand/20"
         @click="store.render()"

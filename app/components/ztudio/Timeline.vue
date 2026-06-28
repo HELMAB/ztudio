@@ -327,6 +327,7 @@ watch(
       <Button
         size="sm"
         variant="ghost"
+        data-testid="timeline-add-caption"
         class="h-6 text-[11px] text-muted-foreground"
         :title="$t('caption.addHint')"
         @click="store.openAddCaption()"
@@ -347,6 +348,7 @@ watch(
       <Button
         size="sm"
         variant="ghost"
+        data-testid="timeline-add-title"
         class="h-6 mr-auto text-[11px] text-muted-foreground"
         :title="$t('textOverlay.addHint')"
         @click="store.addText()"
