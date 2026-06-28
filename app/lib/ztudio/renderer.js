@@ -1,4 +1,4 @@
-import { GREEN } from './config'
+import { GREEN, buildFontStack } from './config'
 import { applyKeyframes, imageFramingAt } from './keyframes'
 import { activeWordIndex, cueAt } from './srt'
 import { clipCrop, effectFilter, imageAt } from './images'
@@ -88,6 +88,124 @@ function drawPlaceholder(ctx, w, h) {
   ctx.font = `700 ${Math.round(u * 0.052)}px 'Baloo 2', system-ui, sans-serif`
   centerText('ztudio', w / 2, by + badge + u * 0.04)
 
+  ctx.restore()
+}
+
+// Paint the frame background behind the image clips. 'green' keeps the chroma
+// key; 'color'/'gradient' use the bgColor controls; 'blur' fills with a blurred,
+// darkened cover-crop of the current image so portrait clips get soft bars
+// instead of flat fill. Falls back to a solid colour when blur has no image.
+function drawBackground(ctx, w, h, current, style) {
+  const mode = style.bgMode || 'green'
+
+  if (mode === 'blur' && current && current.bitmap) {
+    const bmp = current.bitmap
+    const scale = Math.max(w / bmp.width, h / bmp.height) * 1.1
+    const dw = bmp.width * scale
+    const dh = bmp.height * scale
+    ctx.save()
+    ctx.filter = 'blur(28px) brightness(0.7)'
+    ctx.drawImage(bmp, (w - dw) / 2, (h - dh) / 2, dw, dh)
+    ctx.restore()
+    return
+  }
+
+  if (mode === 'gradient') {
+    const g = ctx.createLinearGradient(0, 0, 0, h)
+    g.addColorStop(0, style.bgColor || '#101014')
+    g.addColorStop(1, style.bgColor2 || '#26263a')
+    ctx.fillStyle = g
+  } else if (mode === 'color') {
+    ctx.fillStyle = style.bgColor || '#101014'
+  } else if (mode === 'black') {
+    ctx.fillStyle = '#000000'
+  } else if (mode === 'white') {
+    ctx.fillStyle = '#ffffff'
+  } else {
+    ctx.fillStyle = GREEN
+  }
+  ctx.fillRect(0, 0, w, h)
+}
+
+// Per-clip opacity from its own fade-in / fade-out windows (seconds), 1 when the
+// clip has no fades or t sits in its steady middle.
+function clipFade(clip, t) {
+  let a = 1
+  const fi = clip.fadeIn || 0
+  const fo = clip.fadeOut || 0
+  if (fi > 0 && t < clip.start + fi) {
+    a = Math.min(a, clamp01((t - clip.start) / fi))
+  }
+  if (fo > 0 && t > clip.end - fo) {
+    a = Math.min(a, clamp01((clip.end - t) / fo))
+  }
+  return a
+}
+
+// A standalone, time-ranged title drawn over the scene (independent of captions).
+// Centred on (x, y) as fractions of the frame; manual line centring matches
+// drawCaption's iOS-safe approach. Resolves the title's own font selection.
+function drawTextOverlay(ctx, w, h, item) {
+  const text = (item.text || '').trim()
+  if (!text) {
+    return
+  }
+  const lines = text.split('\n')
+  const fontPx = Math.round(h * (item.fontSizePct || 0.05))
+  const lineH = fontPx * 1.25
+  const cx = w * (item.x ?? 0.5)
+  const cy = h * (item.y ?? 0.5)
+  const blockH = lines.length * lineH
+  const first = cy - blockH / 2 + lineH / 2
+
+  ctx.save()
+  ctx.font = `${item.bold ? 700 : 400} ${fontPx}px ${buildFontStack(item.fontKey)}`
+  ctx.textAlign = 'left'
+  ctx.textBaseline = 'middle'
+  ctx.lineJoin = 'round'
+  const sw = fontPx * (item.strokePct || 0)
+  ctx.lineWidth = sw
+  for (let i = 0; i < lines.length; i++) {
+    const y = first + i * lineH
+    const x = cx - ctx.measureText(lines[i]).width / 2
+    if (sw > 0.5) {
+      ctx.strokeStyle = item.strokeColor || '#000000'
+      ctx.strokeText(lines[i], x, y)
+    }
+    ctx.fillStyle = item.color || '#ffffff'
+    ctx.fillText(lines[i], x, y)
+  }
+  ctx.restore()
+}
+
+function drawTextOverlays(ctx, w, h, t, texts) {
+  if (!texts || !texts.length) {
+    return
+  }
+  for (const item of texts) {
+    if (t >= item.start && t < item.end) {
+      drawTextOverlay(ctx, w, h, item)
+    }
+  }
+}
+
+// Persistent watermark/logo pinned to a corner. Sized as a fraction of the frame
+// width with a margin off the shorter edge so it sits the same across formats.
+function drawLogo(ctx, w, h, logo) {
+  if (!logo || !logo.bitmap) {
+    return
+  }
+  const bmp = logo.bitmap
+  const scale = (w * (logo.scalePct || 0.18)) / bmp.width
+  const lw = bmp.width * scale
+  const lh = bmp.height * scale
+  const m = Math.min(w, h) * (logo.marginPct ?? 0.04)
+  const pos = logo.position || 'topRight'
+  const x = pos.includes('Right') ? w - lw - m : m
+  const y = pos.startsWith('bottom') ? h - lh - m : m
+  ctx.save()
+  ctx.globalAlpha = clamp01(logo.opacity ?? 0.9)
+  ctx.drawImage(bmp, x, y, lw, lh)
   ctx.restore()
 }
 
@@ -186,8 +304,7 @@ function drawCaption(ctx, w, h, text, style, anim, highlight) {
 
   // Karaoke highlight shows the full caption (so the reveal animations don't fight
   // it) and colours the spoken word itself; block transforms still apply.
-  const isReveal =
-    !highlight && anim && (anim.type === 'typewriter' || anim.type === 'wordByWord')
+  const isReveal = !highlight && anim && (anim.type === 'typewriter' || anim.type === 'wordByWord')
   const displayLines = isReveal ? revealLines(lines, anim.type, anim.reveal) : lines
 
   ctx.save()
@@ -304,36 +421,55 @@ function drawImageClip(ctx, w, h, img, keyframes, t, alpha) {
   ctx.restore()
 }
 
-export function drawFrame(ctx, w, h, t, { images, cues, style, keyframes }) {
+export function drawFrame(ctx, w, h, t, { images, cues, style, keyframes, texts, logo }) {
   // Resolve any keyframe animation for this timestamp; static when there are none.
   style = applyKeyframes(style, keyframes, t)
 
-  ctx.fillStyle = GREEN
-  ctx.fillRect(0, 0, w, h)
-
-  // The slideshow clip active at this moment, with its own framing; gaps stay green.
+  // The slideshow clip active at this moment, with its own framing; gaps fall back
+  // to the chosen background. Resolved before the fill so 'blur' can use it.
   const current = imageAt(t, images)
+  drawBackground(ctx, w, h, current, style)
 
-  // Crossfade: during a clip's opening window, dissolve from the clip that was on
-  // screen just before it (an adjacent clip — not a gap, to avoid green flashes)
-  // into this one. The outgoing clip is frozen at its final frame underneath.
-  const dur = style.transition === 'crossfade' ? style.transitionDuration || 0 : 0
-  let outgoing = null
-  let aIn = 1
-  if (current && dur > 0 && t < current.start + dur) {
-    const prev = imageAt(current.start - 1e-4, images)
-    if (prev && prev !== current) {
-      outgoing = prev
-      aIn = clamp01((t - current.start) / dur)
+  // Clip transition: during an incoming clip's opening window, blend it with the
+  // adjacent clip that was on screen just before it (not a gap, to avoid flashes).
+  // Per-clip fade-in/out modulate every clip's opacity on top of the transition.
+  const trans = style.transition && style.transition !== 'none' ? style.transition : null
+  const tdur = trans ? style.transitionDuration || 0 : 0
+  let prev = null
+  let p = 1
+  if (current && tdur > 0 && t < current.start + tdur) {
+    const cand = imageAt(current.start - 1e-4, images)
+    if (cand && cand !== current) {
+      prev = cand
+      p = clamp01((t - current.start) / tdur)
     }
   }
 
   if (current) {
-    if (outgoing) {
-      drawImageClip(ctx, w, h, outgoing, keyframes, Math.min(t, outgoing.end - 1e-4), 1)
-      drawImageClip(ctx, w, h, current, keyframes, t, aIn)
+    const fadeCur = clipFade(current, t)
+    if (prev) {
+      const pt = Math.min(t, prev.end - 1e-4)
+      if (trans === 'dipBlack' || trans === 'dipWhite') {
+        // Previous clip is already cut away; incoming rises from a solid colour.
+        ctx.save()
+        ctx.fillStyle = trans === 'dipBlack' ? '#000000' : '#ffffff'
+        ctx.fillRect(0, 0, w, h)
+        ctx.restore()
+        drawImageClip(ctx, w, h, current, keyframes, t, p * fadeCur)
+      } else if (trans === 'slideLeft' || trans === 'slideRight') {
+        drawImageClip(ctx, w, h, prev, keyframes, pt, clipFade(prev, pt))
+        const dx = (trans === 'slideLeft' ? 1 : -1) * (1 - p) * w
+        ctx.save()
+        ctx.translate(dx, 0)
+        drawImageClip(ctx, w, h, current, keyframes, t, fadeCur)
+        ctx.restore()
+      } else {
+        // crossfade: outgoing frozen underneath, incoming dissolves in.
+        drawImageClip(ctx, w, h, prev, keyframes, pt, clipFade(prev, pt))
+        drawImageClip(ctx, w, h, current, keyframes, t, p * fadeCur)
+      }
     } else {
-      drawImageClip(ctx, w, h, current, keyframes, t, 1)
+      drawImageClip(ctx, w, h, current, keyframes, t, fadeCur)
     }
   } else if (!images || !images.length) {
     drawPlaceholder(ctx, w, h)
@@ -353,4 +489,8 @@ export function drawFrame(ctx, w, h, t, { images, cues, style, keyframes }) {
     }
   }
   drawCaption(ctx, w, h, cue ? cue.text : '', style, captionAnim(t, cue, style), highlight)
+
+  // Title overlays sit above captions; the watermark/logo is always top-most.
+  drawTextOverlays(ctx, w, h, t, texts)
+  drawLogo(ctx, w, h, logo)
 }

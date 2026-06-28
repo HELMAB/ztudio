@@ -1,6 +1,15 @@
 import { defineStore } from 'pinia'
 import { computed, nextTick, reactive, ref, watch } from 'vue'
-import { DEFAULT_STYLE, KHMER_FONT, MAX_AUDIO_SEC, PRESETS } from '@/lib/ztudio/config'
+import {
+  DEFAULT_STYLE,
+  EXPORT_DEFAULTS,
+  KHMER_FONT,
+  LOGO_DEFAULTS,
+  MAX_AUDIO_SEC,
+  PRESETS,
+  QUALITY_OPTIONS,
+  buildFontStack,
+} from '@/lib/ztudio/config'
 import { AUDIO_DEFAULTS, renderMix } from '@/lib/ztudio/audio'
 import { KHMER_FONTS } from '@/lib/ztudio/khmer-fonts'
 import { captionAt, parseSRT } from '@/lib/ztudio/srt'
@@ -37,8 +46,6 @@ import {
 import { useActivityLog } from '@/composables/useActivityLog'
 
 const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
-const buildFontStack = sel =>
-  sel === 'default' ? KHMER_FONT : `"${sel}", "Noto Sans Khmer", system-ui, sans-serif`
 
 export const useZtudioStore = defineStore('ztudio', () => {
   const { entries: logEntries, log } = useActivityLog()
@@ -104,7 +111,26 @@ export const useZtudioStore = defineStore('ztudio', () => {
     overlayIntensity: 1,
     transition: 'none',
     transitionDuration: 0.5,
+    bgMode: 'green',
+    bgColor: '#101014',
+    bgColor2: '#26263a',
   })
+
+  // Export settings (bitrate/container/fps) — separate from the caption style and
+  // kept out of undo history, but persisted with the project.
+  const exportSettings = reactive({ ...EXPORT_DEFAULTS })
+
+  // Standalone title-text overlays (timed, positioned independently of captions).
+  const texts = ref([])
+  const selectedTextId = ref(null)
+  let textCounter = 0
+
+  // Persistent watermark/logo: a decoded bitmap plus its framing controls. Held
+  // like the music bed — media-like, so it's excluded from undo history.
+  const logoBitmap = ref(null)
+  const logoName = ref('')
+  let rawLogo = null
+  const logo = reactive({ ...LOGO_DEFAULTS })
 
   // What canvas-drag on the preview repositions: 'caption' or 'image'.
   const dragTarget = ref('caption')
@@ -246,7 +272,20 @@ export const useZtudioStore = defineStore('ztudio', () => {
     overlayIntensity: controls.overlayIntensity,
     transition: controls.transition,
     transitionDuration: controls.transitionDuration,
+    bgMode: controls.bgMode,
+    bgColor: controls.bgColor,
+    bgColor2: controls.bgColor2,
   }))
+
+  const selectedText = computed(
+    () => texts.value.find(tx => tx.id === selectedTextId.value) || null,
+  )
+  const hasTexts = computed(() => texts.value.length > 0)
+  const hasLogo = computed(() => !!logoBitmap.value)
+  // The resolved logo passed to the renderer (bitmap + framing), or null when none.
+  const logoResolved = computed(() =>
+    logoBitmap.value ? { bitmap: logoBitmap.value, ...logo } : null,
+  )
 
   const audioPill = computed(() =>
     audioBuffer.value
@@ -273,6 +312,11 @@ export const useZtudioStore = defineStore('ztudio', () => {
     customFonts.value.length
       ? { ok: true, text: t('pill.fonts', { count: customFonts.value.length }) }
       : { ok: false, text: t('pill.noFonts') },
+  )
+  const logoPill = computed(() =>
+    logoBitmap.value
+      ? { ok: true, text: t('pill.logo', { name: logoName.value }) }
+      : { ok: false, text: t('pill.noLogo') },
   )
 
   function redraw() {
@@ -339,6 +383,18 @@ export const useZtudioStore = defineStore('ztudio', () => {
       im[side] = clampCrop(value)
       redraw()
     }
+  }
+
+  // Per-clip fade in/out (seconds). Clamped so the two fades can't exceed the
+  // clip's own length, which would otherwise leave it never fully opaque.
+  function setImageFade(side, value) {
+    const im = selectedImage.value
+    if (!im || (side !== 'fadeIn' && side !== 'fadeOut')) {
+      return
+    }
+    const len = im.end - im.start
+    im[side] = Math.max(0, Math.min(value, len))
+    redraw()
   }
 
   function resetImageTransform() {
@@ -426,6 +482,10 @@ export const useZtudioStore = defineStore('ztudio', () => {
     }
   })
 
+  // Logo framing is edited directly (v-model on the reactive), so repaint the
+  // preview when any of its fields change.
+  watch(logo, redraw)
+
   watch(
     () => [
       controls.fontSizePct,
@@ -461,6 +521,9 @@ export const useZtudioStore = defineStore('ztudio', () => {
       controls.overlayIntensity,
       controls.transition,
       controls.transitionDuration,
+      controls.bgMode,
+      controls.bgColor,
+      controls.bgColor2,
       resolution.value,
     ],
     redraw,
@@ -601,6 +664,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       cues: cues.value.map(c => ({ ...c })),
       keyframes: keyframes.value.map(k => ({ ...k, values: { ...k.values } })),
       images: images.value.map(stripBitmap),
+      texts: texts.value.map(tx => ({ ...tx })),
       trimStart: trimStart.value,
       trimEnd: trimEnd.value,
       resolution: resolution.value,
@@ -608,6 +672,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       selectedImageId: selectedImageId.value,
       selectedCueIndex: selectedCueIndex.value,
       selectedKeyframeId: selectedKeyframeId.value,
+      selectedTextId: selectedTextId.value,
     }
   }
 
@@ -623,6 +688,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       cues: cues.value,
       keyframes: keyframes.value,
       images: images.value.map(stripFramingIfKeyed),
+      texts: texts.value,
       trimStart: trimStart.value,
       trimEnd: trimEnd.value,
       resolution: resolution.value,
@@ -691,6 +757,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     }
     cues.value = snap.cues.map(c => ({ ...c }))
     keyframes.value = snap.keyframes.map(k => ({ ...k, values: { ...k.values } }))
+    texts.value = (snap.texts || []).map(tx => ({ ...tx }))
     images.value = snap.images
       .map(im => ({ ...im, bitmap: bitmapRegistry.get(im.id) }))
       .filter(im => im.bitmap)
@@ -709,6 +776,9 @@ export const useZtudioStore = defineStore('ztudio', () => {
         : null
     selectedKeyframeId.value = keyframes.value.some(k => k.id === snap.selectedKeyframeId)
       ? snap.selectedKeyframeId
+      : null
+    selectedTextId.value = texts.value.some(tx => tx.id === snap.selectedTextId)
+      ? snap.selectedTextId
       : null
     if (!images.value.length) {
       dragTarget.value = 'caption'
@@ -878,6 +948,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
       cropLeft: 0,
       cropRight: 0,
       effect: 'vivid',
+      fadeIn: 0,
+      fadeOut: 0,
     }
     bitmapRegistry.set(clip.id, bitmap)
     imageBlobs.set(clip.id, file)
@@ -1211,6 +1283,15 @@ export const useZtudioStore = defineStore('ztudio', () => {
         await ensureBundledFont(controls.fontKey)
         await document.fonts.load(`${controls.fontWeight} 64px "${controls.fontKey}"`)
       }
+      // Title overlays can each pick their own font — load those too so frames
+      // don't encode with a fallback.
+      const titleFonts = new Set(
+        texts.value.map(tx => tx.fontKey).filter(key => key && key !== 'default'),
+      )
+      for (const key of titleFonts) {
+        await ensureBundledFont(key)
+        await document.fonts.load(`64px "${key}"`)
+      }
       await document.fonts.load(`${controls.fontWeight} 64px "Noto Sans Khmer"`)
       await document.fonts.ready
     } catch (e) {
@@ -1281,7 +1362,9 @@ export const useZtudioStore = defineStore('ztudio', () => {
       const { from, to } = trimWindow.value
       const dur = to - from
       const MB = await loadMediabunny(log)
-      const pipe = await pickPipeline(MB, w, h)
+      const quality =
+        QUALITY_OPTIONS.find(o => o.value === exportSettings.quality) || QUALITY_OPTIONS[0]
+      const pipe = await pickPipeline(MB, w, h, exportSettings.format)
 
       if (hasTrim.value) {
         log(
@@ -1314,6 +1397,11 @@ export const useZtudioStore = defineStore('ztudio', () => {
         style: style.value,
         images: images.value,
         keyframes: keyframes.value,
+        texts: texts.value,
+        logo: logoResolved.value,
+        fps: exportSettings.fps,
+        qualityKey: quality.mbKey,
+        mrBitrate: quality.mrBitrate,
         onProgress: p => {
           progress.value = p
         },
@@ -1385,6 +1473,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
         cues: cues.value,
         style: style.value,
         keyframes: keyframes.value,
+        texts: texts.value,
+        logo: logoResolved.value,
       })
       const blob = await new Promise(resolve => cv.toBlob(resolve, 'image/png'))
       if (!blob) {
@@ -1803,6 +1893,91 @@ export const useZtudioStore = defineStore('ztudio', () => {
     maybeReady()
   }
 
+  // ---- Title text overlays --------------------------------------------------
+  // Free-floating, time-ranged titles drawn over the scene, independent of the
+  // SRT captions. Edited in the Overlay inspector tab.
+  const MIN_TEXT_DUR = 0.3
+
+  function addText() {
+    const dur = previewDuration.value
+    const start = Math.min(Math.max(0, scrub.value), Math.max(0, dur - MIN_TEXT_DUR))
+    const end = Math.min(start + 2.5, dur)
+    const item = {
+      id: ++textCounter,
+      text: t('textOverlay.defaultText'),
+      start: r3(start),
+      end: r3(Math.max(end, start + MIN_TEXT_DUR)),
+      x: 0.5,
+      y: 0.16,
+      fontKey: controls.fontKey,
+      fontSizePct: 0.06,
+      bold: true,
+      color: '#ffffff',
+      strokeColor: '#000000',
+      strokePct: 0.08,
+    }
+    texts.value = [...texts.value, item]
+    selectedTextId.value = item.id
+    redraw()
+    maybeReady()
+    return item
+  }
+
+  function updateText(id, patch) {
+    texts.value = texts.value.map(tx => (tx.id === id ? { ...tx, ...patch } : tx))
+    redraw()
+  }
+
+  // Titles can use any caption font (bundled Khmer or uploaded). Lazily load the
+  // bundled font so the preview repaints with real glyphs instead of a fallback.
+  function setTextFont(id, fontKey) {
+    updateText(id, { fontKey })
+    ensureBundledFont(fontKey).then(redraw)
+  }
+
+  function removeText(id) {
+    texts.value = texts.value.filter(tx => tx.id !== id)
+    if (selectedTextId.value === id) {
+      selectedTextId.value = null
+    }
+    redraw()
+    maybeReady()
+  }
+
+  function selectText(id) {
+    selectedTextId.value = id
+    const tx = texts.value.find(item => item.id === id)
+    // Bring the title on screen so inspector edits are visible (WYSIWYG).
+    if (tx && (scrub.value < tx.start || scrub.value >= tx.end)) {
+      seek(tx.start)
+    }
+  }
+
+  // ---- Watermark / logo -----------------------------------------------------
+  async function loadLogo(file) {
+    if (!file) {
+      logoBitmap.value = null
+      logoName.value = ''
+      rawLogo = null
+      redraw()
+      return true
+    }
+    try {
+      const bitmap = await createImageBitmap(file)
+      logoBitmap.value = bitmap
+      rawLogo = file
+      logoName.value = file.name || 'logo'
+      log(`Logo: ${file.name} ${bitmap.width}×${bitmap.height}.`)
+    } catch (err) {
+      logoBitmap.value = null
+      log('Logo load failed: ' + (err?.message || err))
+      return false
+    } finally {
+      redraw()
+    }
+    return true
+  }
+
   function dismissResult() {
     if (result.value?.url) {
       URL.revokeObjectURL(result.value.url)
@@ -1842,9 +2017,14 @@ export const useZtudioStore = defineStore('ztudio', () => {
       cues: cues.value.map(c => ({ ...c })),
       keyframes: keyframes.value.map(k => ({ ...k, values: { ...k.values } })),
       images: images.value.map(stripBitmap),
+      texts: texts.value.map(tx => ({ ...tx })),
+      exportSettings: { ...exportSettings },
       hasAudio: !!rawAudio,
       hasMusic: !!rawMusic,
       musicName: musicName.value,
+      hasLogo: !!rawLogo,
+      logo: { ...logo },
+      logoName: logoName.value,
       selectedImageId: selectedImageId.value,
     }
   }
@@ -1871,6 +2051,10 @@ export const useZtudioStore = defineStore('ztudio', () => {
         await syncBlob('music', rawMusic)
         desired.add('music')
       }
+      if (rawLogo) {
+        await syncBlob('logo', rawLogo)
+        desired.add('logo')
+      }
       for (const im of images.value) {
         const blob = imageBlobs.get(im.id)
         if (blob) {
@@ -1896,7 +2080,15 @@ export const useZtudioStore = defineStore('ztudio', () => {
 
   let saveTimer = null
   watch(
-    () => [historyKey.value, audioBuffer.value, musicBuffer.value, musicName.value],
+    () => [
+      historyKey.value,
+      audioBuffer.value,
+      musicBuffer.value,
+      musicName.value,
+      logoBitmap.value,
+      JSON.stringify(logo),
+      JSON.stringify(exportSettings),
+    ],
     () => {
       if (initializing || restoring) {
         return
@@ -1935,6 +2127,15 @@ export const useZtudioStore = defineStore('ztudio', () => {
           persistedBlobs.set('music', blob)
         }
       }
+      if (doc.hasLogo) {
+        const blob = await getBlob('logo')
+        if (blob) {
+          logoBitmap.value = await createImageBitmap(blob)
+          rawLogo = blob
+          logoName.value = doc.logoName || 'logo'
+          persistedBlobs.set('logo', blob)
+        }
+      }
       const restored = []
       let maxId = 0
       for (const meta of doc.images || []) {
@@ -1959,8 +2160,13 @@ export const useZtudioStore = defineStore('ztudio', () => {
       cues.value = (doc.cues || []).map(c => ({ ...c }))
       keyframes.value = (doc.keyframes || []).map(k => ({ ...k, values: { ...k.values } }))
       kfCounter = keyframes.value.reduce((m, k) => Math.max(m, k.id), kfCounter)
+      texts.value = (doc.texts || []).map(tx => ({ ...tx }))
+      textCounter = texts.value.reduce((m, tx) => Math.max(m, tx.id), textCounter)
+      selectedTextId.value = null
       Object.assign(controls, doc.controls || {})
       Object.assign(audio, doc.audio || {})
+      Object.assign(logo, doc.logo || {})
+      Object.assign(exportSettings, doc.exportSettings || {})
       resolution.value = doc.resolution || resolution.value
       preset.value = doc.preset || 'custom'
       trimStart.value = doc.trimStart ?? 0
@@ -2093,6 +2299,22 @@ export const useZtudioStore = defineStore('ztudio', () => {
     imagePill,
     srtPill,
     fontPill,
+    logoPill,
+    exportSettings,
+    texts,
+    selectedText,
+    selectedTextId,
+    hasTexts,
+    addText,
+    updateText,
+    removeText,
+    selectText,
+    setTextFont,
+    hasLogo,
+    logoName,
+    logo,
+    logoResolved,
+    loadLogo,
     redraw,
     dragTarget,
     setCaptionOffset,
@@ -2102,6 +2324,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     setImageFit,
     setImageEffect,
     setImageCrop,
+    setImageFade,
     resetImageTransform,
     resetImageCrop,
     addImages,

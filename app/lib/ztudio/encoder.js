@@ -66,7 +66,9 @@ export function sliceAudioBuffer(buffer, from, to) {
   return out
 }
 
-export async function pickPipeline(MB, width, height) {
+// `prefer` controls container choice: 'auto' tries MP4 then WebM; 'mp4' forces
+// MP4 (still falling back to WebM if MP4 can't encode here); 'webm' forces WebM.
+export async function pickPipeline(MB, width, height, prefer = 'auto') {
   if (!MB) {
     return { error: 'WebCodecs library not loaded.' }
   }
@@ -78,24 +80,28 @@ export async function pickPipeline(MB, width, height) {
     getFirstEncodableAudioCodec,
   } = MB
 
-  const mp4 = new Mp4OutputFormat()
-  const v = await getFirstEncodableVideoCodec(mp4.getSupportedVideoCodecs(), { width, height })
-  const a = await getFirstEncodableAudioCodec(mp4.getSupportedAudioCodecs())
-  if (v && a) {
-    return { format: mp4, videoCodec: v, audioCodec: a, label: `MP4 (${v} + ${a})`, ext: 'mp4' }
+  if (prefer !== 'webm') {
+    const mp4 = new Mp4OutputFormat()
+    const v = await getFirstEncodableVideoCodec(mp4.getSupportedVideoCodecs(), { width, height })
+    const a = await getFirstEncodableAudioCodec(mp4.getSupportedAudioCodecs())
+    if (v && a) {
+      return { format: mp4, videoCodec: v, audioCodec: a, label: `MP4 (${v} + ${a})`, ext: 'mp4' }
+    }
   }
 
   const webm = new WebMOutputFormat()
   const v2 = await getFirstEncodableVideoCodec(webm.getSupportedVideoCodecs(), { width, height })
   const a2 = await getFirstEncodableAudioCodec(webm.getSupportedAudioCodecs())
   if (v2 && a2) {
+    // Forced/auto WebM isn't a "fallback"; only flag it when MP4 was wanted.
+    const fellBack = prefer !== 'webm'
     return {
       format: webm,
       videoCodec: v2,
       audioCodec: a2,
-      label: `WebM (${v2} + ${a2}) — MP4 unavailable`,
+      label: fellBack ? `WebM (${v2} + ${a2}) — MP4 unavailable` : `WebM (${v2} + ${a2})`,
       ext: 'webm',
-      fallback: true,
+      fallback: fellBack,
     }
   }
 
@@ -103,11 +109,26 @@ export async function pickPipeline(MB, width, height) {
 }
 
 export async function generateFast(MB, pipe, w, h, dur, ctx2) {
-  const { mixedAudio, cues, style, images, keyframes, onProgress, onStatus, log, isCancelled } = ctx2
+  const {
+    mixedAudio,
+    cues,
+    style,
+    images,
+    keyframes,
+    texts,
+    logo,
+    onProgress,
+    onStatus,
+    log,
+    isCancelled,
+  } = ctx2
   // Trim window in absolute media time; defaults to the whole clip.
   const from = ctx2.from || 0
   const to = ctx2.to != null ? ctx2.to : from + dur
-  const { Output, BufferTarget, CanvasSource, AudioBufferSource, QUALITY_HIGH } = MB
+  const fps = ctx2.fps || 30
+  const { Output, BufferTarget, CanvasSource, AudioBufferSource } = MB
+  // Resolve the requested quality to a mediabunny constant, defaulting to high.
+  const bitrate = MB[ctx2.qualityKey] ?? MB.QUALITY_HIGH
 
   const output = new Output({ format: pipe.format, target: new BufferTarget() })
   const canvas = document.createElement('canvas')
@@ -115,11 +136,22 @@ export async function generateFast(MB, pipe, w, h, dur, ctx2) {
   canvas.height = h
   const ctx = canvas.getContext('2d', { alpha: false })
 
-  const videoSource = new CanvasSource(canvas, { codec: pipe.videoCodec, bitrate: QUALITY_HIGH })
+  const videoSource = new CanvasSource(canvas, { codec: pipe.videoCodec, bitrate })
   output.addVideoTrack(videoSource)
-  const audioSource = new AudioBufferSource({ codec: pipe.audioCodec, bitrate: QUALITY_HIGH })
+  const audioSource = new AudioBufferSource({ codec: pipe.audioCodec, bitrate })
   output.addAudioTrack(audioSource)
   await output.start()
+
+  // Per-clip fade windows need dense frames so the opacity ramps smoothly.
+  const fadeWindows = []
+  for (const im of images || []) {
+    if (im.fadeIn) {
+      fadeWindows.push({ start: im.start, end: im.start + im.fadeIn })
+    }
+    if (im.fadeOut) {
+      fadeWindows.push({ start: im.end - im.fadeOut, end: im.end })
+    }
+  }
 
   const segs = buildSegments(
     cues,
@@ -128,13 +160,19 @@ export async function generateFast(MB, pipe, w, h, dur, ctx2) {
     style.animation,
     style.animDuration,
     (keyframes || []).map(k => k.t),
-    (images || []).flatMap(im => [im.start, im.end]),
+    // Image cuts plus title-overlay show/hide boundaries all land on a frame.
+    [
+      ...(images || []).flatMap(im => [im.start, im.end]),
+      ...(texts || []).flatMap(tx => [tx.start, tx.end]),
+    ],
     isOverlayActive(style.overlay),
     style.highlightWord,
-    style.transition === 'crossfade' ? style.transitionDuration || 0 : 0,
+    style.transition && style.transition !== 'none' ? style.transitionDuration || 0 : 0,
     (images || []).map(im => im.start),
+    fadeWindows,
+    1 / fps,
   )
-  log(`Frames: ${segs.length} (vs ${Math.ceil(dur * 30)} at naive 30fps).`)
+  log(`Frames: ${segs.length} (vs ${Math.ceil(dur * fps)} at naive ${fps}fps).`)
   const t0 = performance.now()
 
   for (let i = 0; i < segs.length; i++) {
@@ -142,7 +180,7 @@ export async function generateFast(MB, pipe, w, h, dur, ctx2) {
       return null
     }
     // Draw at absolute media time; emit at output time (offset by the trim start).
-    drawFrame(ctx, w, h, segs[i].start, { images, cues, style, keyframes })
+    drawFrame(ctx, w, h, segs[i].start, { images, cues, style, keyframes, texts, logo })
     await videoSource.add(segs[i].start - from, segs[i].dur)
     if (i % 4 === 0) {
       onProgress(i / segs.length)
@@ -173,9 +211,23 @@ export async function generateFast(MB, pipe, w, h, dur, ctx2) {
 }
 
 export async function generateRealtime(w, h, dur, ctx2) {
-  const { mixedAudio, cues, style, images, keyframes, onProgress, onStatus, log, isCancelled } = ctx2
+  const {
+    mixedAudio,
+    cues,
+    style,
+    images,
+    keyframes,
+    texts,
+    logo,
+    onProgress,
+    onStatus,
+    log,
+    isCancelled,
+  } = ctx2
 
   const from = ctx2.from || 0
+  const fps = ctx2.fps || 30
+  const videoBitsPerSecond = ctx2.mrBitrate || 8_000_000
 
   const mimeType = mrType()
   if (!mimeType) {
@@ -187,7 +239,7 @@ export async function generateRealtime(w, h, dur, ctx2) {
   canvas.width = w
   canvas.height = h
   const ctx = canvas.getContext('2d', { alpha: false })
-  drawFrame(ctx, w, h, from, { images, cues, style, keyframes })
+  drawFrame(ctx, w, h, from, { images, cues, style, keyframes, texts, logo })
 
   const AC = window.AudioContext || window.webkitAudioContext
   const ac = new AC()
@@ -198,9 +250,9 @@ export async function generateRealtime(w, h, dur, ctx2) {
   const dest = ac.createMediaStreamDestination()
   src.connect(dest)
 
-  const vstream = canvas.captureStream(30)
+  const vstream = canvas.captureStream(fps)
   const stream = new MediaStream([...vstream.getVideoTracks(), ...dest.stream.getAudioTracks()])
-  const rec = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 })
+  const rec = new MediaRecorder(stream, { mimeType, videoBitsPerSecond })
   const chunks = []
   rec.ondataavailable = e => {
     if (e.data && e.data.size) {
@@ -230,6 +282,8 @@ export async function generateRealtime(w, h, dur, ctx2) {
         cues,
         style,
         keyframes,
+        texts,
+        logo,
       })
       onProgress(Math.min(1, elapsed / dur))
       onStatus(`Recording in real time… ${elapsed.toFixed(1)} / ${dur.toFixed(1)}s`)

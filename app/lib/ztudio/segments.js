@@ -26,15 +26,18 @@ export function buildSegments(
   highlightWords = false,
   transitionDur = 0,
   transitionStarts = [],
+  fadeWindows = [],
+  frameStep = ANIM_FRAME_STEP,
 ) {
   const pts = new Set([from, to])
   const animated = animType && animType !== 'none' && animDur > 0
+  const step = frameStep > 0 ? frameStep : ANIM_FRAME_STEP
 
   // A continuous overlay (rain/snow/…) moves every frame, so the whole window
   // must be sampled at the animation rate — this forgoes the static-frame
   // speed-up and is the cost of enabling an overlay.
   if (overlayActive) {
-    for (let t = from; t < to; t += ANIM_FRAME_STEP) {
+    for (let t = from; t < to; t += step) {
       pts.add(+t.toFixed(3))
     }
   }
@@ -56,8 +59,8 @@ export function buildSegments(
     if (animated) {
       // Dense frames only where motion happens: the enter and exit windows.
       const mid = (cue.start + cue.end) / 2
-      densify(pts, cue.start, Math.min(cue.start + animDur, mid), ANIM_FRAME_STEP, from, to)
-      densify(pts, Math.max(cue.end - animDur, mid), cue.end, ANIM_FRAME_STEP, from, to)
+      densify(pts, cue.start, Math.min(cue.start + animDur, mid), step, from, to)
+      densify(pts, Math.max(cue.end - animDur, mid), cue.end, step, from, to)
     }
     // Karaoke highlight advances at each word; a boundary per word is enough since
     // the highlight is static between words (no need for full 30fps densifying).
@@ -85,15 +88,20 @@ export function buildSegments(
     }
   }
   for (let i = 0; i < kfs.length - 1; i++) {
-    densify(pts, kfs[i], kfs[i + 1], ANIM_FRAME_STEP, from, to)
+    densify(pts, kfs[i], kfs[i + 1], step, from, to)
   }
 
   // Crossfade windows: each clip's opening [start, start+dur] dissolves from the
   // previous clip, so it needs dense frames or the fade would step in 1s jumps.
   if (transitionDur > 0) {
     for (const s of transitionStarts) {
-      densify(pts, s, s + transitionDur, ANIM_FRAME_STEP, from, to)
+      densify(pts, s, s + transitionDur, step, from, to)
     }
+  }
+
+  // Per-clip fade-in/out windows ramp opacity, so they too need dense frames.
+  for (const win of fadeWindows) {
+    densify(pts, win.start, win.end, step, from, to)
   }
 
   for (let t = from + MAX_FRAME_DUR; t < to; t += MAX_FRAME_DUR) {

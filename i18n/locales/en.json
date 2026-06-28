@@ -74,6 +74,7 @@
     "tabStyle": "Style",
     "tabAnimation": "Animation",
     "tabImage": "Image",
+    "tabTitles": "Titles",
     "text": "Caption text",
     "add": "Caption",
     "addHint": "Add a caption at the playhead",
@@ -116,8 +117,76 @@
     "cropBottom": "Crop bottom",
     "cropLeft": "Crop left",
     "cropRight": "Crop right",
+    "clipFadeIn": "Clip fade in",
+    "clipFadeOut": "Clip fade out",
+    "bgMode": "Background fill",
+    "bgColor": "Background colour",
+    "bgColor2": "Gradient end",
     "background": "Background",
     "boxBehindText": "Box behind text"
+  },
+  "bg": {
+    "green": "Chroma green (key)",
+    "black": "Black",
+    "white": "White",
+    "color": "Solid colour",
+    "gradient": "Gradient",
+    "blur": "Blurred image"
+  },
+  "export": {
+    "quality": "Quality",
+    "format": "Format",
+    "fps": "FPS"
+  },
+  "quality": {
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low"
+  },
+  "format": {
+    "auto": "Auto (MP4)",
+    "mp4": "MP4",
+    "webm": "WebM"
+  },
+  "fps": {
+    "30": "30 fps",
+    "24": "24 fps",
+    "60": "60 fps"
+  },
+  "logo": {
+    "upload": "Logo / watermark — optional",
+    "hint": "A PNG (transparent works best) pinned to a corner of every frame.",
+    "position": "Position",
+    "size": "Size",
+    "opacity": "Opacity",
+    "topLeft": "Top left",
+    "topRight": "Top right",
+    "bottomLeft": "Bottom left",
+    "bottomRight": "Bottom right"
+  },
+  "textOverlay": {
+    "heading": "Title text",
+    "add": "Add title",
+    "empty": "Add a title to show free-floating text over the video, independent of captions.",
+    "text": "Text",
+    "font": "Font",
+    "placeholder": "Type a title…",
+    "defaultText": "Title",
+    "untitled": "(empty)",
+    "anchor": "Anchor",
+    "anchorCustom": "Custom",
+    "anchorTop": "Top",
+    "anchorCenter": "Center",
+    "anchorBottom": "Bottom",
+    "posX": "Position X",
+    "posY": "Position Y",
+    "size": "Text size",
+    "colour": "Text colour",
+    "outline": "Outline colour",
+    "outlineWidth": "Outline width",
+    "bold": "Bold",
+    "boldHint": "Bold weight",
+    "delete": "Delete title"
   },
   "trim": {
     "start": "Trim start — drag to set where the audio begins",
@@ -248,7 +317,11 @@
   },
   "transitionOpt": {
     "none": "None (hard cut)",
-    "crossfade": "Crossfade"
+    "crossfade": "Crossfade",
+    "dipBlack": "Dip to black",
+    "dipWhite": "Dip to white",
+    "slideLeft": "Slide left",
+    "slideRight": "Slide right"
   },
   "effect": {
     "none": "None",
@@ -317,7 +390,9 @@
     "noCaptions": "no captions",
     "cues": "{count} cues",
     "noFonts": "no custom fonts",
-    "fonts": "{count} custom fonts"
+    "fonts": "{count} custom fonts",
+    "noLogo": "no logo",
+    "logo": "logo · {name}"
   },
   "status": {
     "addAudio": "Add audio to start.",

@@ -7,6 +7,12 @@ export const ANIM_FRAME_STEP = 1 / 30
 export const GREEN = '#00B140'
 export const KHMER_FONT = '"Noto Sans Khmer", system-ui, sans-serif'
 
+// Resolve a font selection (the `value` from fontOptions: 'default', a bundled
+// Khmer family, or a custom FontFace family) to a CSS font stack with the Khmer
+// fallback. Shared by the caption style and the title-text overlays.
+export const buildFontStack = sel =>
+  !sel || sel === 'default' ? KHMER_FONT : `"${sel}", "Noto Sans Khmer", system-ui, sans-serif`
+
 // Title-safe inset (fraction of each edge) for the preview-only safe-area
 // overlay. Captions kept inside this margin won't be clipped or hidden behind
 // platform UI on phones/TVs. This is a guide only — it never affects the encode.
@@ -44,6 +50,12 @@ export const DEFAULT_STYLE = {
   overlayIntensity: 1,
   transition: 'none',
   transitionDuration: 0.5,
+  // Background painted behind contained images and in clip gaps. 'green' keeps the
+  // chroma key; 'color'/'gradient' use bgColor(/bgColor2); 'blur' fills with a
+  // blurred cover-crop of the current image (letterbox-bars look for portrait).
+  bgMode: 'green',
+  bgColor: '#101014',
+  bgColor2: '#26263a',
 }
 
 export const PRESETS = {
@@ -144,11 +156,74 @@ export const IMAGE_EFFECTS = [
   { value: 'invert', labelKey: 'effect.invert', filter: 'invert(1)' },
 ]
 
-// Transitions between adjacent slideshow image clips. `crossfade` dissolves the
-// outgoing clip into the incoming one over `transitionDuration`.
+// Background fill modes. `green` is the chroma key; `color`/`gradient` use the
+// bgColor controls; `blur` fills with a blurred cover-crop of the current image.
+export const BACKGROUND_OPTIONS = [
+  { value: 'green', labelKey: 'bg.green' },
+  { value: 'black', labelKey: 'bg.black' },
+  { value: 'white', labelKey: 'bg.white' },
+  { value: 'color', labelKey: 'bg.color' },
+  { value: 'gradient', labelKey: 'bg.gradient' },
+  { value: 'blur', labelKey: 'bg.blur' },
+]
+
+// Transitions between adjacent slideshow image clips, applied at every clip
+// boundary. `crossfade` dissolves the outgoing clip into the incoming one;
+// `dipBlack`/`dipWhite` fade the incoming clip up from a colour; `slideLeft`/
+// `slideRight` push the incoming clip in over the previous one. All run over
+// `transitionDuration`.
 export const TRANSITION_OPTIONS = [
   { value: 'none', labelKey: 'transitionOpt.none' },
   { value: 'crossfade', labelKey: 'transitionOpt.crossfade' },
+  { value: 'dipBlack', labelKey: 'transitionOpt.dipBlack' },
+  { value: 'dipWhite', labelKey: 'transitionOpt.dipWhite' },
+  { value: 'slideLeft', labelKey: 'transitionOpt.slideLeft' },
+  { value: 'slideRight', labelKey: 'transitionOpt.slideRight' },
+]
+
+// Export quality → mediabunny quality constant name (resolved at encode time) and
+// a realtime MediaRecorder video bitrate fallback.
+export const QUALITY_OPTIONS = [
+  { value: 'high', labelKey: 'quality.high', mbKey: 'QUALITY_HIGH', mrBitrate: 8_000_000 },
+  { value: 'medium', labelKey: 'quality.medium', mbKey: 'QUALITY_MEDIUM', mrBitrate: 5_000_000 },
+  { value: 'low', labelKey: 'quality.low', mbKey: 'QUALITY_LOW', mrBitrate: 2_500_000 },
+]
+
+// Container preference for the fast (WebCodecs) path. 'auto' prefers MP4 then
+// falls back to WebM; the explicit choices force one container.
+export const FORMAT_OPTIONS = [
+  { value: 'auto', labelKey: 'format.auto' },
+  { value: 'mp4', labelKey: 'format.mp4' },
+  { value: 'webm', labelKey: 'format.webm' },
+]
+
+// Frame rate ceiling for animated stretches (the variable-segment encode still
+// emits long static frames where nothing moves).
+export const FPS_OPTIONS = [
+  { value: 30, labelKey: 'fps.30' },
+  { value: 24, labelKey: 'fps.24' },
+  { value: 60, labelKey: 'fps.60' },
+]
+
+// Default export settings (bitrate, container, frame rate).
+export const EXPORT_DEFAULTS = { quality: 'high', format: 'auto', fps: 30 }
+
+// Watermark/logo corners and its default framing (size as a fraction of the
+// frame width, opacity, and inset from the edges).
+export const LOGO_POSITION_OPTIONS = [
+  { value: 'topLeft', labelKey: 'logo.topLeft' },
+  { value: 'topRight', labelKey: 'logo.topRight' },
+  { value: 'bottomLeft', labelKey: 'logo.bottomLeft' },
+  { value: 'bottomRight', labelKey: 'logo.bottomRight' },
+]
+
+export const LOGO_DEFAULTS = { position: 'topRight', scalePct: 0.18, opacity: 0.9, marginPct: 0.04 }
+
+// Anchor presets for a text overlay, mapped to normalized (x, y) centre points.
+export const TEXT_ANCHOR_OPTIONS = [
+  { value: 'top', labelKey: 'textOverlay.anchorTop', x: 0.5, y: 0.16 },
+  { value: 'center', labelKey: 'textOverlay.anchorCenter', x: 0.5, y: 0.5 },
+  { value: 'bottom', labelKey: 'textOverlay.anchorBottom', x: 0.5, y: 0.84 },
 ]
 
 // Karaoke word-highlight styles: recolour the spoken word, or put a filled pill

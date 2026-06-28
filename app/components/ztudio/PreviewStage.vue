@@ -40,6 +40,8 @@ function paint() {
     cues: store.cues,
     style: store.style,
     keyframes: store.keyframes,
+    texts: store.texts,
+    logo: store.logoResolved,
   })
   if (showSafeArea.value) {
     drawSafeArea(ctx, w, h)

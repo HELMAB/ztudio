@@ -1,6 +1,11 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { FIT_OPTIONS, IMAGE_EFFECTS, TRANSITION_OPTIONS } from '@/lib/ztudio/config'
+import {
+  BACKGROUND_OPTIONS,
+  FIT_OPTIONS,
+  IMAGE_EFFECTS,
+  TRANSITION_OPTIONS,
+} from '@/lib/ztudio/config'
 
 const store = useZtudioStore()
 const { t } = useI18n()
@@ -11,8 +16,13 @@ const localize = options =>
 const fitOptions = localize(FIT_OPTIONS)
 const effectOptions = localize(IMAGE_EFFECTS)
 const transitionOptions = localize(TRANSITION_OPTIONS)
+const backgroundOptions = localize(BACKGROUND_OPTIONS)
 
 const transitionLabel = computed(() => store.controls.transitionDuration.toFixed(1) + 's')
+const secs = v => v.toFixed(1) + 's'
+// Solid + gradient background modes expose colour pickers (gradient adds a second
+// stop); 'blur' derives its fill from the image, so no picker is shown.
+const showBgColor = computed(() => ['color', 'gradient'].includes(store.controls.bgMode))
 
 const showCrop = ref(false)
 
@@ -37,6 +47,31 @@ const pct = v => Math.round(v * 100) + '%'
 
 <template>
   <div class="space-y-4">
+    <!-- Scene background: fills letterboxed bars behind contained images and any
+         gaps. Applies whether or not images are present. -->
+    <ZtudioField :label="$t('controls.bgMode')">
+      <ZtudioSelectField v-model="store.controls.bgMode" :options="backgroundOptions" />
+    </ZtudioField>
+
+    <div v-if="showBgColor" class="grid grid-cols-2 gap-3">
+      <ZtudioField :label="$t('controls.bgColor')">
+        <input
+          v-model="store.controls.bgColor"
+          type="color"
+          class="h-9 w-full cursor-pointer rounded-md border border-border bg-background p-1"
+        />
+      </ZtudioField>
+      <ZtudioField v-if="store.controls.bgMode === 'gradient'" :label="$t('controls.bgColor2')">
+        <input
+          v-model="store.controls.bgColor2"
+          type="color"
+          class="h-9 w-full cursor-pointer rounded-md border border-border bg-background p-1"
+        />
+      </ZtudioField>
+    </div>
+
+    <div class="border-t border-border" />
+
     <!-- Global slideshow setting: applies to every clip boundary, so it lives
          outside the per-clip block below. -->
     <template v-if="store.hasImages">
@@ -146,6 +181,33 @@ const pct = v => Math.round(v * 100) + '%'
           </ZtudioField>
         </div>
       </template>
+
+      <div class="grid grid-cols-2 gap-3">
+        <ZtudioField
+          :label="$t('controls.clipFadeIn')"
+          :value="secs(store.selectedImage.fadeIn || 0)"
+        >
+          <Slider
+            :model-value="[store.selectedImage.fadeIn || 0]"
+            :min="0"
+            :max="3"
+            :step="0.1"
+            @update:model-value="store.setImageFade('fadeIn', $event[0])"
+          />
+        </ZtudioField>
+        <ZtudioField
+          :label="$t('controls.clipFadeOut')"
+          :value="secs(store.selectedImage.fadeOut || 0)"
+        >
+          <Slider
+            :model-value="[store.selectedImage.fadeOut || 0]"
+            :min="0"
+            :max="3"
+            :step="0.1"
+            @update:model-value="store.setImageFade('fadeOut', $event[0])"
+          />
+        </ZtudioField>
+      </div>
     </template>
 
     <p v-else-if="store.hasImages" class="text-xs text-muted-foreground">
