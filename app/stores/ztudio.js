@@ -1243,6 +1243,9 @@ export const useZtudioStore = defineStore('ztudio', () => {
   function selectImage(id) {
     selectedImageId.value = id
     inspectorTab.value = 'image'
+    // Focusing a layer makes it the target of preview drag/resize (the manual
+    // Caption/Image/Title toggle was removed in favour of selection-driven focus).
+    dragTarget.value = 'image'
     const im = images.value.find(c => c.id === id)
     // Bring the clip on screen so inspector edits are visible (WYSIWYG).
     if (im && (scrub.value < im.start || scrub.value >= im.end)) {
@@ -1962,6 +1965,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
     if (index != null) {
       selectedTextId.value = null
       inspectorTab.value = 'style'
+      // Focusing a caption makes it the preview drag/resize target.
+      dragTarget.value = 'caption'
     }
   }
 
@@ -1984,6 +1989,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     }
     selectedCueIndex.value = index
     selectedTextId.value = null
+    dragTarget.value = 'caption'
     seek(cue.start)
   }
 
@@ -2160,6 +2166,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
     selectedCueIndex.value = null
     // Title overlays are edited in the Style tab now (the Titles tab was removed).
     inspectorTab.value = 'style'
+    // Focusing a title makes it the preview drag/resize target.
+    dragTarget.value = 'title'
     const tx = texts.value.find(item => item.id === id)
     // Bring the title on screen so inspector edits are visible (WYSIWYG).
     if (tx && (scrub.value < tx.start || scrub.value >= tx.end)) {

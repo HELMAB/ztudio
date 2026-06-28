@@ -162,6 +162,49 @@ describe('store: captions', () => {
   })
 })
 
+describe('store: layer focus drives the drag target', () => {
+  it('defaults the drag target to the caption layer', async () => {
+    const store = await makeStore()
+    expect(store.dragTarget).toBe('caption')
+  })
+
+  it('selecting an image focuses the image layer', async () => {
+    const store = await makeStore()
+    await withAudio(store, 20)
+    await store.addImages([imageFile()])
+    store.selectImage(store.images[0].id)
+    expect(store.dragTarget).toBe('image')
+  })
+
+  it('selecting a title focuses the title layer', async () => {
+    const store = await makeStore()
+    const tx = store.addText()
+    store.selectText(tx.id)
+    expect(store.dragTarget).toBe('title')
+  })
+
+  it('selecting a cue focuses the caption layer again', async () => {
+    const store = await makeStore()
+    const tx = store.addText()
+    store.selectText(tx.id)
+    expect(store.dragTarget).toBe('title')
+    store.addCaption('a', 0, 1)
+    store.selectCue(0)
+    expect(store.dragTarget).toBe('caption')
+  })
+
+  it('goToCue also focuses the caption layer', async () => {
+    const store = await makeStore()
+    await withAudio(store, 20)
+    await store.addImages([imageFile()])
+    store.selectImage(store.images[0].id)
+    expect(store.dragTarget).toBe('image')
+    store.addCaption('a', 2, 4)
+    store.goToCue(0)
+    expect(store.dragTarget).toBe('caption')
+  })
+})
+
 describe('store: titles', () => {
   it('adds a title using the default-text i18n key', async () => {
     const store = await makeStore()

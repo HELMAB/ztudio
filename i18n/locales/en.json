@@ -217,10 +217,6 @@
   },
   "preview": {
     "noCaption": "no caption at playhead",
-    "dragTarget": "Drag target",
-    "targetCaption": "Caption",
-    "targetImage": "Image",
-    "targetTitle": "Title",
     "dragHint": "Drag to reposition the caption · double-click to reset",
     "dragImageHint": "Drag to pan the image · scroll to zoom · double-click to reset",
     "dragTitleHint": "Drag to position the title · double-click to center",

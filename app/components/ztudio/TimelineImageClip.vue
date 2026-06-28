@@ -91,6 +91,7 @@ onBeforeUnmount(onUp)
     />
     <div
       class="flex-1 h-full flex items-center gap-1 px-2.5 overflow-hidden cursor-grab active:cursor-grabbing"
+      data-testid="image-clip"
       @pointerdown="begin('move', $event)"
     >
       <span class="font-mono text-[10px] text-sky-700 truncate select-none">{{ label }}</span>

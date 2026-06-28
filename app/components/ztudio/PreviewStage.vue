@@ -479,66 +479,13 @@ function onResetDrag() {
         {{ $t('trim.output', { duration: store.outputDurationLabel }) }}
       </span>
       <!-- Redundant on mobile (the caption is already on the canvas); hidden there to
-           free toolbar width for the playback controls and target toggle. flex-1 +
-           min-w-0 lets it take only the leftover width so long captions truncate
-           instead of sprawling/wrapping the row. -->
+           free toolbar width for the playback controls. flex-1 + min-w-0 lets it take
+           only the leftover width so long captions truncate instead of sprawling. -->
       <span class="hidden min-w-0 flex-1 truncate font-mono text-[11px] text-neutral-500 sm:block">
         {{ store.currentCaption || $t('preview.noCaption') }}
       </span>
 
       <div class="ml-auto flex items-center gap-1.5 sm:gap-2">
-        <div
-          v-if="store.hasImages || store.hasTexts"
-          class="flex shrink-0 overflow-hidden rounded-md border border-neutral-700 text-[11px] font-mono"
-          role="group"
-          :aria-label="$t('preview.dragTarget')"
-        >
-          <button
-            type="button"
-            class="px-2.5 py-1 transition-colors"
-            :class="
-              store.dragTarget === 'caption'
-                ? 'bg-brand text-white'
-                : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
-            "
-            :aria-pressed="store.dragTarget === 'caption'"
-            :title="$t('preview.dragHint')"
-            @click="store.dragTarget = 'caption'"
-          >
-            {{ $t('preview.targetCaption') }}
-          </button>
-          <button
-            v-if="store.hasImages"
-            type="button"
-            class="border-l border-neutral-700 px-2.5 py-1 transition-colors"
-            :class="
-              store.dragTarget === 'image'
-                ? 'bg-brand text-white'
-                : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
-            "
-            :aria-pressed="store.dragTarget === 'image'"
-            :title="$t('preview.dragImageHint')"
-            @click="store.dragTarget = 'image'"
-          >
-            {{ $t('preview.targetImage') }}
-          </button>
-          <button
-            v-if="store.hasTexts"
-            type="button"
-            class="border-l border-neutral-700 px-2.5 py-1 transition-colors"
-            :class="
-              store.dragTarget === 'title'
-                ? 'bg-brand text-white'
-                : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
-            "
-            :aria-pressed="store.dragTarget === 'title'"
-            :title="$t('preview.dragTitleHint')"
-            @click="store.dragTarget = 'title'"
-          >
-            {{ $t('preview.targetTitle') }}
-          </button>
-        </div>
-
         <Button
           size="icon"
           variant="secondary"
