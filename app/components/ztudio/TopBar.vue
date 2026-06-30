@@ -143,7 +143,7 @@ const DOT_CLASS = {
         data-testid="export-button"
         :disabled="!store.canRender"
         class="bg-brand text-brand-foreground font-semibold hover:bg-brand/90 shadow-sm shadow-brand/20"
-        @click="store.render()"
+        @click="store.openExportDialog()"
       >
         <DownloadIcon class="size-4" />
         {{ $t('actions.export') }}

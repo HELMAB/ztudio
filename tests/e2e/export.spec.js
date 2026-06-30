@@ -12,7 +12,9 @@ test.describe('export pipeline', () => {
   test('renders the demo to a downloadable video', async ({ page }) => {
     test.setTimeout(120_000)
 
+    // The Export button opens the settings dialog; confirm to start the encode.
     await page.getByTestId('export-button').click()
+    await page.getByTestId('export-dialog-confirm').click()
 
     // Result overlay appears with a playable video once encoding finishes.
     await expect(page.getByTestId('result-overlay')).toBeVisible({ timeout: 100_000 })

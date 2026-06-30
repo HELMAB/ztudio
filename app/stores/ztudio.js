@@ -112,6 +112,9 @@ export const useZtudioStore = defineStore('ztudio', () => {
   const snapGuide = ref(null)
   // Keyboard-shortcuts help overlay visibility (toggled by '?' and the TopBar).
   const showShortcuts = ref(false)
+  // Export settings dialog: the user picks quality/format/fps here before the
+  // render kicks off (opened by the TopBar Export button).
+  const exportDialog = ref(false)
   // Which Inspector tab is shown. Selection drives it: clicking a clip on the
   // timeline (or the preview) opens that object's properties — see the select*
   // actions below. Values match the InspectorPanel tab triggers.
@@ -1472,10 +1475,19 @@ export const useZtudioStore = defineStore('ztudio', () => {
     setStatus('status.rendered')
   }
 
+  // Open the export-settings dialog (quality/format/fps), unless a render is
+  // already running. The dialog's confirm button calls render().
+  function openExportDialog() {
+    if (canRender.value) {
+      exportDialog.value = true
+    }
+  }
+
   async function render() {
     if (busy.value || !audioBuffer.value) {
       return
     }
+    exportDialog.value = false
     pause()
     cancelRequested = false
     busy.value = true
@@ -2515,6 +2527,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
     previewTick,
     timelineZoom,
     showShortcuts,
+    exportDialog,
+    openExportDialog,
     inspectorTab,
     snapEnabled,
     snapGuide,

@@ -151,6 +151,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
     <ZtudioMobileWorkspace v-else />
     <ZtudioResultOverlay />
     <ZtudioCaptionDialog />
+    <ZtudioExportDialog />
     <ZtudioShortcutsOverlay />
     <ZtudioContextMenu />
     <ZtudioDropZone />

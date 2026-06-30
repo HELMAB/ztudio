@@ -139,6 +139,7 @@
     "blur": "Blurred image"
   },
   "export": {
+    "settingsTitle": "Export settings",
     "quality": "Quality",
     "format": "Format",
     "fps": "FPS"

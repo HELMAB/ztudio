@@ -18,13 +18,22 @@ test('changes the output resolution', async ({ page }) => {
   await expect.poll(() => state(page, 'resolution')).toBe('1920x1080')
 })
 
-test('changes export quality, format and fps', async ({ page }) => {
-  const panel = mediaPanel(page)
-  await selectOption(page, panel, 'Format', 'WebM')
+test('changes export quality, format and fps in the export dialog', async ({ page }) => {
+  // The options moved out of the Media panel into the pre-export settings dialog.
+  await page.getByTestId('export-button').click()
+  const dialog = page.getByTestId('export-dialog')
+  await expect(dialog).toBeVisible()
+
+  await selectOption(page, dialog, 'Format', 'WebM')
   await expect.poll(() => state(page, 'exportSettings.format')).toBe('webm')
 
-  await selectOption(page, panel, 'FPS', '60 fps')
+  await selectOption(page, dialog, 'FPS', '60 fps')
   await expect.poll(() => state(page, 'exportSettings.fps')).toBe(60)
+
+  // Closing the dialog must not kick off a render.
+  await page.getByRole('button', { name: 'Cancel' }).click()
+  await expect(dialog).toBeHidden()
+  expect(await state(page, 'busy')).toBe(false)
 })
 
 test('uploads an additional image as a new clip', async ({ page }) => {

@@ -1,32 +1,14 @@
 <script setup>
 import { computed } from 'vue'
 import { CaptionsIcon, ImageIcon, MusicIcon, UploadIcon } from '@lucide/vue'
-import {
-  FORMAT_OPTIONS,
-  FPS_OPTIONS,
-  QUALITY_OPTIONS,
-  RESOLUTION_OPTIONS,
-} from '@/lib/ztudio/config'
+import { RESOLUTION_OPTIONS } from '@/lib/ztudio/config'
 
 const store = useZtudioStore()
 const { t } = useI18n()
 
-const localize = options =>
-  computed(() => options.map(o => ({ value: o.value, label: t(o.labelKey) })))
-
-const resolutionOptions = localize(RESOLUTION_OPTIONS)
-const qualityOptions = localize(QUALITY_OPTIONS)
-const formatOptions = localize(FORMAT_OPTIONS)
-// fps is a number; the Select rides on strings, so proxy the conversion.
-const fpsOptions = computed(() =>
-  FPS_OPTIONS.map(o => ({ value: String(o.value), label: t(o.labelKey) })),
+const resolutionOptions = computed(() =>
+  RESOLUTION_OPTIONS.map(o => ({ value: o.value, label: t(o.labelKey) })),
 )
-const fps = computed({
-  get: () => String(store.exportSettings.fps),
-  set: v => {
-    store.exportSettings.fps = Number(v)
-  },
-})
 </script>
 
 <template>
@@ -48,18 +30,6 @@ const fps = computed({
       <ZtudioField :label="$t('media.resolution')">
         <ZtudioSelectField v-model="store.resolution" :options="resolutionOptions" />
       </ZtudioField>
-
-      <div class="grid grid-cols-3 gap-3">
-        <ZtudioField :label="$t('export.quality')">
-          <ZtudioSelectField v-model="store.exportSettings.quality" :options="qualityOptions" />
-        </ZtudioField>
-        <ZtudioField :label="$t('export.format')">
-          <ZtudioSelectField v-model="store.exportSettings.format" :options="formatOptions" />
-        </ZtudioField>
-        <ZtudioField :label="$t('export.fps')">
-          <ZtudioSelectField v-model="fps" :options="fpsOptions" />
-        </ZtudioField>
-      </div>
 
       <Tabs default-value="audio" class="gap-0">
         <TabsList class="grid w-full grid-cols-3">
