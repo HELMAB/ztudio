@@ -13,7 +13,7 @@ test('changes the output resolution', async ({ page }) => {
     page,
     mediaPanel(page),
     'Aspect & resolution',
-    '1920 × 1080 — YouTube (16:9)',
+    '1920 × 1080 — Full HD 1080p (16:9)',
   )
   await expect.poll(() => state(page, 'resolution')).toBe('1920x1080')
 })
@@ -29,6 +29,9 @@ test('changes export quality, format and fps in the export dialog', async ({ pag
 
   await selectOption(page, dialog, 'FPS', '60 fps')
   await expect.poll(() => state(page, 'exportSettings.fps')).toBe(60)
+
+  await selectOption(page, dialog, 'Quality', 'Very High')
+  await expect.poll(() => state(page, 'exportSettings.quality')).toBe('veryhigh')
 
   // Closing the dialog must not kick off a render.
   await page.getByRole('button', { name: 'Cancel' }).click()

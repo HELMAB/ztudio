@@ -145,6 +145,7 @@
     "fps": "FPS"
   },
   "quality": {
+    "veryhigh": "ខ្ពស់បំផុត",
     "high": "ខ្ពស់",
     "medium": "មធ្យម",
     "low": "ទាប"
@@ -299,6 +300,12 @@
   },
   "result": {
     "complete": "នាំចេញរួចរាល់",
+    "subtitle": "វីដេអូរបស់អ្នកត្រៀមរួចសម្រាប់ទាញយក។",
+    "statSize": "ទំហំ",
+    "statDuration": "រយៈពេល",
+    "statFrames": "ហ្វ្រេម",
+    "statSpeed": "ល្បឿន",
+    "speedValue": "{ratio}× ល្បឿនពិត",
     "stats": "{size} MB · {dur}វិ · {ratio}× ល្បឿនពិត",
     "statsFrames": "{size} MB · {dur}វិ · {frames} ហ្វ្រេម · {ratio}× ល្បឿនពិត",
     "downloadName": "caption-video.{ext}",
@@ -314,7 +321,7 @@
   "resolution": {
     "1080x1920": "1080 × 1920 — TikTok / Reels / Shorts (9:16)",
     "720x1280": "720 × 1280 — សាកល្បងលឿន (9:16)",
-    "1920x1080": "1920 × 1080 — YouTube (16:9)",
+    "1920x1080": "1920 × 1080 — Full HD 1080p (16:9)",
     "1080x1080": "1080 × 1080 — Facebook ការេ (1:1)"
   },
   "preset": {

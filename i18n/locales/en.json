@@ -145,6 +145,7 @@
     "fps": "FPS"
   },
   "quality": {
+    "veryhigh": "Very High",
     "high": "High",
     "medium": "Medium",
     "low": "Low"
@@ -299,6 +300,12 @@
   },
   "result": {
     "complete": "Export complete",
+    "subtitle": "Your video is ready to download.",
+    "statSize": "Size",
+    "statDuration": "Length",
+    "statFrames": "Frames",
+    "statSpeed": "Speed",
+    "speedValue": "{ratio}× realtime",
     "stats": "{size} MB · {dur}s · {ratio}× realtime",
     "statsFrames": "{size} MB · {dur}s · {frames} frames · {ratio}× realtime",
     "downloadName": "caption-video.{ext}",
@@ -314,7 +321,7 @@
   "resolution": {
     "1080x1920": "1080 × 1920 — TikTok / Reels / Shorts (9:16)",
     "720x1280": "720 × 1280 — faster test (9:16)",
-    "1920x1080": "1920 × 1080 — YouTube (16:9)",
+    "1920x1080": "1920 × 1080 — Full HD 1080p (16:9)",
     "1080x1080": "1080 × 1080 — Facebook square (1:1)"
   },
   "preset": {

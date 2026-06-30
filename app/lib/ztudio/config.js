@@ -184,6 +184,15 @@ export const TRANSITION_OPTIONS = [
 // Export quality → mediabunny quality constant name (resolved at encode time) and
 // a realtime MediaRecorder video bitrate fallback.
 export const QUALITY_OPTIONS = [
+  // Crispest text/edges — maps to mediabunny's QUALITY_VERY_HIGH (the encoder
+  // falls back to QUALITY_HIGH if the preset name isn't present in the loaded
+  // build). Largest files, best for subtitle-heavy 1080p output.
+  {
+    value: 'veryhigh',
+    labelKey: 'quality.veryhigh',
+    mbKey: 'QUALITY_VERY_HIGH',
+    mrBitrate: 14_000_000,
+  },
   { value: 'high', labelKey: 'quality.high', mbKey: 'QUALITY_HIGH', mrBitrate: 8_000_000 },
   { value: 'medium', labelKey: 'quality.medium', mbKey: 'QUALITY_MEDIUM', mrBitrate: 5_000_000 },
   { value: 'low', labelKey: 'quality.low', mbKey: 'QUALITY_LOW', mrBitrate: 2_500_000 },
