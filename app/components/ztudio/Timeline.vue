@@ -303,21 +303,52 @@ onBeforeUnmount(() => {
   }
 })
 
+// Keep the playhead on screen. During playback it advances on its own; on a
+// manual seek (transport buttons, keyboard, prev/next caption) we follow too —
+// but never while the user is scrubbing the lane by hand (`seeking`), so the
+// drag isn't fought, and never when nothing is zoomed past the viewport.
+function followPlayhead() {
+  const el = viewportEl.value
+  const pps = pxPerSecond.value
+  if (!el || pps <= 0) {
+    return
+  }
+  const x = store.scrub * pps
+  if (x < el.scrollLeft + 24 || x > el.scrollLeft + el.clientWidth - 24) {
+    el.scrollLeft = x - el.clientWidth / 2
+  }
+}
+
 watch(
   () => store.scrub,
   () => {
-    if (!store.isPlaying) {
-      return
-    }
-    const el = viewportEl.value
-    if (!el) {
-      return
-    }
-    const x = store.scrub * pxPerSecond.value
-    if (x < el.scrollLeft + 24 || x > el.scrollLeft + el.clientWidth - 24) {
-      el.scrollLeft = x - el.clientWidth / 2
+    if (!seeking) {
+      followPlayhead()
     }
   },
+)
+
+// Anchor zoom to the playhead: keep it at the same on-screen offset across a
+// zoom change so the edit point doesn't drift away. pxPerSecond is proportional
+// to zoom, so the pre-zoom scale is recoverable from the old value. flush:'post'
+// lets the wider content mount first, so the new scrollLeft isn't clamped.
+watch(
+  () => store.timelineZoom,
+  (z, oldZ) => {
+    const el = viewportEl.value
+    const pps = pxPerSecond.value
+    if (!el || pps <= 0 || !oldZ) {
+      return
+    }
+    const ppsOld = pps * (oldZ / z)
+    let anchor = store.scrub * ppsOld - el.scrollLeft
+    // If the playhead was off-screen, recentre it instead of preserving the gap.
+    if (anchor < 0 || anchor > el.clientWidth) {
+      anchor = el.clientWidth / 2
+    }
+    el.scrollLeft = store.scrub * pps - anchor
+  },
+  { flush: 'post' },
 )
 </script>
 
@@ -440,7 +471,11 @@ watch(
         </div>
       </div>
 
-      <div ref="viewportEl" class="flex-1 min-w-0 overflow-x-auto overflow-y-hidden">
+      <div
+        ref="viewportEl"
+        data-testid="timeline-viewport"
+        class="flex-1 min-w-0 overflow-x-auto overflow-y-hidden"
+      >
         <div
           class="relative flex flex-col"
           :style="{ width: contentWidth + 'px', height: trackHeight + 'px' }"
