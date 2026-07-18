@@ -13,7 +13,7 @@ const store = useZtudioStore()
       @click.self="store.dismissResult()"
     >
       <div
-        class="w-full max-w-2xl max-h-[92dvh] overflow-y-auto rounded-xl border border-border bg-background p-5 shadow-2xl sm:p-7"
+        class="w-full max-w-2xl max-h-[92dvh] overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-2xl sm:p-7"
       >
         <div class="mb-5 flex items-start justify-between gap-3">
           <div class="flex items-center gap-3">

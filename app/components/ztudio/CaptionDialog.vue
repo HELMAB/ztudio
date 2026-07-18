@@ -84,7 +84,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
       >
         <div class="absolute inset-0 bg-black/50" @click="close" />
         <div
-          class="relative w-full max-w-md space-y-4 rounded-lg border border-border bg-background p-5 shadow-xl"
+          class="relative w-full max-w-md space-y-4 rounded-xl border border-border bg-card p-5 shadow-xl"
         >
           <h3 class="font-mono text-[11px] uppercase text-muted-foreground">
             {{

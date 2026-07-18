@@ -79,13 +79,13 @@ function drawPlaceholder(ctx, w, h) {
   // Brand-green "z", echoing the app logo.
   ctx.fillStyle = '#0c9b50'
   ctx.textBaseline = 'middle'
-  ctx.font = `800 ${Math.round(badge * 0.62)}px 'Baloo 2', system-ui, sans-serif`
+  ctx.font = `800 ${Math.round(badge * 0.62)}px 'Google Sans', system-ui, sans-serif`
   centerText('z', w / 2, by + badge * 0.54)
 
   // Wordmark below the badge.
   ctx.textBaseline = 'top'
   ctx.fillStyle = 'rgba(255,255,255,0.95)'
-  ctx.font = `700 ${Math.round(u * 0.052)}px 'Baloo 2', system-ui, sans-serif`
+  ctx.font = `700 ${Math.round(u * 0.052)}px 'Google Sans', system-ui, sans-serif`
   centerText('ztudio', w / 2, by + badge + u * 0.04)
 
   ctx.restore()

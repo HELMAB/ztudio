@@ -12,7 +12,7 @@ const resolutionOptions = computed(() =>
 </script>
 
 <template>
-  <aside class="flex flex-col min-h-0 bg-background overflow-y-auto lg:overflow-y-hidden">
+  <aside class="flex flex-col min-h-0 bg-card overflow-y-auto lg:overflow-y-hidden">
     <!-- On desktop this section scrolls on its own (the panel height is fixed), so
          the controls never clip as more are added; on mobile the whole aside
          scrolls. -->
@@ -20,10 +20,8 @@ const resolutionOptions = computed(() =>
       class="max-lg:shrink-0 lg:flex-1 lg:min-h-0 lg:overflow-y-auto p-4 space-y-4 border-b border-border"
     >
       <!-- Redundant on mobile: the bottom tab bar already labels this section. -->
-      <h2
-        class="hidden lg:flex items-center gap-2 font-mono text-[11px] uppercase text-muted-foreground"
-      >
-        <UploadIcon class="size-3.5 text-brand" />
+      <h2 class="hidden lg:flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+        <UploadIcon class="size-3.5" />
         {{ $t('media.heading') }}
       </h2>
 

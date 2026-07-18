@@ -43,11 +43,11 @@ function onChange(event) {
 
     <button
       type="button"
-      class="group flex w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed px-4 py-7 text-center transition-colors"
+      class="group flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors"
       :class="
         ok
-          ? 'border-brand/40 hover:border-brand/70'
-          : 'border-border hover:border-muted-foreground/40 hover:bg-muted/30'
+          ? 'border-brand/40 bg-brand-muted/50 hover:border-brand/70'
+          : 'border-transparent bg-muted/60 hover:border-brand/40 hover:bg-muted'
       "
       @click="input?.click()"
     >

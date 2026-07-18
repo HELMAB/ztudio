@@ -234,6 +234,10 @@
     "showInspector": "Show inspector panel",
     "resizeHint": "Drag to resize · double-click to collapse"
   },
+  "theme": {
+    "light": "Switch to light mode",
+    "dark": "Switch to dark mode"
+  },
   "transport": {
     "start": "Go to start",
     "end": "Go to end",

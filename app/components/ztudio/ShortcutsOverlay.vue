@@ -47,7 +47,7 @@ const groups = computed(() => [
       @click.self="store.showShortcuts = false"
     >
       <div
-        class="w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-lg border border-border bg-background p-4 sm:p-5 shadow-xl"
+        class="w-full max-w-md max-h-[90dvh] overflow-y-auto rounded-xl border border-border bg-card p-4 sm:p-5 shadow-xl"
       >
         <div class="mb-4 flex items-center justify-between">
           <h3 class="font-mono text-[11px] uppercase text-muted-foreground">

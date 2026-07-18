@@ -353,14 +353,14 @@ function onResetDrag() {
 </script>
 
 <template>
-  <section ref="stageEl" class="flex flex-col min-w-0 bg-neutral-900">
+  <section ref="stageEl" class="flex flex-col min-w-0 bg-card">
     <div class="flex-1 min-h-0 flex items-center justify-center p-2 sm:p-6">
       <canvas
         ref="canvas"
         data-testid="preview-canvas"
         width="1080"
         height="1920"
-        class="max-w-full max-h-full object-contain border border-neutral-700 shadow-lg cursor-grab touch-none select-none active:cursor-grabbing"
+        class="max-w-full max-h-full rounded-md object-contain shadow-[0_8px_30px_rgb(0_0_0/0.12)] ring-1 ring-black/10 dark:shadow-[0_8px_30px_rgb(0_0_0/0.5)] dark:ring-white/10 cursor-grab touch-none select-none active:cursor-grabbing"
         :title="
           store.dragTarget === 'image'
             ? $t('preview.dragImageHint')
@@ -377,14 +377,56 @@ function onResetDrag() {
       />
     </div>
 
+    <!-- Transport bar: timecode left, playback centred, utilities right (three-zone
+         grid on sm+; wraps into a single flow on narrow screens). -->
     <div
-      class="shrink-0 flex flex-wrap items-center gap-x-3 gap-y-2 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-3 bg-neutral-950 border-t border-neutral-800"
+      class="shrink-0 flex flex-wrap items-center gap-x-3 gap-y-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-card border-t border-border sm:grid sm:grid-cols-[1fr_auto_1fr]"
     >
+      <div class="flex min-w-0 items-center gap-2">
+        <span class="font-mono text-xs tabular-nums shrink-0 text-muted-foreground">
+          <input
+            v-if="editingTime"
+            ref="timeField"
+            v-model="timeInput"
+            type="text"
+            inputmode="decimal"
+            class="w-14 rounded bg-muted px-1 py-0.5 text-center text-foreground outline-none ring-1 ring-brand"
+            @keydown.enter.prevent="commitTime"
+            @keydown.esc.prevent="cancelTime"
+            @blur="commitTime"
+          />
+          <button
+            v-else
+            type="button"
+            data-testid="current-time"
+            class="rounded px-1 py-0.5 text-brand hover:bg-brand-muted"
+            :title="$t('transport.setTime')"
+            @click="beginEditTime"
+          >
+            {{ fmtTime(store.scrub) }}
+          </button>
+          / {{ fmtTime(store.previewDuration) }}
+        </span>
+        <span
+          v-if="store.hasTrim"
+          class="shrink-0 rounded-md border border-brand/40 bg-brand-muted px-1.5 py-0.5 font-mono text-[10px] text-brand tabular-nums"
+          :title="$t('trim.outputHint')"
+        >
+          {{ $t('trim.output', { duration: store.outputDurationLabel }) }}
+        </span>
+        <!-- Redundant on mobile (the caption is already on the canvas); hidden there to
+             free toolbar width for the playback controls. min-w-0 lets long captions
+             truncate instead of sprawling. -->
+        <span class="hidden min-w-0 truncate text-[11px] text-muted-foreground/70 sm:block">
+          {{ store.currentCaption || $t('preview.noCaption') }}
+        </span>
+      </div>
+
       <div class="flex items-center gap-0.5 shrink-0">
         <Button
           size="icon"
           variant="ghost"
-          class="size-7 text-neutral-300"
+          class="size-7 text-muted-foreground"
           :aria-label="$t('transport.start')"
           :title="$t('transport.start')"
           @click="store.seek(0)"
@@ -394,7 +436,7 @@ function onResetDrag() {
         <Button
           size="icon"
           variant="ghost"
-          class="size-7 text-neutral-300"
+          class="size-7 text-muted-foreground"
           :aria-label="$t('transport.prevCaption')"
           :title="$t('transport.prevCaption')"
           @click="store.jumpCue(-1)"
@@ -403,7 +445,6 @@ function onResetDrag() {
         </Button>
         <Button
           size="icon"
-          variant="secondary"
           class="rounded-full"
           :aria-label="store.isPlaying ? $t('actions.pause') : $t('actions.play')"
           @click="store.togglePlay()"
@@ -414,7 +455,7 @@ function onResetDrag() {
         <Button
           size="icon"
           variant="ghost"
-          class="size-7 text-neutral-300"
+          class="size-7 text-muted-foreground"
           :aria-label="$t('transport.nextCaption')"
           :title="$t('transport.nextCaption')"
           @click="store.jumpCue(1)"
@@ -424,7 +465,7 @@ function onResetDrag() {
         <Button
           size="icon"
           variant="ghost"
-          class="size-7 text-neutral-300"
+          class="size-7 text-muted-foreground"
           :aria-label="$t('transport.end')"
           :title="$t('transport.end')"
           @click="store.seek(store.previewDuration)"
@@ -435,7 +476,7 @@ function onResetDrag() {
           size="icon"
           variant="ghost"
           class="size-7"
-          :class="store.loopPlayback ? 'text-brand' : 'text-neutral-300'"
+          :class="store.loopPlayback ? 'text-brand bg-brand-muted' : 'text-muted-foreground'"
           :aria-label="$t('transport.loop')"
           :aria-pressed="store.loopPlayback"
           :title="$t('transport.loopHint')"
@@ -446,50 +487,12 @@ function onResetDrag() {
         </Button>
       </div>
 
-      <ZtudioVolumeControl />
-      <span class="font-mono text-xs text-neutral-300 tabular-nums shrink-0">
-        <input
-          v-if="editingTime"
-          ref="timeField"
-          v-model="timeInput"
-          type="text"
-          inputmode="decimal"
-          class="w-14 rounded bg-neutral-800 px-1 py-0.5 text-center text-neutral-100 outline-none ring-1 ring-brand"
-          @keydown.enter.prevent="commitTime"
-          @keydown.esc.prevent="cancelTime"
-          @blur="commitTime"
-        />
-        <button
-          v-else
-          type="button"
-          data-testid="current-time"
-          class="rounded px-1 py-0.5 hover:bg-neutral-800 hover:text-white"
-          :title="$t('transport.setTime')"
-          @click="beginEditTime"
-        >
-          {{ fmtTime(store.scrub) }}
-        </button>
-        / {{ fmtTime(store.previewDuration) }}
-      </span>
-      <span
-        v-if="store.hasTrim"
-        class="shrink-0 rounded border border-brand/50 bg-brand/15 px-1.5 py-0.5 font-mono text-[10px] text-brand tabular-nums"
-        :title="$t('trim.outputHint')"
-      >
-        {{ $t('trim.output', { duration: store.outputDurationLabel }) }}
-      </span>
-      <!-- Redundant on mobile (the caption is already on the canvas); hidden there to
-           free toolbar width for the playback controls. flex-1 + min-w-0 lets it take
-           only the leftover width so long captions truncate instead of sprawling. -->
-      <span class="hidden min-w-0 flex-1 truncate font-mono text-[11px] text-neutral-500 sm:block">
-        {{ store.currentCaption || $t('preview.noCaption') }}
-      </span>
-
-      <div class="ml-auto flex items-center gap-1.5 sm:gap-2">
+      <div class="ml-auto flex items-center gap-1 sm:justify-self-end">
+        <ZtudioVolumeControl />
         <Button
           size="icon"
-          variant="secondary"
-          class="shrink-0"
+          variant="ghost"
+          class="shrink-0 text-muted-foreground"
           :disabled="store.busy"
           :aria-label="$t('actions.thumbnail')"
           :title="$t('actions.thumbnailHint')"
@@ -500,8 +503,9 @@ function onResetDrag() {
 
         <Button
           size="icon"
-          :variant="showSafeArea ? 'default' : 'secondary'"
+          variant="ghost"
           class="shrink-0"
+          :class="showSafeArea ? 'text-brand bg-brand-muted' : 'text-muted-foreground'"
           :aria-label="$t('preview.safeArea')"
           :aria-pressed="showSafeArea"
           :title="$t('preview.safeAreaHint')"
@@ -512,8 +516,8 @@ function onResetDrag() {
 
         <Button
           size="icon"
-          variant="secondary"
-          class="shrink-0"
+          variant="ghost"
+          class="shrink-0 text-muted-foreground"
           :aria-label="isFullscreen ? $t('preview.exitFullscreen') : $t('preview.fullscreen')"
           :title="isFullscreen ? $t('preview.exitFullscreen') : $t('preview.fullscreen')"
           @click="toggleFullscreen()"

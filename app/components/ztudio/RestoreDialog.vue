@@ -8,7 +8,7 @@ const store = useZtudioStore()
       v-if="store.pendingRestore"
       class="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4"
     >
-      <div class="w-full max-w-sm rounded-lg border border-border bg-background p-5 shadow-xl">
+      <div class="w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-xl">
         <h3 class="text-base font-semibold text-foreground">{{ $t('restore.title') }}</h3>
         <p class="mt-1.5 text-sm text-muted-foreground">{{ $t('restore.body') }}</p>
         <div class="mt-4 flex gap-2">

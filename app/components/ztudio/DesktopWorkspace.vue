@@ -26,13 +26,13 @@ function startResize(event, axis, key, sign) {
 </script>
 
 <template>
-  <div class="flex flex-1 min-h-0 flex-col">
-    <div class="flex flex-1 min-h-0">
+  <div class="flex flex-1 min-h-0 flex-col px-2.5 pb-2.5 gap-1">
+    <div class="flex flex-1 min-h-0 gap-1">
       <!-- Media panel: rail when collapsed, sized + resizable when open. -->
       <button
         v-if="!store.layout.mediaOpen"
         type="button"
-        class="w-6 shrink-0 flex items-center justify-center border-r border-border bg-card/40 text-muted-foreground hover:bg-muted hover:text-foreground"
+        class="panel w-7 shrink-0 flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground"
         :aria-label="$t('layout.showMedia')"
         :title="$t('layout.showMedia')"
         data-testid="media-expand"
@@ -42,11 +42,12 @@ function startResize(event, axis, key, sign) {
       </button>
       <template v-else>
         <ZtudioMediaPanel
-          class="shrink-0 border-r border-border"
+          class="panel shrink-0 overflow-hidden"
           :style="{ width: store.layout.mediaWidth + 'px' }"
         />
+        <!-- The gutter between panels doubles as the resize handle. -->
         <div
-          class="group relative w-1.5 shrink-0 cursor-col-resize touch-none bg-border/40 hover:bg-brand/60"
+          class="group relative w-1.5 shrink-0 cursor-col-resize touch-none rounded-full hover:bg-brand/50 active:bg-brand/60"
           data-testid="resize-media"
           :title="$t('layout.resizeHint')"
           @pointerdown="startResize($event, 'x', 'mediaWidth', 1)"
@@ -54,26 +55,26 @@ function startResize(event, axis, key, sign) {
         />
       </template>
 
-      <ZtudioPreviewStage class="flex-1 min-w-0" />
+      <ZtudioPreviewStage class="panel flex-1 min-w-0 overflow-hidden" />
 
       <!-- Inspector panel: handle on its left edge (so dragging left grows it). -->
       <template v-if="store.layout.inspectorOpen">
         <div
-          class="group relative w-1.5 shrink-0 cursor-col-resize touch-none bg-border/40 hover:bg-brand/60"
+          class="group relative w-1.5 shrink-0 cursor-col-resize touch-none rounded-full hover:bg-brand/50 active:bg-brand/60"
           data-testid="resize-inspector"
           :title="$t('layout.resizeHint')"
           @pointerdown="startResize($event, 'x', 'inspectorWidth', -1)"
           @dblclick="store.toggleInspectorPanel()"
         />
         <ZtudioInspectorPanel
-          class="shrink-0 border-l border-border"
+          class="panel shrink-0 overflow-hidden"
           :style="{ width: store.layout.inspectorWidth + 'px' }"
         />
       </template>
       <button
         v-else
         type="button"
-        class="w-6 shrink-0 flex items-center justify-center border-l border-border bg-card/40 text-muted-foreground hover:bg-muted hover:text-foreground"
+        class="panel w-7 shrink-0 flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground"
         :aria-label="$t('layout.showInspector')"
         :title="$t('layout.showInspector')"
         data-testid="inspector-expand"
@@ -85,11 +86,14 @@ function startResize(event, axis, key, sign) {
 
     <!-- Timeline: drag the top edge to grow/shrink its height. -->
     <div
-      class="h-1.5 shrink-0 cursor-row-resize touch-none border-t border-border bg-border/40 hover:bg-brand/60"
+      class="h-1.5 shrink-0 cursor-row-resize touch-none rounded-full hover:bg-brand/50 active:bg-brand/60"
       data-testid="resize-timeline"
       :title="$t('layout.resizeHint')"
       @pointerdown="startResize($event, 'y', 'timelineHeight', -1)"
     />
-    <ZtudioTimeline class="shrink-0" :style="{ height: store.layout.timelineHeight + 'px' }" />
+    <ZtudioTimeline
+      class="panel shrink-0 overflow-hidden"
+      :style="{ height: store.layout.timelineHeight + 'px' }"
+    />
   </div>
 </template>

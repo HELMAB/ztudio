@@ -41,7 +41,7 @@ function toggleTab(id) {
     </Transition>
 
     <nav
-      class="grid shrink-0 grid-cols-3 border-t border-border bg-background pb-[env(safe-area-inset-bottom)]"
+      class="grid shrink-0 grid-cols-3 border-t border-border bg-card pb-[env(safe-area-inset-bottom)]"
     >
       <button
         v-for="item in TABS"

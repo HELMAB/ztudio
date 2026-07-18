@@ -353,7 +353,7 @@ watch(
 </script>
 
 <template>
-  <div class="flex flex-col min-h-0 select-none bg-background">
+  <div class="flex flex-col min-h-0 select-none bg-card">
     <div class="shrink-0 h-8 flex items-center justify-end gap-1 px-3 border-b border-border">
       <Button
         size="sm"
@@ -392,7 +392,7 @@ watch(
         size="icon"
         :variant="store.snapEnabled ? 'secondary' : 'ghost'"
         class="size-6"
-        :class="store.snapEnabled ? 'text-cyan-500' : 'text-muted-foreground'"
+        :class="store.snapEnabled ? 'text-brand' : 'text-muted-foreground'"
         :aria-label="$t('timeline.snap')"
         :aria-pressed="store.snapEnabled"
         :title="$t('timeline.snapHint')"
@@ -435,7 +435,7 @@ watch(
     </div>
 
     <div class="flex flex-1 min-h-0">
-      <div class="w-16 sm:w-24 shrink-0 z-20 flex flex-col border-r border-border bg-background">
+      <div class="w-16 sm:w-24 shrink-0 z-20 flex flex-col border-r border-border bg-card">
         <div class="h-6 shrink-0 border-b border-border" />
         <div class="flex-1 flex flex-col">
           <div
@@ -540,11 +540,11 @@ watch(
 
               <template v-if="trim && trim.active">
                 <div
-                  class="absolute inset-y-1 left-0 rounded-l bg-background/70 pointer-events-none"
+                  class="absolute inset-y-1 left-0 rounded-l bg-card/70 pointer-events-none"
                   :style="{ width: trim.startX + 'px' }"
                 />
                 <div
-                  class="absolute inset-y-1 rounded-r bg-background/70 pointer-events-none"
+                  class="absolute inset-y-1 rounded-r bg-card/70 pointer-events-none"
                   :style="{
                     left: trim.endX + 'px',
                     width: Math.max(0, trim.full - trim.endX) + 'px',
@@ -649,7 +649,7 @@ watch(
         }"
       >
         <div
-          class="rounded-md border border-border bg-background/95 p-1 shadow-xl backdrop-blur-sm"
+          class="rounded-md border border-border bg-popover/95 p-1 shadow-xl backdrop-blur-sm"
         >
           <canvas ref="thumbCanvas" class="block rounded-sm bg-black" style="width: 120px" />
           <div class="mt-1 text-center font-mono text-[10px] text-foreground tabular-nums">

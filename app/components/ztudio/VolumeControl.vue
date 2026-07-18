@@ -37,7 +37,7 @@ function onWheel(e) {
     <Button
       size="icon"
       variant="ghost"
-      class="size-7 text-neutral-300"
+      class="size-7 text-muted-foreground"
       :aria-label="store.muted ? $t('transport.unmute') : $t('transport.mute')"
       :aria-pressed="store.muted"
       :title="store.muted ? $t('transport.unmute') : $t('transport.mute')"
@@ -52,12 +52,12 @@ function onWheel(e) {
     <!-- Popover sits directly above the button (bottom-full ⇒ no hover gap) and
          opens on hover or keyboard focus. -->
     <div
-      class="absolute bottom-full left-1/2 z-30 hidden w-36 -translate-x-1/2 flex-col gap-2 rounded-md border border-neutral-700 bg-neutral-900/95 p-3 shadow-xl backdrop-blur-sm group-hover/vol:flex group-focus-within/vol:flex"
+      class="absolute bottom-full left-1/2 z-30 hidden w-36 -translate-x-1/2 flex-col gap-2 rounded-lg border border-border bg-popover/95 p-3 shadow-lg backdrop-blur-sm group-hover/vol:flex group-focus-within/vol:flex"
       data-testid="volume-popover"
     >
-      <div class="flex items-center justify-between font-mono text-[10px] text-neutral-400">
+      <div class="flex items-center justify-between font-mono text-[10px] text-muted-foreground">
         <span>{{ $t('transport.volume') }}</span>
-        <span class="tabular-nums text-neutral-200" data-testid="volume-readout">{{
+        <span class="tabular-nums text-foreground" data-testid="volume-readout">{{
           readout
         }}</span>
       </div>

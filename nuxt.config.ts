@@ -8,14 +8,14 @@ export default defineNuxtConfig({
 
   app: {
     head: {
-      htmlAttrs: { class: 'dark', lang: 'en' },
+      htmlAttrs: { lang: 'en' },
       title: 'ztudio — audio to captioned video',
       meta: [
         {
           name: 'viewport',
           content: 'width=device-width, initial-scale=1.0, viewport-fit=cover',
         },
-        { name: 'theme-color', content: '#2a2a30' },
+        { name: 'theme-color', content: '#f6f6f8' },
       ],
       link: [
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
@@ -26,7 +26,7 @@ export default defineNuxtConfig({
         },
         {
           rel: 'stylesheet',
-          href: 'https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Kantumruy+Pro:wght@400;500;600;700&display=swap',
+          href: 'https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap',
         },
       ],
     },

@@ -51,7 +51,7 @@ function run(item) {
   <Teleport to="body">
     <div
       v-if="store.contextMenu.open"
-      class="fixed z-[60] min-w-44 overflow-hidden rounded-md border border-border bg-background py-1 shadow-xl"
+      class="fixed z-[60] min-w-44 overflow-hidden rounded-md border border-border bg-popover py-1 shadow-xl"
       :style="{ left: store.contextMenu.x + 'px', top: store.contextMenu.y + 'px' }"
       @contextmenu.prevent
       @pointerdown.stop

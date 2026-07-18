@@ -97,6 +97,24 @@ test('toggles the UI locale between English and Khmer', async ({ page }) => {
   await expect(page.getByTestId('locale-toggle')).toContainText('EN')
 })
 
+test('toggles between light and dark theme, and the choice survives a reload', async ({
+  page,
+}) => {
+  const html = page.locator('html')
+  // Playwright's default color scheme is light, so the app boots light.
+  await expect(html).not.toHaveClass(/dark/)
+
+  await page.getByTestId('theme-toggle').click()
+  await expect(html).toHaveClass(/dark/)
+
+  // The preference is persisted (localStorage), so it sticks across a reload.
+  await boot(page)
+  await expect(html).toHaveClass(/dark/)
+
+  await page.getByTestId('theme-toggle').click()
+  await expect(html).not.toHaveClass(/dark/)
+})
+
 test('plays and advances the playhead, then pauses', async ({ page }) => {
   await expect(page.getByTestId('current-time')).toHaveText('0:00.0')
 
