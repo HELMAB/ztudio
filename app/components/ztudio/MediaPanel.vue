@@ -98,12 +98,17 @@ const sectionTitle = computed(() => t(SECTIONS.find(s => s.value === tab.value).
             />
           </TabsContent>
 
-          <TabsContent value="settings" class="space-y-4">
+          <TabsContent value="settings" class="space-y-5">
             <ZtudioField :label="$t('media.resolution')">
               <ZtudioSelectField v-model="store.resolution" :options="resolutionOptions" />
             </ZtudioField>
 
-            <ZtudioReadinessPills />
+            <div>
+              <span class="block font-mono text-[11px] uppercase text-muted-foreground mb-2">
+                {{ $t('media.status') }}
+              </span>
+              <ZtudioReadinessPills />
+            </div>
           </TabsContent>
         </div>
       </div>

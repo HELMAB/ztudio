@@ -31,6 +31,7 @@
     "tabImage": "Image",
     "tabCaption": "Caption",
     "tabSettings": "Settings",
+    "status": "Project status",
     "dropHint": "Drop a file here or click to browse",
     "clear": "Remove file"
   },
