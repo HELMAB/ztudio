@@ -52,6 +52,64 @@ const ticks = computed(() => {
   return out
 })
 
+// Minor ticks subdivide each major step in five, shown only when there's room
+// (≥ 9px apart), so the ruler gains detail as you zoom in.
+const minorTicks = computed(() => {
+  const pps = pxPerSecond.value
+  const d = duration.value
+  if (pps <= 0) {
+    return []
+  }
+  const step = NICE_STEPS.find(s => s >= 70 / pps) ?? 300
+  const sub = step / 5
+  if (sub * pps < 9) {
+    return []
+  }
+  const out = []
+  for (let t = sub; t <= d + 1e-6; t += sub) {
+    if (Math.abs(t / step - Math.round(t / step)) > 1e-6) {
+      out.push({ t, left: t * pps })
+    }
+  }
+  return out
+})
+
+const clampZoom = z => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z))
+
+// The toolbar slider works in log space so each notch feels like the same
+// relative zoom step across the whole 0.25×–24× range.
+const ZOOM_LOG_MIN = Math.log2(MIN_ZOOM)
+const ZOOM_LOG_MAX = Math.log2(MAX_ZOOM)
+const zoomLog = computed(() => Math.log2(store.timelineZoom))
+function setZoomLog(v) {
+  store.timelineZoom = clampZoom(2 ** v)
+}
+
+// Ctrl/Cmd + wheel zooms (the playhead-anchor watcher keeps the edit point in
+// view); a plain vertical wheel pans the track horizontally, video-editor style.
+function onWheelZoom(e) {
+  const el = viewportEl.value
+  if (!el) {
+    return
+  }
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault()
+    store.timelineZoom = clampZoom(store.timelineZoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15))
+  } else if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+    e.preventDefault()
+    el.scrollLeft += e.deltaY
+  }
+}
+
+// Grabbing the playhead handle scrubs without the initial jump-to-pointer a
+// lane click performs (and without touching the cue selection).
+function onPlayheadDown(event) {
+  event.stopPropagation()
+  seeking = true
+  window.addEventListener('pointermove', onLaneMove)
+  window.addEventListener('pointerup', onLaneUp)
+}
+
 function fmtTick(t) {
   if (t >= 60) {
     const m = Math.floor(t / 60)
@@ -354,55 +412,54 @@ watch(
 
 <template>
   <div class="flex flex-col min-h-0 select-none bg-card">
-    <div class="shrink-0 h-8 flex items-center justify-end gap-1 px-3 border-b border-border">
+    <div class="shrink-0 h-9 flex items-center justify-end gap-0.5 px-2 border-b border-border">
+      <!-- Icon-only tool cluster (OpenCut-style); each keeps its accessible name. -->
       <Button
-        size="sm"
+        size="icon"
         variant="ghost"
         data-testid="timeline-add-caption"
-        class="h-6 text-[11px] text-muted-foreground"
+        class="size-7 text-muted-foreground"
+        :aria-label="$t('caption.add')"
         :title="$t('caption.addHint')"
         @click="store.openAddCaption()"
       >
-        <MessageSquarePlusIcon class="size-3.5" />
-        <span class="hidden sm:inline">{{ $t('caption.add') }}</span>
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        data-testid="timeline-add-keyframe"
-        class="h-6 text-[11px] text-muted-foreground"
-        :title="$t('keyframe.addHint')"
-        @click="store.addKeyframe()"
-      >
-        <DiamondPlusIcon class="size-3.5" />
-        <span class="hidden sm:inline">{{ $t('keyframe.add') }}</span>
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        data-testid="timeline-add-title"
-        class="h-6 mr-auto text-[11px] text-muted-foreground"
-        :title="$t('textOverlay.addHint')"
-        @click="store.addText()"
-      >
-        <TypeIcon class="size-3.5" />
-        <span class="hidden sm:inline">{{ $t('textOverlay.add') }}</span>
+        <MessageSquarePlusIcon class="size-4" />
       </Button>
       <Button
         size="icon"
-        :variant="store.snapEnabled ? 'secondary' : 'ghost'"
-        class="size-6"
-        :class="store.snapEnabled ? 'text-brand' : 'text-muted-foreground'"
+        variant="ghost"
+        data-testid="timeline-add-keyframe"
+        class="size-7 text-muted-foreground"
+        :aria-label="$t('keyframe.add')"
+        :title="$t('keyframe.addHint')"
+        @click="store.addKeyframe()"
+      >
+        <DiamondPlusIcon class="size-4" />
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        data-testid="timeline-add-title"
+        class="size-7 mr-auto text-muted-foreground"
+        :aria-label="$t('textOverlay.add')"
+        :title="$t('textOverlay.addHint')"
+        @click="store.addText()"
+      >
+        <TypeIcon class="size-4" />
+      </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        class="size-7"
+        :class="store.snapEnabled ? 'text-brand bg-brand-muted' : 'text-muted-foreground'"
         :aria-label="$t('timeline.snap')"
         :aria-pressed="store.snapEnabled"
         :title="$t('timeline.snapHint')"
         @click="store.snapEnabled = !store.snapEnabled"
       >
-        <MagnetIcon class="size-3.5" />
+        <MagnetIcon class="size-4" />
       </Button>
-      <span class="font-mono text-[10px] text-muted-foreground mr-1 tabular-nums">
-        {{ Math.round(store.timelineZoom * 100) }}%
-      </span>
+      <div class="mx-1.5 h-4 w-px bg-border" />
       <Button
         size="icon"
         variant="ghost"
@@ -413,15 +470,16 @@ watch(
       >
         <ZoomOutIcon class="size-3.5" />
       </Button>
-      <Button
-        size="icon"
-        variant="ghost"
-        class="size-6"
-        :aria-label="$t('timeline.fit')"
-        @click="store.zoomTimeline('fit')"
-      >
-        <ScanIcon class="size-3.5" />
-      </Button>
+      <div class="w-24 px-1 hidden sm:block" data-testid="timeline-zoom">
+        <Slider
+          :model-value="[zoomLog]"
+          :min="ZOOM_LOG_MIN"
+          :max="ZOOM_LOG_MAX"
+          :step="0.05"
+          :aria-label="$t('timeline.zoom')"
+          @update:model-value="setZoomLog($event[0])"
+        />
+      </div>
       <Button
         size="icon"
         variant="ghost"
@@ -432,6 +490,18 @@ watch(
       >
         <ZoomInIcon class="size-3.5" />
       </Button>
+      <Button
+        size="icon"
+        variant="ghost"
+        class="size-6"
+        :aria-label="$t('timeline.fit')"
+        @click="store.zoomTimeline('fit')"
+      >
+        <ScanIcon class="size-3.5" />
+      </Button>
+      <span class="w-9 text-right font-mono text-[10px] text-muted-foreground tabular-nums">
+        {{ Math.round(store.timelineZoom * 100) }}%
+      </span>
     </div>
 
     <div class="flex flex-1 min-h-0">
@@ -475,12 +545,24 @@ watch(
         ref="viewportEl"
         data-testid="timeline-viewport"
         class="flex-1 min-w-0 overflow-x-auto overflow-y-hidden"
+        @wheel="onWheelZoom"
       >
         <div
           class="relative flex flex-col"
           :style="{ width: contentWidth + 'px', height: trackHeight + 'px' }"
         >
-          <div class="relative h-6 shrink-0 border-b border-border bg-muted/30">
+          <!-- Ruler doubles as a scrub strip: click or drag anywhere on it. -->
+          <div
+            data-testid="timeline-ruler"
+            class="relative h-6 shrink-0 cursor-pointer border-b border-border"
+            @pointerdown="onLaneDown"
+          >
+            <span
+              v-for="tick in minorTicks"
+              :key="'m' + tick.t"
+              class="absolute bottom-0 h-1 border-l border-border/70"
+              :style="{ left: tick.left + 'px' }"
+            />
             <div
               v-for="tick in ticks"
               :key="tick.t"
@@ -518,7 +600,7 @@ watch(
             @pointermove="onLaneHover"
             @pointerleave="onLaneLeave"
           >
-            <div class="relative flex-1 border-b border-border">
+            <div class="relative flex-1 border-b border-dashed border-border/80 transition-colors hover:bg-muted/30">
               <div
                 v-if="audioClip"
                 class="absolute inset-y-1 left-0 flex items-center overflow-hidden rounded border border-brand/50 bg-brand/15 px-2"
@@ -570,7 +652,7 @@ watch(
               />
             </div>
 
-            <div class="relative flex-1 border-b border-border">
+            <div class="relative flex-1 border-b border-dashed border-border/80 transition-colors hover:bg-muted/30">
               <ZtudioTimelineImageClip
                 v-for="c in imageClips"
                 :id="c.id"
@@ -582,7 +664,7 @@ watch(
               />
             </div>
 
-            <div class="relative flex-1 border-b border-border">
+            <div class="relative flex-1 border-b border-dashed border-border/80 transition-colors hover:bg-muted/30">
               <ZtudioTimelineCaptionClip
                 v-for="c in captionClips"
                 :key="c.key"
@@ -594,7 +676,7 @@ watch(
               />
             </div>
 
-            <div class="relative flex-1 border-b border-border">
+            <div class="relative flex-1 border-b border-dashed border-border/80 transition-colors hover:bg-muted/30">
               <ZtudioTimelineTitleClip
                 v-for="c in titleClips"
                 :id="c.id"
@@ -606,7 +688,7 @@ watch(
               />
             </div>
 
-            <div class="relative flex-1">
+            <div class="relative flex-1 transition-colors hover:bg-muted/30">
               <ZtudioTimelineLogoClip
                 v-if="store.hasLogo"
                 :start="store.logoWindow.start"
@@ -629,10 +711,18 @@ watch(
           />
 
           <div
-            class="absolute top-0 bottom-0 w-px bg-brand z-10 pointer-events-none"
+            class="absolute top-0 bottom-0 z-20 pointer-events-none"
             :style="{ left: playheadLeft + 'px' }"
           >
-            <div class="absolute -translate-x-1/2 size-2.5 rotate-45 bg-brand" />
+            <div class="absolute inset-y-0 -translate-x-1/2 w-px bg-brand" />
+            <button
+              type="button"
+              data-testid="playhead-handle"
+              class="pointer-events-auto absolute top-1 size-3 -translate-x-1/2 cursor-ew-resize touch-none rounded-full bg-brand shadow-sm ring-2 ring-brand/25 transition-transform hover:scale-125"
+              :aria-label="$t('timeline.playhead')"
+              :title="$t('timeline.playhead')"
+              @pointerdown="onPlayheadDown"
+            />
           </div>
         </div>
       </div>

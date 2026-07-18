@@ -70,3 +70,40 @@ test('image clips render a filmstrip thumbnail', async ({ page }) => {
   const bg = await strip.evaluate(el => getComputedStyle(el).backgroundImage)
   expect(bg).toContain('data:image')
 })
+
+test('clicking the ruler seeks the playhead', async ({ page }) => {
+  expect(await state(page, 'scrub')).toBe(0)
+  const ruler = page.getByTestId('timeline-ruler')
+  // Locator click auto-waits for a stable position (raw mouse coords are flaky
+  // under parallel-load layout settling).
+  const box = await ruler.boundingBox()
+  await ruler.click({ position: { x: Math.round(box.width * 0.5), y: 12 } })
+  await expect.poll(() => state(page, 'scrub')).toBeGreaterThan(0)
+})
+
+test('dragging the playhead handle scrubs', async ({ page }) => {
+  const handle = page.getByTestId('playhead-handle')
+  await handle.hover()
+  await page.mouse.down()
+  const b = await handle.boundingBox()
+  await page.mouse.move(b.x + 250, b.y + b.height / 2, { steps: 5 })
+  await page.mouse.up()
+  await expect.poll(() => state(page, 'scrub')).toBeGreaterThan(1)
+})
+
+test('ctrl+wheel over the track zooms the timeline', async ({ page }) => {
+  const before = await state(page, 'timelineZoom')
+  await page.getByTestId('timeline-viewport').hover()
+  await page.keyboard.down('Control')
+  await page.mouse.wheel(0, -240)
+  await page.keyboard.up('Control')
+  await expect.poll(() => state(page, 'timelineZoom')).toBeGreaterThan(before)
+})
+
+test('the toolbar zoom slider changes the zoom', async ({ page }) => {
+  const before = await state(page, 'timelineZoom')
+  const thumb = page.getByTestId('timeline-zoom').getByRole('slider')
+  await thumb.click()
+  await thumb.press('ArrowRight')
+  await expect.poll(() => state(page, 'timelineZoom')).not.toBe(before)
+})

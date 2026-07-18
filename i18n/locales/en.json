@@ -280,6 +280,8 @@
   "timeline": {
     "zoomOut": "Zoom out",
     "zoomIn": "Zoom in",
+    "zoom": "Timeline zoom",
+    "playhead": "Playhead — drag to seek",
     "fit": "Fit timeline",
     "snap": "Snapping",
     "snapHint": "Snap edges to cues, clips & the playhead (hold Alt to disable)",
