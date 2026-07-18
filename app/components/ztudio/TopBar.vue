@@ -36,7 +36,7 @@ const DOT_CLASS = {
   <header class="shrink-0 h-13 flex items-center justify-between gap-2 sm:gap-4 px-3 sm:px-4">
     <div class="flex items-center gap-2.5 shrink-0">
       <span
-        class="grid place-items-center size-7 rounded-lg bg-foreground text-background font-bold text-sm"
+        class="grid place-items-center size-7 rounded-lg bg-brand text-brand-foreground font-bold text-sm"
         >z</span
       >
       <span class="text-sm font-semibold">{{ $t('app.name') }}</span>

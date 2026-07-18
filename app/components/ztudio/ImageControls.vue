@@ -126,6 +126,19 @@ const pct = v => Math.round(v * 100) + '%'
           @update:model-value="store.setImageZoom($event[0])"
         />
       </ZtudioField>
+
+      <ZtudioField
+        :label="$t('controls.imageRotation')"
+        :value="Math.round(store.selectedImage.rotation || 0) + '°'"
+      >
+        <Slider
+          :model-value="[store.selectedImage.rotation || 0]"
+          :min="-180"
+          :max="180"
+          :step="1"
+          @update:model-value="store.setImageRotation($event[0])"
+        />
+      </ZtudioField>
       <p class="text-xs text-muted-foreground -mt-1.5">{{ $t('controls.imageDragHint') }}</p>
 
       <ZtudioField :label="$t('controls.cropImage')">

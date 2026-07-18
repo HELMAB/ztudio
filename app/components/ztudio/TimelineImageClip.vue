@@ -13,6 +13,29 @@ const store = useZtudioStore()
 const { t } = useI18n()
 const MIN = 0.5
 
+// Filmstrip preview: the clip's bitmap reduced to a small strip tile, repeated
+// horizontally across the clip. Cached per bitmap (data URL), so duplicates and
+// splits that share a bitmap reuse the same tile.
+const THUMB_H = 64
+const thumbCache = new WeakMap()
+function thumbFor(bitmap) {
+  if (!bitmap) {
+    return ''
+  }
+  let url = thumbCache.get(bitmap)
+  if (!url) {
+    const tw = Math.max(1, Math.round((THUMB_H * bitmap.width) / bitmap.height))
+    const cv = document.createElement('canvas')
+    cv.width = tw
+    cv.height = THUMB_H
+    cv.getContext('2d').drawImage(bitmap, 0, 0, tw, THUMB_H)
+    url = cv.toDataURL('image/jpeg', 0.7)
+    thumbCache.set(bitmap, url)
+  }
+  return url
+}
+const thumbUrl = computed(() => thumbFor(store.images.find(im => im.id === props.id)?.bitmap))
+
 function onContextMenu(event) {
   store.selectImage(props.id)
   store.openContextMenu(event, [
@@ -86,15 +109,28 @@ onBeforeUnmount(onUp)
     @contextmenu="onContextMenu"
   >
     <div
-      class="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-sky-500/50 hover:bg-sky-500"
+      v-if="thumbUrl"
+      class="absolute inset-0 pointer-events-none"
+      data-testid="image-clip-thumbs"
+      :style="{
+        backgroundImage: `url(${thumbUrl})`,
+        backgroundSize: 'auto 100%',
+        backgroundRepeat: 'repeat-x',
+      }"
+    />
+    <div
+      class="absolute left-0 top-0 bottom-0 z-10 w-1.5 cursor-ew-resize bg-sky-500/50 hover:bg-sky-500"
       @pointerdown="begin('left', $event)"
     />
     <div
-      class="flex-1 h-full flex items-center gap-1 px-2.5 overflow-hidden cursor-grab active:cursor-grabbing"
+      class="relative flex-1 h-full flex items-center gap-1 px-2.5 overflow-hidden cursor-grab active:cursor-grabbing"
       data-testid="image-clip"
       @pointerdown="begin('move', $event)"
     >
-      <span class="font-mono text-[10px] text-sky-700 truncate select-none">{{ label }}</span>
+      <span
+        class="max-w-full truncate select-none rounded bg-black/45 px-1 font-mono text-[10px] text-white"
+        >{{ label }}</span
+      >
     </div>
     <button
       type="button"
@@ -106,7 +142,7 @@ onBeforeUnmount(onUp)
       ✕
     </button>
     <div
-      class="absolute right-0 top-0 bottom-0 w-1.5 cursor-ew-resize bg-sky-500/50 hover:bg-sky-500"
+      class="absolute right-0 top-0 bottom-0 z-10 w-1.5 cursor-ew-resize bg-sky-500/50 hover:bg-sky-500"
       @pointerdown="begin('right', $event)"
     />
   </div>

@@ -1,5 +1,6 @@
 <script setup>
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useElementSize } from '@vueuse/core'
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -14,6 +15,8 @@ import {
   SquareDashedIcon,
 } from '@lucide/vue'
 import { captionCenter, drawFrame } from '@/lib/ztudio/renderer'
+import { imageDrawRect } from '@/lib/ztudio/images'
+import { imageFramingAt } from '@/lib/ztudio/keyframes'
 import { SAFE_AREA_PCT } from '@/lib/ztudio/config'
 
 const store = useZtudioStore()
@@ -50,6 +53,133 @@ function paint() {
   if (dragging.value) {
     drawGuides(ctx, w, h)
   }
+}
+
+// Selection gizmo for the active image clip: a rotated bounding box with corner
+// resize handles and a rotate handle above the top edge. Rendered as an SVG
+// overlay (not on the canvas) so handles stay visible and grabbable even when
+// the image fills or overflows the frame. Geometry comes from the same
+// imageDrawRect the renderer uses, so the box always hugs the drawn pixels;
+// handle sizes are scaled by k (canvas px per CSS px) so they render at a
+// constant on-screen size. Preview only — never part of the encode.
+const { width: canvasDispW, height: canvasDispH } = useElementSize(canvas)
+
+const gizmo = computed(() => {
+  // previewTick invalidates on any redraw (zoom/rotation edits mutate the clip).
+  void store.previewTick
+  if (store.dragTarget !== 'image' || store.isPlaying) {
+    return null
+  }
+  const img = store.activeImage
+  if (!img) {
+    return null
+  }
+  const { w, h } = store.dimensions
+  const frame = imageFramingAt(img, store.keyframes, store.scrub)
+  const r = imageDrawRect(w, h, img, frame)
+  const k = canvasDispW.value > 0 ? w / canvasDispW.value : 1
+  // Stem short enough that the rotate handle stays inside the stage padding
+  // (the panel clips overflow) even when the image fills the whole frame.
+  return { img, ...r, hs: 10 * k, rotOff: 16 * k, k }
+})
+
+const gizmoCorners = computed(() => {
+  const g = gizmo.value
+  if (!g) {
+    return []
+  }
+  return [
+    [-g.dw / 2, -g.dh / 2],
+    [g.dw / 2, -g.dh / 2],
+    [-g.dw / 2, g.dh / 2],
+    [g.dw / 2, g.dh / 2],
+  ]
+})
+
+// The overlay sits exactly over the canvas box inside the (relative) stage
+// padding container. Tracked via the canvas's offset box; useElementSize above
+// retriggers this on any resize.
+const overlayBox = computed(() => {
+  void canvasDispW.value
+  void canvasDispH.value
+  const el = canvas.value
+  if (!el || !gizmo.value) {
+    return null
+  }
+  return {
+    left: el.offsetLeft + 'px',
+    top: el.offsetTop + 'px',
+    width: el.offsetWidth + 'px',
+    height: el.offsetHeight + 'px',
+  }
+})
+
+// Gizmo drags run on window listeners (the pointer may leave the small handle).
+// Coords are mapped into canvas pixels; values may fall outside the frame, which
+// is fine — the math only needs the distance/angle from the box centre.
+let gdrag = null
+
+function gizmoPoint(e) {
+  const el = canvas.value
+  const rect = el.getBoundingClientRect()
+  return {
+    px: (e.clientX - rect.left) * (el.width / rect.width),
+    py: (e.clientY - rect.top) * (el.height / rect.height),
+  }
+}
+
+function startGizmo(mode, e) {
+  const g = gizmo.value
+  if (!g) {
+    return
+  }
+  e.preventDefault()
+  e.stopPropagation()
+  store.selectImage(g.img.id)
+  const { px, py } = gizmoPoint(e)
+  gdrag = {
+    mode,
+    cx: g.cx,
+    cy: g.cy,
+    startAngle: (Math.atan2(py - g.cy, px - g.cx) * 180) / Math.PI,
+    origRotation: g.img.rotation || 0,
+    startDist: Math.max(1, Math.hypot(px - g.cx, py - g.cy)),
+    origZoom: g.img.zoom || 1,
+  }
+  dragging.value = true
+  window.addEventListener('pointermove', onGizmoMove)
+  window.addEventListener('pointerup', onGizmoUp)
+}
+
+function onGizmoMove(e) {
+  if (!gdrag) {
+    return
+  }
+  const { px, py } = gizmoPoint(e)
+  const dx = px - gdrag.cx
+  const dy = py - gdrag.cy
+  if (gdrag.mode === 'rotate') {
+    // Rotation follows the pointer's angle, snapping to 45° steps unless Alt is
+    // held (the same snap-disable modifier as the timeline).
+    let deg = gdrag.origRotation + (Math.atan2(dy, dx) * 180) / Math.PI - gdrag.startAngle
+    if (!e.altKey) {
+      const snap = Math.round(deg / 45) * 45
+      if (Math.abs(deg - snap) < 4) {
+        deg = snap
+      }
+    }
+    store.setImageRotation(deg)
+  } else {
+    // Resize scales the clip zoom by the pointer's distance from the centre.
+    store.setImageZoom(gdrag.origZoom * (Math.hypot(dx, dy) / gdrag.startDist))
+  }
+}
+
+function onGizmoUp() {
+  gdrag = null
+  dragging.value = false
+  window.removeEventListener('pointermove', onGizmoMove)
+  window.removeEventListener('pointerup', onGizmoUp)
 }
 
 // Title-safe margin guide: a dashed inset rectangle marking where captions stay
@@ -145,6 +275,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('fullscreenchange', syncFullscreen)
   document.removeEventListener('webkitfullscreenchange', syncFullscreen)
+  onGizmoUp()
 })
 
 function fmtTime(s) {
@@ -354,7 +485,7 @@ function onResetDrag() {
 
 <template>
   <section ref="stageEl" class="flex flex-col min-w-0 bg-card">
-    <div class="flex-1 min-h-0 flex items-center justify-center p-2 sm:p-6">
+    <div class="relative flex-1 min-h-0 flex items-center justify-center p-2 sm:p-6">
       <canvas
         ref="canvas"
         data-testid="preview-canvas"
@@ -375,6 +506,63 @@ function onResetDrag() {
         @wheel="onWheel"
         @dblclick="onResetDrag"
       />
+
+      <!-- Image selection gizmo: overlays the canvas 1:1 (same viewBox as the
+           frame), overflow visible so handles survive full-frame images. The
+           root ignores pointers; only the handles are interactive. -->
+      <svg
+        v-if="gizmo && overlayBox"
+        data-testid="image-gizmo"
+        class="absolute z-10 overflow-visible pointer-events-none"
+        :style="overlayBox"
+        :viewBox="`0 0 ${store.dimensions.w} ${store.dimensions.h}`"
+      >
+        <g :transform="`translate(${gizmo.cx} ${gizmo.cy}) rotate(${gizmo.rotation})`">
+          <rect
+            :x="-gizmo.dw / 2"
+            :y="-gizmo.dh / 2"
+            :width="gizmo.dw"
+            :height="gizmo.dh"
+            fill="none"
+            stroke="#4abf76"
+            :stroke-width="1.5 * gizmo.k"
+          />
+          <line
+            x1="0"
+            :y1="-gizmo.dh / 2"
+            x2="0"
+            :y2="-gizmo.dh / 2 - gizmo.rotOff"
+            stroke="#4abf76"
+            :stroke-width="1.5 * gizmo.k"
+          />
+          <circle
+            data-testid="gizmo-rotate"
+            cx="0"
+            :cy="-gizmo.dh / 2 - gizmo.rotOff"
+            :r="gizmo.hs / 2"
+            fill="#ffffff"
+            stroke="#4abf76"
+            :stroke-width="1.5 * gizmo.k"
+            class="pointer-events-auto cursor-grab touch-none"
+            @pointerdown="startGizmo('rotate', $event)"
+          />
+          <rect
+            v-for="(c, i) in gizmoCorners"
+            :key="i"
+            data-testid="gizmo-corner"
+            :x="c[0] - gizmo.hs / 2"
+            :y="c[1] - gizmo.hs / 2"
+            :width="gizmo.hs"
+            :height="gizmo.hs"
+            :rx="gizmo.hs / 5"
+            fill="#ffffff"
+            stroke="#4abf76"
+            :stroke-width="1.5 * gizmo.k"
+            class="pointer-events-auto cursor-nwse-resize touch-none"
+            @pointerdown="startGizmo('resize', $event)"
+          />
+        </g>
+      </svg>
     </div>
 
     <!-- Transport bar: timecode left, playback centred, utilities right (three-zone

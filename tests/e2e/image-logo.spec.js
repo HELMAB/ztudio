@@ -27,6 +27,12 @@ test('zooms the selected image via the slider', async ({ page }) => {
   expect(await state(page, 'selectedImage.zoom')).toBeGreaterThan(before)
 })
 
+test('rotates the selected image via the slider', async ({ page }) => {
+  expect(await state(page, 'selectedImage.rotation')).toBe(0)
+  await nudgeSlider(page, page.getByTestId('inspector'), 'Image rotation', 'right', 3)
+  expect(await state(page, 'selectedImage.rotation')).toBeGreaterThan(0)
+})
+
 test('toggling crop reveals the crop sliders', async ({ page }) => {
   const inspector = page.getByTestId('inspector')
   await field(inspector, 'Crop image').getByRole('switch').click()

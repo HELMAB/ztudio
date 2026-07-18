@@ -49,12 +49,12 @@
 
 :root {
   --radius: 0.625rem;
-  /* Brand: a vivid azure used for the primary action + playhead/timecode accents.
-     The chroma-key colour itself lives in the renderer (GREEN), not here — blue
-     keeps the UI chrome from blending into the green preview canvas. */
-  --brand: oklch(0.62 0.17 255);
-  --brand-foreground: oklch(1 0 0);
-  --brand-muted: oklch(0.62 0.17 255 / 12%);
+  /* Brand: the ztudio green (#4abf76), used for the primary action + playhead /
+     timecode accents. The exact chroma-key colour lives in the renderer (GREEN),
+     not here. */
+  --brand: #4abf76;
+  --brand-foreground: oklch(0.18 0.03 160);
+  --brand-muted: rgb(74 191 118 / 12%);
   /* Editor chrome: panels float as white cards over a soft neutral-gray app
      background, separated by hairline borders. */
   --background: oklch(0.972 0.0015 264);
@@ -74,7 +74,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.91 0.003 264);
   --input: oklch(0.91 0.003 264);
-  --ring: oklch(0.62 0.17 255);
+  --ring: var(--brand);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -92,10 +92,10 @@
 
 .dark {
   /* Studio dark: cool near-black, layered so app < panel < card/popover read as
-     distinct elevations, with low-contrast hairline borders. The brand blue
-     brightens a step so it holds contrast on the dark cards. */
-  --brand: oklch(0.68 0.16 255);
-  --brand-muted: oklch(0.68 0.16 255 / 16%);
+     distinct elevations, with low-contrast hairline borders. The brand green
+     carries enough luminance to hold contrast on the dark cards as-is; only the
+     muted wash strengthens a touch. */
+  --brand-muted: rgb(74 191 118 / 16%);
   --background: oklch(0.15 0.005 264);
   --foreground: oklch(0.97 0.003 264);
   --card: oklch(0.195 0.006 264);

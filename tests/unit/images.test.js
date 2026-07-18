@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clipCrop, effectFilter, imageAt } from '@/lib/ztudio/images'
+import { clipCrop, effectFilter, imageAt, imageDrawRect } from '@/lib/ztudio/images'
 import { IMAGE_EFFECTS } from '@/lib/ztudio/config'
 
 describe('effectFilter', () => {
@@ -69,5 +69,44 @@ describe('clipCrop', () => {
   it('clamps width and height to a 0.05 minimum', () => {
     const rect = clipCrop({ cropLeft: 0.6, cropRight: 0.6 })
     expect(rect.w).toBe(0.05)
+  })
+})
+
+describe('imageDrawRect', () => {
+  // 100×50 source in a 200×200 frame: contain scale = 2 → 200×100 centred.
+  const base = { width: 100, height: 50, fit: 'contain' }
+  const still = { zoom: 1, offsetXPct: 0, offsetYPct: 0 }
+
+  it('contains the source and centres it in the frame', () => {
+    expect(imageDrawRect(200, 200, base, still)).toEqual({
+      cx: 100,
+      cy: 100,
+      dw: 200,
+      dh: 100,
+      rotation: 0,
+    })
+  })
+
+  it('cover scales to fill the frame', () => {
+    const r = imageDrawRect(200, 200, { ...base, fit: 'cover' }, still)
+    expect(r.dw).toBe(400)
+    expect(r.dh).toBe(200)
+  })
+
+  it('zoom multiplies the fit scale and offsets shift the centre', () => {
+    const r = imageDrawRect(200, 200, base, { zoom: 2, offsetXPct: 0.1, offsetYPct: -0.25 })
+    expect(r).toEqual({ cx: 120, cy: 50, dw: 400, dh: 200, rotation: 0 })
+  })
+
+  it('fits the cropped region rather than the full source', () => {
+    const img = { ...base, cropLeft: 0.2, cropRight: 0.2 }
+    const r = imageDrawRect(200, 200, img, still)
+    expect(r.dw).toBeCloseTo(200)
+    expect(r.dh).toBeCloseTo((50 * 200) / 60)
+  })
+
+  it('passes the clip rotation through', () => {
+    expect(imageDrawRect(200, 200, { ...base, rotation: 45 }, still).rotation).toBe(45)
+    expect(imageDrawRect(200, 200, base, still).rotation).toBe(0)
   })
 })

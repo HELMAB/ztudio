@@ -63,3 +63,10 @@ test('the audio clip / waveform lane is rendered', async ({ page }) => {
   // The demo audio produces an "audio · Ns" clip on the timeline.
   await expect(page.getByText(/audio ·/).first()).toBeVisible()
 })
+
+test('image clips render a filmstrip thumbnail', async ({ page }) => {
+  const strip = page.getByTestId('image-clip-thumbs').first()
+  await expect(strip).toBeVisible()
+  const bg = await strip.evaluate(el => getComputedStyle(el).backgroundImage)
+  expect(bg).toContain('data:image')
+})

@@ -486,6 +486,21 @@ export const useZtudioStore = defineStore('ztudio', () => {
     }
   }
 
+  // Rotation is static per clip (not keyframed); normalized to (-180, 180].
+  function setImageRotation(deg) {
+    const im = selectedImage.value
+    if (im && Number.isFinite(deg)) {
+      let d = deg % 360
+      if (d > 180) {
+        d -= 360
+      } else if (d <= -180) {
+        d += 360
+      }
+      im.rotation = Math.round(d * 10) / 10
+      redraw()
+    }
+  }
+
   function setImageFit(fit) {
     const im = selectedImage.value
     if (im) {
@@ -528,6 +543,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       im.zoom = 1
       im.offsetXPct = 0
       im.offsetYPct = 0
+      im.rotation = 0
       autoKeyAtPlayhead()
       redraw()
     }
@@ -1069,6 +1085,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       zoom: 1,
       offsetXPct: 0,
       offsetYPct: 0,
+      rotation: 0,
       cropTop: 0,
       cropBottom: 0,
       cropLeft: 0,
@@ -2593,6 +2610,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     resetCaptionOffset,
     setImageZoom,
     setImageOffset,
+    setImageRotation,
     setImageFit,
     setImageEffect,
     setImageCrop,

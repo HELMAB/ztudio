@@ -357,6 +357,39 @@ describe('store: images', () => {
     store.removeImage(store.images[0].id)
     expect(store.images).toHaveLength(0)
   })
+
+  it('rotates the selected clip, normalizing to (-180, 180]', async () => {
+    const store = await makeStore()
+    await withAudio(store, 20)
+    await store.addImages([imageFile()])
+    store.selectImage(store.images[0].id)
+    expect(store.selectedImage.rotation).toBe(0)
+    store.setImageRotation(90)
+    expect(store.selectedImage.rotation).toBe(90)
+    store.setImageRotation(270)
+    expect(store.selectedImage.rotation).toBe(-90)
+    store.setImageRotation(-190)
+    expect(store.selectedImage.rotation).toBe(170)
+    store.setImageRotation(180)
+    expect(store.selectedImage.rotation).toBe(180)
+  })
+
+  it('reset framing clears zoom, pan and rotation', async () => {
+    const store = await makeStore()
+    await withAudio(store, 20)
+    await store.addImages([imageFile()])
+    store.selectImage(store.images[0].id)
+    store.setImageZoom(2)
+    store.setImageOffset(0.2, 0.1)
+    store.setImageRotation(45)
+    store.resetImageTransform()
+    expect(store.selectedImage).toMatchObject({
+      zoom: 1,
+      offsetXPct: 0,
+      offsetYPct: 0,
+      rotation: 0,
+    })
+  })
 })
 
 describe('store: presets & style', () => {

@@ -1,7 +1,7 @@
 import { GREEN, buildFontStack } from './config'
 import { applyKeyframes, imageFramingAt } from './keyframes'
 import { activeWordIndex, cueAt } from './srt'
-import { clipCrop, effectFilter, imageAt } from './images'
+import { clipCrop, effectFilter, imageAt, imageDrawRect } from './images'
 import { drawOverlay } from './overlays'
 
 const clamp01 = x => (x < 0 ? 0 : x > 1 ? 1 : x)
@@ -413,17 +413,18 @@ function drawImageClip(ctx, w, h, img, keyframes, t, alpha) {
   const sy = c ? c.y * bmp.height : 0
   const sw = c ? c.w * bmp.width : bmp.width
   const sh = c ? c.h * bmp.height : bmp.height
-  const base = img.fit === 'cover' ? Math.max(w / sw, h / sh) : Math.min(w / sw, h / sh)
-  // Per-clip zoom (multiplies the fit scale) and pan (fraction of frame size).
-  const scale = base * (frame.zoom || 1)
-  const dw = sw * scale
-  const dh = sh * scale
-  const ox = w * (frame.offsetXPct || 0)
-  const oy = h * (frame.offsetYPct || 0)
+  // Destination: fit scale × per-clip zoom, panned centre, optional rotation.
+  const { cx, cy, dw, dh, rotation } = imageDrawRect(w, h, img, frame)
   ctx.save()
   ctx.globalAlpha = alpha
   ctx.filter = effectFilter(img.effect)
-  ctx.drawImage(bmp, sx, sy, sw, sh, (w - dw) / 2 + ox, (h - dh) / 2 + oy, dw, dh)
+  if (rotation) {
+    ctx.translate(cx, cy)
+    ctx.rotate((rotation * Math.PI) / 180)
+    ctx.drawImage(bmp, sx, sy, sw, sh, -dw / 2, -dh / 2, dw, dh)
+  } else {
+    ctx.drawImage(bmp, sx, sy, sw, sh, cx - dw / 2, cy - dh / 2, dw, dh)
+  }
   ctx.restore()
 }
 
