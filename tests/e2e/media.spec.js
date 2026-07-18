@@ -37,13 +37,41 @@ test('changes export quality, format and fps in the export dialog', async ({ pag
   expect(await state(page, 'busy')).toBe(false)
 })
 
-test('uploads an additional image as a new clip', async ({ page }) => {
-  const before = await state(page, 'images.length')
-  // Switch the Media panel to its Image tab, then upload via its file input.
+test('lists every loaded medium in the Assets tab and removes captions from it', async ({ page }) => {
   const panel = mediaPanel(page)
-  await panel.getByRole('tab', { name: 'Image', exact: true }).click()
-  await panel.locator('input[type="file"]').setInputFiles(DEMO.image)
+  await panel.getByRole('tab', { name: 'Assets', exact: true }).click()
+  // Demo project: voice audio, one image clip, captions, logo → four rows.
+  const rows = panel.getByTestId('asset-row')
+  await expect(rows).toHaveCount(4)
+
+  // Removing the captions row clears the cues and drops the row.
+  expect(await state(page, 'cues.length')).toBeGreaterThan(0)
+  await rows.nth(2).getByRole('button', { name: 'Remove file' }).click()
+  await expect.poll(() => state(page, 'cues.length')).toBe(0)
+  await expect(rows).toHaveCount(3)
+})
+
+test('imports mixed media through the Assets import input', async ({ page }) => {
+  const panel = mediaPanel(page)
+  await panel.getByRole('tab', { name: 'Assets', exact: true }).click()
+  const before = await state(page, 'images.length')
+  // One change event with an image + an srt routes each file to its loader.
+  await panel.getByTestId('assets-import').setInputFiles([DEMO.image, DEMO.srt])
   await expect.poll(() => state(page, 'images.length')).toBe(before + 1)
+  expect(await state(page, 'cues.length')).toBeGreaterThan(0)
+})
+
+test('clicking an image asset row selects that clip', async ({ page }) => {
+  const panel = mediaPanel(page)
+  await panel.getByRole('tab', { name: 'Assets', exact: true }).click()
+  // Add a second image so selection has somewhere to move; the new clip is
+  // auto-selected, so clicking the first image row (after the audio row)
+  // moves selection back to the original clip.
+  await panel.getByTestId('assets-import').setInputFiles(DEMO.image)
+  await expect.poll(() => state(page, 'images.length')).toBe(2)
+  await panel.getByTestId('asset-row').nth(1).click()
+  const firstId = await state(page, 'images.0.id')
+  await expect.poll(() => state(page, 'selectedImageId')).toBe(firstId)
 })
 
 test('uploads a custom caption font', async ({ page }) => {

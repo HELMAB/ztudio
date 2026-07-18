@@ -507,3 +507,26 @@ describe('store: undo/redo public surface', () => {
     }).not.toThrow()
   })
 })
+
+describe('store: importFiles routing', () => {
+  it('routes a mixed set: first audio → voice, second → music, images → clips, .srt → cues', async () => {
+    const store = await makeStore()
+    audioCtl.setNextDuration(10)
+    const srtFile = { name: 'caption.srt', text: async () => CUE(1, 1, 2) }
+    await store.importFiles([audioFile(10), imageFile('a.png'), srtFile, audioFile(8)])
+    expect(store.audioBuffer).toBeTruthy()
+    expect(store.hasMusic).toBe(true)
+    expect(store.images.length).toBe(1)
+    expect(store.cues.length).toBe(1)
+  })
+
+  it('skips unsupported files and tolerates an empty list', async () => {
+    const store = await makeStore()
+    await store.importFiles([])
+    await store.importFiles(null)
+    await store.importFiles([{ name: 'notes.pdf', type: 'application/pdf' }])
+    expect(store.audioBuffer).toBeFalsy()
+    expect(store.images.length).toBe(0)
+    expect(store.cues.length).toBe(0)
+  })
+})

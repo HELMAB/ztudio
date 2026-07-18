@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { CaptionsIcon, ImageIcon, MusicIcon, Settings2Icon } from '@lucide/vue'
+import { LayersIcon, Settings2Icon } from '@lucide/vue'
 import { RESOLUTION_OPTIONS } from '@/lib/ztudio/config'
 
 const store = useZtudioStore()
@@ -13,11 +13,9 @@ const resolutionOptions = computed(() =>
 // Icon rail (OpenCut-style): a narrow column of icon triggers on the left picks
 // the section shown on the right. Triggers keep their text as an accessible
 // name, so role-based queries ('tab' + label) still work.
-const tab = ref('audio')
+const tab = ref('assets')
 const SECTIONS = [
-  { value: 'audio', icon: MusicIcon, labelKey: 'media.tabAudio' },
-  { value: 'image', icon: ImageIcon, labelKey: 'media.tabImage' },
-  { value: 'caption', icon: CaptionsIcon, labelKey: 'media.tabCaption' },
+  { value: 'assets', icon: LayersIcon, labelKey: 'media.tabAssets' },
   { value: 'settings', icon: Settings2Icon, labelKey: 'media.tabSettings' },
 ]
 const sectionTitle = computed(() => t(SECTIONS.find(s => s.value === tab.value).labelKey))
@@ -59,43 +57,8 @@ const sectionTitle = computed(() => t(SECTIONS.find(s => s.value === tab.value).
         </h2>
 
         <div class="max-lg:shrink-0 lg:flex-1 lg:min-h-0 lg:overflow-y-auto p-4">
-          <TabsContent value="audio" class="space-y-4">
-            <ZtudioMediaUploader
-              accept="audio/*"
-              :title="$t('media.audio')"
-              :icon="MusicIcon"
-              :ok="store.audioPill.ok"
-              :status="store.audioPill.text"
-              @select="store.loadAudio($event)"
-              @clear="store.loadAudio(null)"
-            />
-            <ZtudioAudioControls />
-          </TabsContent>
-
-          <TabsContent value="image">
-            <ZtudioMediaUploader
-              accept="image/*"
-              multiple
-              :title="$t('media.image')"
-              :hint="$t('media.imageHint')"
-              :icon="ImageIcon"
-              :ok="store.imagePill.ok"
-              :status="store.imagePill.text"
-              @select="store.addImages($event)"
-              @clear="store.clearImages()"
-            />
-          </TabsContent>
-
-          <TabsContent value="caption">
-            <ZtudioMediaUploader
-              accept=".srt,text/plain"
-              :title="$t('media.captions')"
-              :icon="CaptionsIcon"
-              :ok="store.srtPill.ok"
-              :status="store.srtPill.text"
-              @select="store.loadSrt($event)"
-              @clear="store.loadSrt(null)"
-            />
+          <TabsContent value="assets">
+            <ZtudioAssetList />
           </TabsContent>
 
           <TabsContent value="settings" class="space-y-5">

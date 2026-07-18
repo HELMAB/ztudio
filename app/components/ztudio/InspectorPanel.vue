@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { ImageIcon, MessageSquareTextIcon, PaletteIcon, SparklesIcon } from '@lucide/vue'
+import { ImageIcon, MessageSquareTextIcon, MusicIcon, PaletteIcon, SparklesIcon } from '@lucide/vue'
 
 // Selection drives the active section (store.inspectorTab): clicking a clip
 // opens that object's properties. Two-way bound so manual rail clicks still
@@ -14,6 +14,7 @@ const SECTIONS = [
   { value: 'style', icon: PaletteIcon, labelKey: 'caption.tabStyle' },
   { value: 'animation', icon: SparklesIcon, labelKey: 'caption.tabAnimation' },
   { value: 'image', icon: ImageIcon, labelKey: 'caption.tabImage' },
+  { value: 'audio', icon: MusicIcon, labelKey: 'caption.tabAudio' },
 ]
 const sectionTitle = computed(
   () => t(SECTIONS.find(s => s.value === store.inspectorTab)?.labelKey ?? 'settings.heading'),
@@ -56,6 +57,9 @@ const sectionTitle = computed(
         </TabsContent>
         <TabsContent value="image" class="min-h-0 flex-1 overflow-y-auto p-4">
           <ZtudioImageControls />
+        </TabsContent>
+        <TabsContent value="audio" class="min-h-0 flex-1 overflow-y-auto p-4">
+          <ZtudioAudioControls />
         </TabsContent>
       </div>
     </Tabs>

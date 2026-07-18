@@ -1,23 +1,25 @@
 import { expect, test } from '@playwright/test'
 import { boot, DEMO, field, nudgeSlider, state } from './helpers'
 
-// Audio controls live in the left Media panel's "Audio" tab (default tab there).
+// Audio mix controls live in the right inspector's "Audio" tab.
 test.beforeEach(async ({ page }) => {
   await boot(page)
+  await page.getByTestId('inspector').getByRole('tab', { name: 'Audio', exact: true }).click()
 })
 
-const mediaPanel = page => page.locator('aside').filter({ hasText: 'Voice volume' })
+const audioPanel = page => page.getByTestId('inspector')
 
 test('adjusts the voice volume', async ({ page }) => {
   const before = await state(page, 'audio.voiceGain')
-  await nudgeSlider(page, mediaPanel(page), 'Voice volume', 'left', 3)
+  await nudgeSlider(page, audioPanel(page), 'Voice volume', 'left', 3)
   await expect.poll(() => state(page, 'audio.voiceGain')).toBeLessThan(before)
 })
 
 test('uploads a music bed and controls it (volume, loop, ducking)', async ({ page }) => {
-  const panel = mediaPanel(page)
-  // Two audio file inputs exist in this tab (voice, then music) — music is 2nd.
-  await panel.locator('input[type="file"]').nth(1).setInputFiles(DEMO.audio)
+  const panel = audioPanel(page)
+  // The music-bed uploader is the only file input in this tab now (the voice
+  // track is imported via the Assets tab).
+  await panel.locator('input[type="file"]').setInputFiles(DEMO.audio)
   await expect.poll(() => state(page, 'hasMusic')).toBe(true)
 
   // Music-only controls appear once a bed is loaded.

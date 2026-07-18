@@ -66,10 +66,14 @@ Helpers: `boot`, `state`, `field` (a control by its Field label), `selectOption`
 Selector conventions: prefer a `data-testid` over matching i18n text. Existing hooks:
 `splash`, `inspector`, `export-button`, `preview-canvas`, `current-time`, `cue-list`,
 `cue-text`, `caption-dialog-*`, `locale-toggle`, `title-controls`,
-`timeline-add-caption`/`-title`/`-keyframe`, `result-overlay`/`-video`/`-download`.
-Gotchas: the Media panel has its own icon-rail tabs — Audio/Image/Caption/Settings,
+`timeline-add-caption`/`-title`/`-keyframe`, `result-overlay`/`-video`/`-download`,
+`asset-list`/`asset-row`/`assets-import`.
+Gotchas: the Media panel has its own icon-rail tabs — Assets (default)/Settings,
 icon-only but still `role=tab` with those accessible names (scope inspector tab
-queries to the `inspector` testid; the resolution select lives under Settings); the Style tab hosts BOTH caption and title controls
+queries to the `inspector` testid; uploads go through the Assets tab's mixed-type
+import input `assets-import`; the resolution select lives under Settings); the audio
+mix console — voice volume/fades plus the music-bed uploader and its controls — is the
+inspector's Audio tab; the Style tab hosts BOTH caption and title controls
 (scope title queries to `title-controls`); reka Switches sit inside their `<label>`, so
 click the label hint text to toggle once; music-only controls (loop/ducking) render only
 after a music bed is loaded.
