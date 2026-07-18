@@ -30,6 +30,7 @@
     "tabAudio": "Audio",
     "tabImage": "Image",
     "tabCaption": "Caption",
+    "tabSettings": "Settings",
     "dropHint": "Drop a file here or click to browse",
     "clear": "Remove file"
   },

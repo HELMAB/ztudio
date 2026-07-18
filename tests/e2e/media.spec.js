@@ -5,16 +5,14 @@ test.beforeEach(async ({ page }) => {
   await boot(page)
 })
 
-// The Media panel is the left aside (contains the resolution control).
-const mediaPanel = page => page.locator('aside').filter({ hasText: 'Aspect & resolution' })
+// The Media panel is the left aside; its icon rail switches sections.
+const mediaPanel = page => page.getByTestId('media-panel')
 
 test('changes the output resolution', async ({ page }) => {
-  await selectOption(
-    page,
-    mediaPanel(page),
-    'Aspect & resolution',
-    '1920 × 1080 — Full HD 1080p (16:9)',
-  )
+  // Resolution lives in the rail's Settings section.
+  const panel = mediaPanel(page)
+  await panel.getByRole('tab', { name: 'Settings', exact: true }).click()
+  await selectOption(page, panel, 'Aspect & resolution', '1920 × 1080 — Full HD 1080p (16:9)')
   await expect.poll(() => state(page, 'resolution')).toBe('1920x1080')
 })
 

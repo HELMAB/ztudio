@@ -67,8 +67,9 @@ Selector conventions: prefer a `data-testid` over matching i18n text. Existing h
 `splash`, `inspector`, `export-button`, `preview-canvas`, `current-time`, `cue-list`,
 `cue-text`, `caption-dialog-*`, `locale-toggle`, `title-controls`,
 `timeline-add-caption`/`-title`/`-keyframe`, `result-overlay`/`-video`/`-download`.
-Gotchas: the Media panel has its own Audio/Image/Caption tabs (scope inspector tab
-queries to the `inspector` testid); the Style tab hosts BOTH caption and title controls
+Gotchas: the Media panel has its own icon-rail tabs — Audio/Image/Caption/Settings,
+icon-only but still `role=tab` with those accessible names (scope inspector tab
+queries to the `inspector` testid; the resolution select lives under Settings); the Style tab hosts BOTH caption and title controls
 (scope title queries to `title-controls`); reka Switches sit inside their `<label>`, so
 click the label hint text to toggle once; music-only controls (loop/ducking) render only
 after a music bed is loaded.
