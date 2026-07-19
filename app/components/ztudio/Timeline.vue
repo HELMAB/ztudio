@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useElementSize } from '@vueuse/core'
+import { IMAGE_DRAG_MIME } from '@/lib/ztudio/config'
 import { computePeaks, peakBuckets, peaksPath } from '@/lib/ztudio/waveform'
 import { drawFrame } from '@/lib/ztudio/renderer'
 import { captionAt } from '@/lib/ztudio/srt'
@@ -408,6 +409,61 @@ watch(
   },
   { flush: 'post' },
 )
+
+// Drag-and-drop from the Assets panel: image rows carry IMAGE_DRAG_MIME (OS
+// file drags stay with the app-wide DropZone overlay). While the drag hovers
+// the track a drop line previews the snapped time; dropping re-places the clip
+// there via store.placeImageAt.
+const dropHint = ref(null)
+const dropHintLeft = computed(() =>
+  dropHint.value != null ? dropHint.value * pxPerSecond.value : null,
+)
+
+const isAssetDrag = e => Array.from(e.dataTransfer?.types || []).includes(IMAGE_DRAG_MIME)
+
+function assetDropTime(event) {
+  const el = laneArea.value
+  const pps = pxPerSecond.value
+  if (!el || pps <= 0) {
+    return null
+  }
+  const raw = (event.clientX - el.getBoundingClientRect().left) / pps
+  const clamped = Math.min(Math.max(0, raw), duration.value)
+  return store.snapEdge(clamped, { pxPerSecond: pps, disabled: event.altKey })
+}
+
+function onAssetDragOver(event) {
+  if (!isAssetDrag(event)) {
+    return
+  }
+  // preventDefault is required for the drop event to fire at all.
+  event.preventDefault()
+  event.dataTransfer.dropEffect = 'move'
+  dropHint.value = assetDropTime(event)
+}
+
+function onAssetDragLeave(event) {
+  // Moves between children fire dragleave too; only clear when actually leaving.
+  if (event.relatedTarget && event.currentTarget.contains(event.relatedTarget)) {
+    return
+  }
+  dropHint.value = null
+  store.clearSnap()
+}
+
+function onAssetDrop(event) {
+  if (!isAssetDrag(event)) {
+    return
+  }
+  event.preventDefault()
+  const t = assetDropTime(event)
+  dropHint.value = null
+  store.clearSnap()
+  const id = Number(event.dataTransfer.getData(IMAGE_DRAG_MIME))
+  if (t != null && Number.isFinite(id)) {
+    store.placeImageAt(id, t)
+  }
+}
 </script>
 
 <template>
@@ -546,6 +602,9 @@ watch(
         data-testid="timeline-viewport"
         class="flex-1 min-w-0 overflow-x-auto overflow-y-hidden"
         @wheel="onWheelZoom"
+        @dragover="onAssetDragOver"
+        @dragleave="onAssetDragLeave"
+        @drop="onAssetDrop"
       >
         <div
           class="relative flex flex-col"
@@ -600,7 +659,9 @@ watch(
             @pointermove="onLaneHover"
             @pointerleave="onLaneLeave"
           >
-            <div class="relative flex-1 border-b border-dashed border-border/80 transition-colors hover:bg-muted/30">
+            <div
+              class="relative flex-1 border-b border-dashed border-border/80 transition-colors hover:bg-muted/30"
+            >
               <div
                 v-if="audioClip"
                 class="absolute inset-y-1 left-0 flex items-center overflow-hidden rounded border border-brand/50 bg-brand/15 px-2"
@@ -652,7 +713,9 @@ watch(
               />
             </div>
 
-            <div class="relative flex-1 border-b border-dashed border-border/80 transition-colors hover:bg-muted/30">
+            <div
+              class="relative flex-1 border-b border-dashed border-border/80 transition-colors hover:bg-muted/30"
+            >
               <ZtudioTimelineImageClip
                 v-for="c in imageClips"
                 :id="c.id"
@@ -664,7 +727,9 @@ watch(
               />
             </div>
 
-            <div class="relative flex-1 border-b border-dashed border-border/80 transition-colors hover:bg-muted/30">
+            <div
+              class="relative flex-1 border-b border-dashed border-border/80 transition-colors hover:bg-muted/30"
+            >
               <ZtudioTimelineCaptionClip
                 v-for="c in captionClips"
                 :key="c.key"
@@ -676,7 +741,9 @@ watch(
               />
             </div>
 
-            <div class="relative flex-1 border-b border-dashed border-border/80 transition-colors hover:bg-muted/30">
+            <div
+              class="relative flex-1 border-b border-dashed border-border/80 transition-colors hover:bg-muted/30"
+            >
               <ZtudioTimelineTitleClip
                 v-for="c in titleClips"
                 :id="c.id"
@@ -711,6 +778,13 @@ watch(
           />
 
           <div
+            v-if="dropHintLeft != null"
+            data-testid="timeline-drop-line"
+            class="absolute top-0 bottom-0 w-px bg-brand z-20 pointer-events-none"
+            :style="{ left: dropHintLeft + 'px' }"
+          />
+
+          <div
             class="absolute top-0 bottom-0 z-20 pointer-events-none"
             :style="{ left: playheadLeft + 'px' }"
           >
@@ -738,9 +812,7 @@ watch(
           transform: 'translate(-50%, calc(-100% - 10px))',
         }"
       >
-        <div
-          class="rounded-md border border-border bg-popover/95 p-1 shadow-xl backdrop-blur-sm"
-        >
+        <div class="rounded-md border border-border bg-popover/95 p-1 shadow-xl backdrop-blur-sm">
           <canvas ref="thumbCanvas" class="block rounded-sm bg-black" style="width: 120px" />
           <div class="mt-1 text-center font-mono text-[10px] text-foreground tabular-nums">
             {{ fmtTime(hover.t) }}

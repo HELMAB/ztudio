@@ -1287,6 +1287,20 @@ export const useZtudioStore = defineStore('ztudio', () => {
     redraw()
   }
 
+  // Drop from the Assets panel onto the timeline: move the clip so it starts at
+  // t, keeping its duration (clamped to the preview window), and focus it.
+  function placeImageAt(id, t) {
+    const im = images.value.find(c => c.id === id)
+    if (!im) {
+      return
+    }
+    const dur = previewDuration.value
+    const len = Math.min(Math.max(MIN_IMAGE_DUR, im.end - im.start), dur)
+    const start = Math.max(0, Math.min(t, dur - len))
+    updateImageTime(id, start, start + len)
+    selectImage(id)
+  }
+
   async function loadSrt(file) {
     if (!file) {
       cues.value = []
@@ -2622,6 +2636,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     removeImage,
     selectImage,
     updateImageTime,
+    placeImageAt,
     setTrim,
     resetTrim,
     keyframes,

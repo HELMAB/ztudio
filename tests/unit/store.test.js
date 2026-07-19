@@ -358,6 +358,42 @@ describe('store: images', () => {
     expect(store.images).toHaveLength(0)
   })
 
+  it('placeImageAt moves a clip to the drop time, keeping its duration', async () => {
+    const store = await makeStore()
+    await withAudio(store, 20)
+    // Second image gets the default 3s slot at the playhead (0–3).
+    await store.addImages([imageFile('a.png'), imageFile('b.png')])
+    const clip = store.images.find(im => im.end - im.start < 20)
+    store.placeImageAt(clip.id, 10)
+    expect(clip.start).toBe(10)
+    expect(clip.end).toBe(13)
+    // The dropped clip becomes the focused one (asset-panel semantics).
+    expect(store.selectedImageId).toBe(clip.id)
+    expect(store.inspectorTab).toBe('image')
+  })
+
+  it('placeImageAt clamps the drop so the clip stays inside the timeline', async () => {
+    const store = await makeStore()
+    await withAudio(store, 20)
+    await store.addImages([imageFile('a.png'), imageFile('b.png')])
+    const clip = store.images.find(im => im.end - im.start < 20)
+    store.placeImageAt(clip.id, 999)
+    expect(clip.start).toBe(17)
+    expect(clip.end).toBe(20)
+    store.placeImageAt(clip.id, -5)
+    expect(clip.start).toBe(0)
+    expect(clip.end).toBe(3)
+  })
+
+  it('placeImageAt keeps a full-length clip spanning the window', async () => {
+    const store = await makeStore()
+    await withAudio(store, 20)
+    await store.addImages([imageFile()])
+    store.placeImageAt(store.images[0].id, 5)
+    expect(store.images[0].start).toBe(0)
+    expect(store.images[0].end).toBe(20)
+  })
+
   it('rotates the selected clip, normalizing to (-180, 180]', async () => {
     const store = await makeStore()
     await withAudio(store, 20)

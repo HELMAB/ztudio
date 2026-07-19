@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { CaptionsIcon, Music2Icon, MusicIcon, StampIcon, UploadIcon, XIcon } from '@lucide/vue'
+import { IMAGE_DRAG_MIME } from '@/lib/ztudio/config'
 
 // Unified assets view: every loaded medium in one list (voice, music bed, image
 // clips, captions, logo) plus a single Import that routes mixed file types to
@@ -65,6 +66,7 @@ const rows = computed(() => {
       selected: store.selectedImageId === im.id,
       select: () => store.selectImage(im.id),
       remove: () => store.removeImage(im.id),
+      dragId: im.id,
     })
   }
   if (store.cues.length) {
@@ -85,6 +87,16 @@ const rows = computed(() => {
   }
   return out
 })
+
+// Image rows can be dragged onto the timeline (Timeline.vue reads this MIME on
+// drop and re-places the clip at the drop time).
+function onDragStart(event, r) {
+  if (r.dragId == null || !event.dataTransfer) {
+    return
+  }
+  event.dataTransfer.setData(IMAGE_DRAG_MIME, String(r.dragId))
+  event.dataTransfer.effectAllowed = 'move'
+}
 </script>
 
 <template>
@@ -117,6 +129,8 @@ const rows = computed(() => {
           r.selected ? 'border-brand/40 bg-brand-muted/50' : 'border-transparent hover:bg-muted/60',
           r.select ? 'cursor-pointer' : '',
         ]"
+        :draggable="r.dragId != null || undefined"
+        @dragstart="onDragStart($event, r)"
         @click="r.select?.()"
       >
         <img

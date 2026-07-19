@@ -7,6 +7,10 @@ export const ANIM_FRAME_STEP = 1 / 30
 export const GREEN = '#00B140'
 export const KHMER_FONT = '"Noto Sans Khmer", system-ui, sans-serif'
 
+// dataTransfer type for dragging an image asset row onto the timeline. OS file
+// drags (type 'Files') stay with the app-wide DropZone overlay instead.
+export const IMAGE_DRAG_MIME = 'application/x-ztudio-image'
+
 // Resolve a font selection (the `value` from fontOptions: 'default', a bundled
 // Khmer family, or a custom FontFace family) to a CSS font stack with the Khmer
 // fallback. Shared by the caption style and the title-text overlays.
@@ -230,7 +234,7 @@ export const LOGO_POSITION_OPTIONS = [
 // a fresh logo shows for the whole video until its timeline clip is trimmed.
 export const LOGO_DEFAULTS = {
   position: 'topRight',
-  scalePct: 0.10,
+  scalePct: 0.1,
   opacity: 0.9,
   marginPct: 0.04,
   start: 0,
