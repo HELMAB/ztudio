@@ -139,6 +139,34 @@ test('dragging an image asset row onto the timeline re-places the clip', async (
   await expect(page.getByTestId('timeline-drop-line')).toBeHidden()
 })
 
+test('dropping a clip at the far edge extends the timeline; removing it shrinks back', async ({
+  page,
+}) => {
+  const panel = page.getByTestId('media-panel')
+  await panel.getByRole('tab', { name: 'Assets', exact: true }).click()
+  await panel.getByTestId('assets-import').setInputFiles(DEMO.image)
+  await expect.poll(() => state(page, 'images.length')).toBe(2)
+  const before = await state(page, 'previewDuration')
+
+  // Drop the new 3s clip at the right edge: it spills past the end and the
+  // timeline (and export range) grows to fit it.
+  const dt = await page.evaluateHandle(() => new DataTransfer())
+  await panel.getByTestId('asset-row').nth(2).dispatchEvent('dragstart', { dataTransfer: dt })
+  const viewport = page.getByTestId('timeline-viewport')
+  const box = await viewport.boundingBox()
+  const clientX = Math.round(box.x + box.width - 4)
+  const clientY = Math.round(box.y + box.height / 2)
+  await viewport.dispatchEvent('dragover', { dataTransfer: dt, clientX, clientY })
+  await viewport.dispatchEvent('drop', { dataTransfer: dt, clientX, clientY })
+
+  await expect.poll(() => state(page, 'previewDuration')).toBeGreaterThan(before + 1)
+  expect(await state(page, 'playEnd')).toBe(await state(page, 'previewDuration'))
+
+  // Removing the clip shrinks the timeline back to the audio length.
+  await page.evaluate(() => window.__ztudio.removeImage(window.__ztudio.selectedImageId))
+  await expect.poll(() => state(page, 'previewDuration')).toBe(before)
+})
+
 test('the toolbar zoom slider changes the zoom', async ({ page }) => {
   const before = await state(page, 'timelineZoom')
   const thumb = page.getByTestId('timeline-zoom').getByRole('slider')

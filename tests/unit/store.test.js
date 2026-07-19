@@ -242,13 +242,24 @@ describe('store: titles', () => {
     expect(store.texts[0].y).toBe(1)
   })
 
-  it('clamps title timing to the clip and a min duration', async () => {
+  it('clamps title timing to 0 and the overall cap', async () => {
     const store = await makeStore()
     await withAudio(store, 10)
     const item = store.addText()
     store.updateTextTime(item.id, -5, 999)
     expect(store.texts[0].start).toBe(0)
-    expect(store.texts[0].end).toBe(10)
+    expect(store.texts[0].end).toBe(300)
+  })
+
+  it('a title past the audio extends the timeline', async () => {
+    const store = await makeStore()
+    await withAudio(store, 10)
+    const item = store.addText()
+    store.updateTextTime(item.id, 12, 15)
+    expect(store.previewDuration).toBe(15)
+    expect(store.playEnd).toBe(15)
+    store.removeText(item.id)
+    expect(store.previewDuration).toBe(10)
   })
 
   it('removes a title', async () => {
@@ -340,14 +351,70 @@ describe('store: images', () => {
     expect(store.selectedImage.effect).toBe('noir')
   })
 
-  it('clamps an image clip time to the window', async () => {
+  it('clamps an image clip time to 0 and the overall cap', async () => {
     const store = await makeStore()
     await withAudio(store, 10)
     await store.addImages([imageFile()])
     const id = store.images[0].id
     store.updateImageTime(id, -3, 999)
     expect(store.images[0].start).toBe(0)
-    expect(store.images[0].end).toBe(10)
+    expect(store.images[0].end).toBe(300)
+  })
+
+  it('extending a clip past the audio grows the timeline; removing it shrinks back', async () => {
+    const store = await makeStore()
+    await withAudio(store, 20)
+    await store.addImages([imageFile('a.png'), imageFile('b.png')])
+    const clip = store.images.find(im => im.end - im.start < 20)
+    store.updateImageTime(clip.id, 25, 30)
+    expect(store.previewDuration).toBe(30)
+    store.removeImage(clip.id)
+    expect(store.previewDuration).toBe(20)
+  })
+
+  it('a shrinking timeline pulls the playhead back inside', async () => {
+    const store = await makeStore()
+    await withAudio(store, 20)
+    await store.addImages([imageFile('a.png'), imageFile('b.png')])
+    const clip = store.images.find(im => im.end - im.start < 20)
+    store.updateImageTime(clip.id, 25, 30)
+    store.seek(28)
+    expect(store.scrub).toBe(28)
+    store.removeImage(clip.id)
+    await nextTick()
+    expect(store.scrub).toBe(0)
+  })
+
+  it('images extend the no-audio timeline beyond the 10s floor', async () => {
+    const store = await makeStore()
+    await store.addImages([imageFile()])
+    expect(store.previewDuration).toBe(10)
+    store.updateImageTime(store.images[0].id, 0, 25)
+    expect(store.previewDuration).toBe(25)
+  })
+
+  it('playEnd follows extended clips, but an explicit trim end still wins', async () => {
+    const store = await makeStore()
+    await withAudio(store, 20)
+    await store.addImages([imageFile('a.png'), imageFile('b.png')])
+    const clip = store.images.find(im => im.end - im.start < 20)
+    store.updateImageTime(clip.id, 22, 28)
+    expect(store.playEnd).toBe(28)
+    expect(store.outputDuration).toBe(28)
+    store.setTrim(0, 15)
+    expect(store.playEnd).toBe(15)
+    store.resetTrim()
+    expect(store.playEnd).toBe(28)
+  })
+
+  it('duplicating the last clip extends the timeline to fit the copy', async () => {
+    const store = await makeStore()
+    await withAudio(store, 10)
+    await store.addImages([imageFile()])
+    store.duplicateImage(store.images[0].id)
+    expect(store.images).toHaveLength(2)
+    expect(store.images[1]).toMatchObject({ start: 10, end: 20 })
+    expect(store.previewDuration).toBe(20)
   })
 
   it('removes an image', async () => {
@@ -372,26 +439,27 @@ describe('store: images', () => {
     expect(store.inspectorTab).toBe('image')
   })
 
-  it('placeImageAt clamps the drop so the clip stays inside the timeline', async () => {
+  it('placeImageAt clamps the drop to 0 and the overall cap', async () => {
     const store = await makeStore()
     await withAudio(store, 20)
     await store.addImages([imageFile('a.png'), imageFile('b.png')])
     const clip = store.images.find(im => im.end - im.start < 20)
     store.placeImageAt(clip.id, 999)
-    expect(clip.start).toBe(17)
-    expect(clip.end).toBe(20)
+    expect(clip.start).toBe(297)
+    expect(clip.end).toBe(300)
     store.placeImageAt(clip.id, -5)
     expect(clip.start).toBe(0)
     expect(clip.end).toBe(3)
   })
 
-  it('placeImageAt keeps a full-length clip spanning the window', async () => {
+  it('placeImageAt past the end extends the timeline to fit the clip', async () => {
     const store = await makeStore()
     await withAudio(store, 20)
     await store.addImages([imageFile()])
     store.placeImageAt(store.images[0].id, 5)
-    expect(store.images[0].start).toBe(0)
-    expect(store.images[0].end).toBe(20)
+    expect(store.images[0].start).toBe(5)
+    expect(store.images[0].end).toBe(25)
+    expect(store.previewDuration).toBe(25)
   })
 
   it('rotates the selected clip, normalizing to (-180, 180]', async () => {

@@ -317,8 +317,25 @@ export const useZtudioStore = defineStore('ztudio', () => {
     const [w, h] = resolution.value.split('x').map(Number)
     return { w, h }
   })
+  // The furthest end of any timed clip — image clips and titles can extend the
+  // timeline past the audio (the tail plays and exports over silence).
+  const contentEnd = computed(() => {
+    let end = 0
+    for (const im of images.value) {
+      end = Math.max(end, im.end)
+    }
+    for (const tx of texts.value) {
+      end = Math.max(end, tx.end)
+    }
+    return end
+  })
+  // Timeline length follows the content: the audio (or the 10s floor / caption
+  // span without audio), extended by whichever clip ends last.
   const previewDuration = computed(() =>
-    audioBuffer.value ? audioBuffer.value.duration : Math.max(10, srtSpan.value),
+    Math.max(
+      audioBuffer.value ? audioBuffer.value.duration : Math.max(10, srtSpan.value),
+      contentEnd.value,
+    ),
   )
   // Effective trim window; falls back to the full clip when nothing is trimmed.
   const trimWindow = computed(() => {
@@ -330,7 +347,16 @@ export const useZtudioStore = defineStore('ztudio', () => {
     const to = trimEnd.value > 0 ? Math.min(trimEnd.value, dur) : dur
     return { from, to: Math.max(from, to) }
   })
-  const outputDuration = computed(() => trimWindow.value.to - trimWindow.value.from)
+  // End of the playable/exportable range: an explicit trim end wins; otherwise
+  // the dynamic timeline end, so clips extending past the audio stay in view
+  // during playback and land in the export.
+  const playEnd = computed(() => {
+    if (audioBuffer.value && trimWindow.value.to < audioBuffer.value.duration - 1e-3) {
+      return trimWindow.value.to
+    }
+    return Math.max(trimWindow.value.to, previewDuration.value)
+  })
+  const outputDuration = computed(() => playEnd.value - trimWindow.value.from)
   const hasTrim = computed(
     () =>
       !!audioBuffer.value &&
@@ -586,6 +612,11 @@ export const useZtudioStore = defineStore('ztudio', () => {
       scrub.value = 0
     }
   }
+
+  // The timeline end is content-driven; if it shrinks past the playhead (the
+  // last long clip removed or shortened), pull the playhead back. Sync flush so
+  // no frame renders with the playhead beyond the track.
+  watch(previewDuration, () => clampScrub(), { flush: 'sync' })
 
   function maybeReady() {
     if (audioBuffer.value && !busy.value) {
@@ -1066,12 +1097,10 @@ export const useZtudioStore = defineStore('ztudio', () => {
       start = 0
       end = dur
     } else {
-      start = Math.min(Math.max(0, scrub.value), Math.max(0, dur - MIN_IMAGE_DUR))
-      end = Math.min(start + 3, dur)
-      if (end - start < MIN_IMAGE_DUR) {
-        start = Math.max(0, dur - 3)
-        end = dur
-      }
+      // A 3s slot at the playhead; near the timeline end it spills past and the
+      // timeline grows instead of squeezing the clip.
+      start = Math.min(Math.max(0, scrub.value), MAX_AUDIO_SEC - 3)
+      end = start + 3
     }
     const clip = {
       id: ++imageCounter,
@@ -1234,20 +1263,19 @@ export const useZtudioStore = defineStore('ztudio', () => {
     redraw()
   }
 
-  // Duplicate a clip, dropping the copy right after it (or at the playhead when
-  // there's no room before the timeline end).
+  // Duplicate a clip, dropping the copy right after it — extending the timeline
+  // when needed (or at the playhead when the copy would hit the overall cap).
   function duplicateImage(id) {
     const im = images.value.find(c => c.id === id)
     if (!im) {
       return
     }
-    const dur = previewDuration.value
     const len = im.end - im.start
     let start = im.end
-    let end = Math.min(start + len, dur)
+    let end = Math.min(start + len, MAX_AUDIO_SEC)
     if (end - start < MIN_IMAGE_DUR) {
-      start = Math.min(Math.max(0, scrub.value), Math.max(0, dur - len))
-      end = Math.min(start + len, dur)
+      start = Math.min(Math.max(0, scrub.value), Math.max(0, MAX_AUDIO_SEC - len))
+      end = Math.min(start + len, MAX_AUDIO_SEC)
     }
     const copy = { ...im, id: ++imageCounter, start: r3(start), end: r3(end) }
     bitmapRegistry.set(copy.id, im.bitmap)
@@ -1278,9 +1306,10 @@ export const useZtudioStore = defineStore('ztudio', () => {
     if (!im) {
       return
     }
-    const dur = previewDuration.value
-    const s = Math.max(0, Math.min(start, dur - MIN_IMAGE_DUR))
-    const e = Math.min(dur, Math.max(end, s + MIN_IMAGE_DUR))
+    // Clips may extend past the current end — the timeline grows with them —
+    // bounded only by the overall cap.
+    const s = Math.max(0, Math.min(start, MAX_AUDIO_SEC - MIN_IMAGE_DUR))
+    const e = Math.min(MAX_AUDIO_SEC, Math.max(end, s + MIN_IMAGE_DUR))
     im.start = Math.round(s * 1000) / 1000
     im.end = Math.round(e * 1000) / 1000
     sortImages()
@@ -1288,15 +1317,15 @@ export const useZtudioStore = defineStore('ztudio', () => {
   }
 
   // Drop from the Assets panel onto the timeline: move the clip so it starts at
-  // t, keeping its duration (clamped to the preview window), and focus it.
+  // t, keeping its duration, and focus it. A drop near the end may spill past
+  // the current timeline end — the timeline grows to fit.
   function placeImageAt(id, t) {
     const im = images.value.find(c => c.id === id)
     if (!im) {
       return
     }
-    const dur = previewDuration.value
-    const len = Math.min(Math.max(MIN_IMAGE_DUR, im.end - im.start), dur)
-    const start = Math.max(0, Math.min(t, dur - len))
+    const len = Math.max(MIN_IMAGE_DUR, im.end - im.start)
+    const start = Math.max(0, Math.min(t, MAX_AUDIO_SEC - len))
     updateImageTime(id, start, start + len)
     selectImage(id)
   }
@@ -1529,7 +1558,10 @@ export const useZtudioStore = defineStore('ztudio', () => {
     try {
       await ensureRenderFont()
       const { w, h } = dimensions.value
-      const { from, to } = trimWindow.value
+      // Untrimmed, the export runs to the dynamic timeline end; clips past the
+      // audio encode over a silent tail (renderMix pads the window).
+      const { from } = trimWindow.value
+      const to = playEnd.value
       const dur = to - from
       const MB = await loadMediabunny(log)
       const quality =
@@ -1539,6 +1571,11 @@ export const useZtudioStore = defineStore('ztudio', () => {
       if (hasTrim.value) {
         log(
           `Trim: ${fmt(from)}–${fmt(to)} of ${fmt(audioBuffer.value.duration)} (output ${fmt(dur)}).`,
+        )
+      }
+      if (to > audioBuffer.value.duration + 0.05) {
+        log(
+          `Clips extend to ${to.toFixed(1)}s, past the ${audioBuffer.value.duration.toFixed(1)}s audio; the tail is silent.`,
         )
       }
 
@@ -1716,8 +1753,10 @@ export const useZtudioStore = defineStore('ztudio', () => {
     if (isPlaying.value) {
       return
     }
-    // Playback is bound to the trim window; full clip when nothing is trimmed.
-    const { from, to } = trimWindow.value
+    // Playback is bound to the trim window; when untrimmed it runs to the
+    // dynamic timeline end, so clips past the audio still play (in silence).
+    const { from } = trimWindow.value
+    const to = playEnd.value
     const dur = to
     if (scrub.value < from || scrub.value >= to) {
       scrub.value = from
@@ -2135,9 +2174,10 @@ export const useZtudioStore = defineStore('ztudio', () => {
   const MIN_TEXT_DUR = 0.3
 
   function addText() {
-    const dur = previewDuration.value
-    const start = Math.min(Math.max(0, scrub.value), Math.max(0, dur - MIN_TEXT_DUR))
-    const end = Math.min(start + 2.5, dur)
+    // A 2.5s slot at the playhead; near the timeline end it spills past and the
+    // timeline grows instead of squeezing the title.
+    const start = Math.min(Math.max(0, scrub.value), MAX_AUDIO_SEC - MIN_TEXT_DUR)
+    const end = Math.min(start + 2.5, MAX_AUDIO_SEC)
     const item = {
       id: ++textCounter,
       text: t('textOverlay.defaultText'),
@@ -2178,9 +2218,10 @@ export const useZtudioStore = defineStore('ztudio', () => {
     if (!tx) {
       return
     }
-    const dur = previewDuration.value
-    const s = Math.max(0, Math.min(start, dur - MIN_TEXT_DUR))
-    const e = Math.min(dur, Math.max(end, s + MIN_TEXT_DUR))
+    // Titles, like image clips, may extend past the current end (the timeline
+    // grows with them), bounded only by the overall cap.
+    const s = Math.max(0, Math.min(start, MAX_AUDIO_SEC - MIN_TEXT_DUR))
+    const e = Math.min(MAX_AUDIO_SEC, Math.max(end, s + MIN_TEXT_DUR))
     updateText(id, { start: r3(s), end: r3(e) })
   }
 
@@ -2548,6 +2589,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     trimWindow,
     outputDuration,
     outputDurationLabel,
+    playEnd,
     trimStartLabel,
     trimEndLabel,
     hasTrim,
