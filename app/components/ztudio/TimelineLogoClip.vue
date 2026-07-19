@@ -57,6 +57,8 @@ function onUp() {
 
 function begin(nextMode, event) {
   event.stopPropagation()
+  // Grabbing the clip focuses the logo layer (preview gizmo + Image-tab controls).
+  store.selectLogo()
   mode = nextMode
   startX = event.clientX
   origStart = props.start
@@ -80,6 +82,7 @@ onBeforeUnmount(onUp)
       @pointerdown="begin('left', $event)"
     />
     <div
+      data-testid="logo-clip"
       class="flex-1 h-full flex items-center px-2.5 overflow-hidden cursor-grab active:cursor-grabbing"
       @pointerdown="begin('move', $event)"
     >

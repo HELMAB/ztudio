@@ -40,6 +40,9 @@ export const DEFAULT_STYLE = {
   position: 'bottom',
   offsetXPct: 0,
   offsetYPct: 0,
+  // Whole-block rotation in degrees, pivoting on the caption centre. Static
+  // (not keyframed), like image rotation.
+  captionRotation: 0,
   box: false,
   boxColor: 'rgba(0,0,0,0.55)',
   highlightWord: true,
@@ -237,6 +240,7 @@ export const LOGO_DEFAULTS = {
   scalePct: 0.1,
   opacity: 0.9,
   marginPct: 0.04,
+  rotation: 0,
   start: 0,
   end: 0,
 }

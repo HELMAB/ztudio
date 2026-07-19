@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { boot, field, inspectorTab, selectOption, state } from './helpers'
+import { boot, field, inspectorTab, nudgeSlider, selectOption, state } from './helpers'
 
 // Titles are managed in the Style tab (the Titles tab was merged in). The demo
 // seeds one default title, so tests work with deltas and the selected title.
@@ -49,6 +49,13 @@ test('changes the title colour', async ({ page }) => {
   await addTitle(page)
   await field(titles(page), 'Text colour').locator('input[type="color"]').fill('#ff0000')
   await expect.poll(() => state(page, 'selectedText.color')).toBe('#ff0000')
+})
+
+test('rotates the selected title via the slider', async ({ page }) => {
+  await addTitle(page)
+  expect(await state(page, 'selectedText.rotation')).toBe(0)
+  await nudgeSlider(page, titles(page), 'Rotation', 'right', 4)
+  await expect.poll(() => state(page, 'selectedText.rotation')).toBe(4)
 })
 
 test('deletes a title', async ({ page }) => {

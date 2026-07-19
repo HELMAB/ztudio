@@ -28,6 +28,13 @@ test('font size slider changes the size and flips the preset to custom', async (
   expect(await state(page, 'preset')).toBe('custom')
 })
 
+test('the rotation slider rotates the caption and flips the preset to custom', async ({ page }) => {
+  expect(await state(page, 'controls.captionRotation')).toBe(0)
+  await nudgeSlider(page, page.getByTestId('inspector'), 'Rotation', 'right', 5)
+  expect(await state(page, 'controls.captionRotation')).toBe(5)
+  expect(await state(page, 'preset')).toBe('custom')
+})
+
 test('the text colour picker updates the fill', async ({ page }) => {
   const inspector = page.getByTestId('inspector')
   const color = field(inspector, 'Text colour').locator('input[type="color"]')

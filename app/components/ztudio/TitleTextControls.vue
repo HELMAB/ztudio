@@ -131,6 +131,16 @@ const snippet = tx => {
         />
       </ZtudioField>
 
+      <ZtudioField :label="$t('textOverlay.rotation')" :value="Math.round(sel.rotation || 0) + '°'">
+        <Slider
+          :model-value="[sel.rotation || 0]"
+          :min="-180"
+          :max="180"
+          :step="1"
+          @update:model-value="store.setTextRotation(sel.id, $event[0])"
+        />
+      </ZtudioField>
+
       <div class="grid grid-cols-2 gap-3">
         <ZtudioField :label="$t('textOverlay.colour')">
           <input

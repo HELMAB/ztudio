@@ -45,15 +45,15 @@ test('exports a still thumbnail', async ({ page }) => {
 test('the image gizmo appears on focus and its handles rotate and resize the clip', async ({
   page,
 }) => {
-  // No gizmo while the caption layer has focus.
-  await expect(page.getByTestId('image-gizmo')).toHaveCount(0)
+  // At t=0 the caption layer has focus but no cue is on screen → no gizmo.
+  await expect(page.getByTestId('preview-gizmo')).toHaveCount(0)
 
   // Focus the image layer via its timeline clip.
   await page
     .getByTestId('image-clip')
     .first()
     .click({ position: { x: 10, y: 5 } })
-  await expect(page.getByTestId('image-gizmo')).toBeVisible()
+  await expect(page.getByTestId('preview-gizmo')).toBeVisible()
 
   // Drag the rotate handle sideways: rotation moves off 0.
   expect(await state(page, 'selectedImage.rotation')).toBe(0)
@@ -78,4 +78,127 @@ test('the image gizmo appears on focus and its handles rotate and resize the cli
   await page.mouse.move(out.x, out.y, { steps: 6 })
   await page.mouse.up()
   expect(await state(page, 'selectedImage.zoom')).toBeGreaterThan(before)
+})
+
+test('the caption gizmo rotates and resizes the caption style', async ({ page }) => {
+  // Jump to the first cue: caption focus + a caption on screen → gizmo appears.
+  await page.evaluate(() => window.__ztudio.goToCue(0))
+  await expect(page.getByTestId('preview-gizmo')).toBeVisible()
+
+  // Drag the rotate handle sideways: the global caption rotation moves off 0.
+  // hover() first: it waits for a stable layout, so the raw mouse coords that
+  // follow can't be thrown off by panels still settling under parallel load.
+  expect(await state(page, 'controls.captionRotation')).toBe(0)
+  const rotHandle = page.getByTestId('gizmo-rotate')
+  await rotHandle.hover()
+  const rot = await rotHandle.boundingBox()
+  await page.mouse.down()
+  await page.mouse.move(rot.x + 140, rot.y + 140, { steps: 6 })
+  await page.mouse.up()
+  await expect.poll(() => state(page, 'controls.captionRotation')).not.toBe(0)
+
+  // Drag a corner away from the caption block centre: the font size grows.
+  const before = await state(page, 'controls.fontSizePct')
+  await page.getByTestId('gizmo-corner').first().hover()
+  const corners = await page.getByTestId('gizmo-corner').evaluateAll(els =>
+    els.map(el => {
+      const r = el.getBoundingClientRect()
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
+    }),
+  )
+  const centre = {
+    x: (corners[0].x + corners[3].x) / 2,
+    y: (corners[0].y + corners[3].y) / 2,
+  }
+  const len = Math.hypot(corners[0].x - centre.x, corners[0].y - centre.y) || 1
+  const out = {
+    x: corners[0].x + ((corners[0].x - centre.x) / len) * 60,
+    y: corners[0].y + ((corners[0].y - centre.y) / len) * 60,
+  }
+  await page.mouse.move(corners[0].x, corners[0].y)
+  await page.mouse.down()
+  await page.mouse.move(out.x, out.y, { steps: 6 })
+  await page.mouse.up()
+  await expect.poll(() => state(page, 'controls.fontSizePct')).toBeGreaterThan(before)
+})
+
+test('the title gizmo rotates and resizes the selected title', async ({ page }) => {
+  // The demo's seeded title is on screen at t=0; focusing it shows the gizmo.
+  await page.evaluate(() => window.__ztudio.selectText(window.__ztudio.texts[0].id))
+  await expect(page.getByTestId('preview-gizmo')).toBeVisible()
+
+  // Rotate handle → the title's own rotation.
+  expect(await state(page, 'texts.0.rotation')).toBe(0)
+  const rotHandle = page.getByTestId('gizmo-rotate')
+  await rotHandle.hover()
+  const rot = await rotHandle.boundingBox()
+  await page.mouse.down()
+  await page.mouse.move(rot.x + 140, rot.y + 140, { steps: 6 })
+  await page.mouse.up()
+  await expect.poll(() => state(page, 'texts.0.rotation')).not.toBe(0)
+
+  // Corner outward → the title's own font size grows.
+  const before = await state(page, 'texts.0.fontSizePct')
+  await page.getByTestId('gizmo-corner').first().hover()
+  const corners = await page.getByTestId('gizmo-corner').evaluateAll(els =>
+    els.map(el => {
+      const r = el.getBoundingClientRect()
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
+    }),
+  )
+  const centre = {
+    x: (corners[0].x + corners[3].x) / 2,
+    y: (corners[0].y + corners[3].y) / 2,
+  }
+  const len = Math.hypot(corners[0].x - centre.x, corners[0].y - centre.y) || 1
+  const out = {
+    x: corners[0].x + ((corners[0].x - centre.x) / len) * 60,
+    y: corners[0].y + ((corners[0].y - centre.y) / len) * 60,
+  }
+  await page.mouse.move(corners[0].x, corners[0].y)
+  await page.mouse.down()
+  await page.mouse.move(out.x, out.y, { steps: 6 })
+  await page.mouse.up()
+  await expect.poll(() => state(page, 'texts.0.fontSizePct')).toBeGreaterThan(before)
+})
+
+test('the logo gizmo rotates and resizes the logo', async ({ page }) => {
+  // Focus the logo layer (as the timeline clip / asset row click does).
+  await page.evaluate(() => window.__ztudio.selectLogo())
+  await expect.poll(() => state(page, 'dragTarget')).toBe('logo')
+  await expect(page.getByTestId('preview-gizmo')).toBeVisible()
+
+  // Rotate handle → logo.rotation.
+  expect(await state(page, 'logo.rotation')).toBe(0)
+  const rotHandle = page.getByTestId('gizmo-rotate')
+  await rotHandle.hover()
+  const rot = await rotHandle.boundingBox()
+  await page.mouse.down()
+  await page.mouse.move(rot.x + 140, rot.y + 140, { steps: 6 })
+  await page.mouse.up()
+  await expect.poll(() => state(page, 'logo.rotation')).not.toBe(0)
+
+  // Corner outward → logo scale grows (clamped to the slider range).
+  const before = await state(page, 'logo.scalePct')
+  await page.getByTestId('gizmo-corner').first().hover()
+  const corners = await page.getByTestId('gizmo-corner').evaluateAll(els =>
+    els.map(el => {
+      const r = el.getBoundingClientRect()
+      return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
+    }),
+  )
+  const centre = {
+    x: (corners[0].x + corners[3].x) / 2,
+    y: (corners[0].y + corners[3].y) / 2,
+  }
+  const len = Math.hypot(corners[0].x - centre.x, corners[0].y - centre.y) || 1
+  const out = {
+    x: corners[0].x + ((corners[0].x - centre.x) / len) * 60,
+    y: corners[0].y + ((corners[0].y - centre.y) / len) * 60,
+  }
+  await page.mouse.move(corners[0].x, corners[0].y)
+  await page.mouse.down()
+  await page.mouse.move(out.x, out.y, { steps: 6 })
+  await page.mouse.up()
+  await expect.poll(() => state(page, 'logo.scalePct')).toBeGreaterThan(before)
 })

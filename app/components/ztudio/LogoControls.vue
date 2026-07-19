@@ -13,7 +13,7 @@ const pct = v => Math.round(v * 100) + '%'
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div data-testid="logo-controls" class="space-y-4">
     <!-- Persistent watermark / logo, pinned to a corner of every frame. -->
     <ZtudioMediaUploader
       accept="image/*"
@@ -51,6 +51,16 @@ const pct = v => Math.round(v * 100) + '%'
           />
         </ZtudioField>
       </div>
+
+      <ZtudioField :label="$t('logo.rotation')" :value="Math.round(store.logo.rotation || 0) + '°'">
+        <Slider
+          :model-value="[store.logo.rotation || 0]"
+          :min="-180"
+          :max="180"
+          :step="1"
+          @update:model-value="store.logo.rotation = $event[0]"
+        />
+      </ZtudioField>
     </template>
   </div>
 </template>

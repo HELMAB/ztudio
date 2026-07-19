@@ -159,6 +159,13 @@ function drawTextOverlay(ctx, w, h, item) {
   const first = cy - blockH / 2 + lineH / 2
 
   ctx.save()
+  // Per-title rotation pivots on the title's centre; stroke and fill inherit it.
+  const rot = item.rotation || 0
+  if (rot) {
+    ctx.translate(cx, cy)
+    ctx.rotate((rot * Math.PI) / 180)
+    ctx.translate(-cx, -cy)
+  }
   ctx.font = `${item.bold ? 700 : 400} ${fontPx}px ${buildFontStack(item.fontKey)}`
   ctx.textAlign = 'left'
   ctx.textBaseline = 'middle'
@@ -178,6 +185,34 @@ function drawTextOverlay(ctx, w, h, item) {
   ctx.restore()
 }
 
+// Bounding box of a title overlay (same geometry as drawTextOverlay; rotation
+// reported separately) for the preview's selection gizmo. Needs a 2D context to
+// measure the text with the title's font. Returns null when there is no text.
+export function titleBox(ctx, w, h, item) {
+  const text = (item.text || '').trim()
+  if (!text) {
+    return null
+  }
+  const lines = text.split('\n')
+  const fontPx = Math.round(h * (item.fontSizePct || 0.05))
+  const lineH = fontPx * 1.25
+  ctx.save()
+  ctx.font = `${item.bold ? 700 : 400} ${fontPx}px ${buildFontStack(item.fontKey)}`
+  let maxW = 0
+  for (const line of lines) {
+    maxW = Math.max(maxW, ctx.measureText(line).width)
+  }
+  ctx.restore()
+  const pad = fontPx * 0.15
+  return {
+    cx: w * (item.x ?? 0.5),
+    cy: h * (item.y ?? 0.5),
+    bw: maxW + 2 * pad,
+    bh: lines.length * lineH + 2 * pad,
+    rotation: item.rotation || 0,
+  }
+}
+
 function drawTextOverlays(ctx, w, h, t, texts) {
   if (!texts || !texts.length) {
     return
@@ -189,9 +224,23 @@ function drawTextOverlays(ctx, w, h, t, texts) {
   }
 }
 
+// Placement of the logo in frame pixels: sized as a fraction of the frame width
+// with a margin off the shorter edge, pinned to its corner. Shared by drawLogo
+// and the preview's selection gizmo so the box always hugs the drawn pixels.
+export function logoRect(w, h, logo) {
+  const bmp = logo.bitmap
+  const scale = (w * (logo.scalePct || 0.18)) / bmp.width
+  const lw = bmp.width * scale
+  const lh = bmp.height * scale
+  const m = Math.min(w, h) * (logo.marginPct ?? 0.04)
+  const pos = logo.position || 'topRight'
+  const x = pos.includes('Right') ? w - lw - m : m
+  const y = pos.startsWith('bottom') ? h - lh - m : m
+  return { x, y, lw, lh, cx: x + lw / 2, cy: y + lh / 2, rotation: logo.rotation || 0 }
+}
+
 // Watermark/logo pinned to a corner, visible only within its [start, end) window
-// (end === 0 means the whole video). Sized as a fraction of the frame width with
-// a margin off the shorter edge so it sits the same across formats.
+// (end === 0 means the whole video).
 function drawLogo(ctx, w, h, t, logo) {
   if (!logo || !logo.bitmap) {
     return
@@ -201,17 +250,16 @@ function drawLogo(ctx, w, h, t, logo) {
   if (t < start || (end > start && t >= end)) {
     return
   }
-  const bmp = logo.bitmap
-  const scale = (w * (logo.scalePct || 0.18)) / bmp.width
-  const lw = bmp.width * scale
-  const lh = bmp.height * scale
-  const m = Math.min(w, h) * (logo.marginPct ?? 0.04)
-  const pos = logo.position || 'topRight'
-  const x = pos.includes('Right') ? w - lw - m : m
-  const y = pos.startsWith('bottom') ? h - lh - m : m
+  const { x, y, lw, lh, cx, cy, rotation } = logoRect(w, h, logo)
   ctx.save()
   ctx.globalAlpha = clamp01(logo.opacity ?? 0.9)
-  ctx.drawImage(bmp, x, y, lw, lh)
+  // Rotation pivots on the logo's own centre so it stays pinned to its corner.
+  if (rotation) {
+    ctx.translate(cx, cy)
+    ctx.rotate((rotation * Math.PI) / 180)
+    ctx.translate(-cx, -cy)
+  }
+  ctx.drawImage(logo.bitmap, x, y, lw, lh)
   ctx.restore()
 }
 
@@ -247,6 +295,36 @@ export function captionCenter(w, h, text, style) {
     cx: w / 2 + w * (style.offsetXPct || 0),
     cy: first - lineH / 2 + blockH / 2 + h * (style.offsetYPct || 0),
     blockH,
+  }
+}
+
+// Bounding box of the rendered caption block (offset applied; rotation reported
+// separately so the caller can rotate the box as a whole) for the preview's
+// selection gizmo. Needs a 2D context to measure the text with the caption
+// font. Returns null when there is no text.
+export function captionBox(ctx, w, h, text, style) {
+  if (!text) {
+    return null
+  }
+  const lines = text.split('\n')
+  const { fontPx, lineH, blockH, first } = captionLayout(w, h, lines, style)
+  ctx.save()
+  ctx.font = `${style.fontWeight} ${fontPx}px ${style.fontFamily}`
+  let maxW = 0
+  for (const line of lines) {
+    maxW = Math.max(maxW, ctx.measureText(line).width)
+  }
+  ctx.restore()
+  // Match drawCaption's backdrop padding when the box is on; otherwise a small
+  // breathing margin so the gizmo hugs the glyphs without clipping them.
+  const padX = fontPx * (style.box ? 0.45 : 0.15)
+  const padY = fontPx * (style.box ? 0.28 : 0.15)
+  return {
+    cx: w / 2 + w * (style.offsetXPct || 0),
+    cy: first - lineH / 2 + blockH / 2 + h * (style.offsetYPct || 0),
+    bw: maxW + 2 * padX,
+    bh: blockH + 2 * padY,
+    rotation: style.captionRotation || 0,
   }
 }
 
@@ -318,6 +396,17 @@ function drawCaption(ctx, w, h, text, style, anim, highlight) {
   // User repositioning: shift the whole block (box, stroke, fill, and the
   // animation pivot move together) by a fraction of the frame size.
   ctx.translate(w * (style.offsetXPct || 0), h * (style.offsetYPct || 0))
+
+  // User rotation pivots on the block centre; everything drawn below (box,
+  // stroke, fill, highlight, animations) inherits it inside this save/restore.
+  const rot = style.captionRotation || 0
+  if (rot) {
+    const rcx = w / 2
+    const rcy = first - lineH / 2 + blockH / 2
+    ctx.translate(rcx, rcy)
+    ctx.rotate((rot * Math.PI) / 180)
+    ctx.translate(-rcx, -rcy)
+  }
 
   // Transform/opacity effects pivot around the caption block centre.
   if (anim && !isReveal) {

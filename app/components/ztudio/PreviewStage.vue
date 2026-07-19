@@ -14,7 +14,7 @@ import {
   SkipForwardIcon,
   SquareDashedIcon,
 } from '@lucide/vue'
-import { captionCenter, drawFrame } from '@/lib/ztudio/renderer'
+import { captionBox, captionCenter, drawFrame, logoRect, titleBox } from '@/lib/ztudio/renderer'
 import { imageDrawRect } from '@/lib/ztudio/images'
 import { imageFramingAt } from '@/lib/ztudio/keyframes'
 import { SAFE_AREA_PCT } from '@/lib/ztudio/config'
@@ -55,32 +55,106 @@ function paint() {
   }
 }
 
-// Selection gizmo for the active image clip: a rotated bounding box with corner
-// resize handles and a rotate handle above the top edge. Rendered as an SVG
+// Selection gizmo for the focused layer: a rotated bounding box with corner
+// resize handles and a rotate handle above the top edge. For an image clip the
+// corners drive zoom and the handle drives the clip's rotation; for the caption
+// they drive the global font size and caption rotation. Rendered as an SVG
 // overlay (not on the canvas) so handles stay visible and grabbable even when
-// the image fills or overflows the frame. Geometry comes from the same
-// imageDrawRect the renderer uses, so the box always hugs the drawn pixels;
-// handle sizes are scaled by k (canvas px per CSS px) so they render at a
-// constant on-screen size. Preview only — never part of the encode.
+// the content fills or overflows the frame. Geometry comes from the same
+// imageDrawRect / captionBox the renderer uses, so the box always hugs the
+// drawn pixels; handle sizes are scaled by k (canvas px per CSS px) so they
+// render at a constant on-screen size. Preview only — never part of the encode.
 const { width: canvasDispW, height: canvasDispH } = useElementSize(canvas)
 
 const gizmo = computed(() => {
-  // previewTick invalidates on any redraw (zoom/rotation edits mutate the clip).
+  // previewTick invalidates on any redraw (zoom/rotation/size edits).
   void store.previewTick
-  if (store.dragTarget !== 'image' || store.isPlaying) {
-    return null
-  }
-  const img = store.activeImage
-  if (!img) {
+  if (store.isPlaying) {
     return null
   }
   const { w, h } = store.dimensions
-  const frame = imageFramingAt(img, store.keyframes, store.scrub)
-  const r = imageDrawRect(w, h, img, frame)
   const k = canvasDispW.value > 0 ? w / canvasDispW.value : 1
   // Stem short enough that the rotate handle stays inside the stage padding
-  // (the panel clips overflow) even when the image fills the whole frame.
-  return { img, ...r, hs: 10 * k, rotOff: 16 * k, k }
+  // (the panel clips overflow) even when the content fills the whole frame.
+  const handles = { hs: 10 * k, rotOff: 16 * k, k }
+  if (store.dragTarget === 'image') {
+    const img = store.activeImage
+    if (!img) {
+      return null
+    }
+    const frame = imageFramingAt(img, store.keyframes, store.scrub)
+    const r = imageDrawRect(w, h, img, frame)
+    return { kind: 'image', img, ...r, ...handles }
+  }
+  if (store.dragTarget === 'caption') {
+    const el = canvas.value
+    const text = store.currentCaption
+    if (!el || !text) {
+      return null
+    }
+    const box = captionBox(el.getContext('2d'), w, h, text, store.style)
+    if (!box) {
+      return null
+    }
+    return {
+      kind: 'caption',
+      cx: box.cx,
+      cy: box.cy,
+      dw: box.bw,
+      dh: box.bh,
+      rotation: box.rotation,
+      ...handles,
+    }
+  }
+  if (store.dragTarget === 'title') {
+    const el = canvas.value
+    // Same pick as a canvas drag: the selected title when it's on screen,
+    // otherwise whichever title is showing at the playhead.
+    let tx = store.selectedText
+    if (!tx || store.scrub < tx.start || store.scrub >= tx.end) {
+      tx = store.activeText
+    }
+    if (!el || !tx) {
+      return null
+    }
+    const box = titleBox(el.getContext('2d'), w, h, tx)
+    if (!box) {
+      return null
+    }
+    return {
+      kind: 'title',
+      tx,
+      cx: box.cx,
+      cy: box.cy,
+      dw: box.bw,
+      dh: box.bh,
+      rotation: box.rotation,
+      ...handles,
+    }
+  }
+  if (store.dragTarget === 'logo') {
+    // Only while the logo is drawn: present, lane visible, playhead inside its
+    // window.
+    const lg = store.renderLogo
+    if (!lg) {
+      return null
+    }
+    const { start, end } = store.logoWindow
+    if (store.scrub < start || store.scrub >= end) {
+      return null
+    }
+    const r = logoRect(w, h, lg)
+    return {
+      kind: 'logo',
+      cx: r.cx,
+      cy: r.cy,
+      dw: r.lw,
+      dh: r.lh,
+      rotation: r.rotation,
+      ...handles,
+    }
+  }
+  return null
 })
 
 const gizmoCorners = computed(() => {
@@ -135,16 +209,28 @@ function startGizmo(mode, e) {
   }
   e.preventDefault()
   e.stopPropagation()
-  store.selectImage(g.img.id)
+  if (g.kind === 'image') {
+    store.selectImage(g.img.id)
+  } else if (g.kind === 'title') {
+    store.selectText(g.tx.id)
+  }
   const { px, py } = gizmoPoint(e)
   gdrag = {
     mode,
+    kind: g.kind,
+    textId: g.tx?.id,
     cx: g.cx,
     cy: g.cy,
     startAngle: (Math.atan2(py - g.cy, px - g.cx) * 180) / Math.PI,
-    origRotation: g.img.rotation || 0,
+    origRotation: g.rotation || 0,
     startDist: Math.max(1, Math.hypot(px - g.cx, py - g.cy)),
-    origZoom: g.img.zoom || 1,
+    origZoom: g.kind === 'image' ? g.img.zoom || 1 : 1,
+    origSize:
+      g.kind === 'title'
+        ? g.tx.fontSizePct
+        : g.kind === 'logo'
+          ? store.logo.scalePct
+          : store.controls.fontSizePct,
   }
   dragging.value = true
   window.addEventListener('pointermove', onGizmoMove)
@@ -168,10 +254,28 @@ function onGizmoMove(e) {
         deg = snap
       }
     }
-    store.setImageRotation(deg)
+    if (gdrag.kind === 'image') {
+      store.setImageRotation(deg)
+    } else if (gdrag.kind === 'title') {
+      store.setTextRotation(gdrag.textId, deg)
+    } else if (gdrag.kind === 'logo') {
+      store.setLogoRotation(deg)
+    } else {
+      store.setCaptionRotation(deg)
+    }
   } else {
-    // Resize scales the clip zoom by the pointer's distance from the centre.
-    store.setImageZoom(gdrag.origZoom * (Math.hypot(dx, dy) / gdrag.startDist))
+    // Resize scales zoom (image), font size (caption/title) or logo scale by
+    // the pointer's distance from the centre.
+    const ratio = Math.hypot(dx, dy) / gdrag.startDist
+    if (gdrag.kind === 'image') {
+      store.setImageZoom(gdrag.origZoom * ratio)
+    } else if (gdrag.kind === 'title') {
+      store.setTextFontSize(gdrag.textId, gdrag.origSize * ratio)
+    } else if (gdrag.kind === 'logo') {
+      store.setLogoScale(gdrag.origSize * ratio)
+    } else {
+      store.setCaptionFontSize(gdrag.origSize * ratio)
+    }
   }
 }
 
@@ -338,6 +442,12 @@ function onPointerDown(e) {
     return
   }
 
+  // The logo is corner-pinned (no free positioning), so with the logo focused a
+  // canvas drag is a no-op — its gizmo handles do the resizing/rotating.
+  if (store.dragTarget === 'logo') {
+    return
+  }
+
   // Title drag: move the selected title if it's on screen, otherwise whichever
   // title is showing at the playhead. With none showing the drag is a no-op.
   if (store.dragTarget === 'title') {
@@ -476,7 +586,10 @@ function onResetDrag() {
     const tx = store.selectedText
     if (tx) {
       store.setTextPos(tx.id, 0.5, 0.5)
+      store.setTextRotation(tx.id, 0)
     }
+  } else if (store.dragTarget === 'logo') {
+    store.setLogoRotation(0)
   } else {
     store.resetCaptionOffset()
   }
@@ -497,7 +610,9 @@ function onResetDrag() {
             ? $t('preview.dragImageHint')
             : store.dragTarget === 'title'
               ? $t('preview.dragTitleHint')
-              : $t('preview.dragHint')
+              : store.dragTarget === 'logo'
+                ? $t('preview.dragLogoHint')
+                : $t('preview.dragHint')
         "
         @pointerdown="onPointerDown"
         @pointermove="onPointerMove"
@@ -507,12 +622,13 @@ function onResetDrag() {
         @dblclick="onResetDrag"
       />
 
-      <!-- Image selection gizmo: overlays the canvas 1:1 (same viewBox as the
-           frame), overflow visible so handles survive full-frame images. The
-           root ignores pointers; only the handles are interactive. -->
+      <!-- Selection gizmo (image clip or caption): overlays the canvas 1:1
+           (same viewBox as the frame), overflow visible so handles survive
+           full-frame content. The root ignores pointers; only the handles are
+           interactive. -->
       <svg
         v-if="gizmo && overlayBox"
-        data-testid="image-gizmo"
+        data-testid="preview-gizmo"
         class="absolute z-10 overflow-visible pointer-events-none"
         :style="overlayBox"
         :viewBox="`0 0 ${store.dimensions.w} ${store.dimensions.h}`"

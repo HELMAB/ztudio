@@ -39,6 +39,19 @@ test('toggling crop reveals the crop sliders', async ({ page }) => {
   await expect(field(inspector, 'Crop top')).toBeVisible()
 })
 
+test('clicking the logo clip on the timeline focuses the logo layer', async ({ page }) => {
+  expect(await state(page, 'dragTarget')).not.toBe('logo')
+  await page.getByTestId('logo-clip').click()
+  await expect.poll(() => state(page, 'dragTarget')).toBe('logo')
+})
+
+test('rotates the logo via the slider', async ({ page }) => {
+  // Scoped to logo-controls: the Image tab also has an "Image rotation" field.
+  expect(await state(page, 'logo.rotation')).toBe(0)
+  await nudgeSlider(page, page.getByTestId('logo-controls'), 'Rotation', 'right', 3)
+  await expect.poll(() => state(page, 'logo.rotation')).toBe(3)
+})
+
 test('uploads a logo and exposes its framing controls', async ({ page }) => {
   const inspector = page.getByTestId('inspector')
   // Logo controls live at the bottom of the Image tab; the active tab mounts the

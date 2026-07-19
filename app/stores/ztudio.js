@@ -144,6 +144,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     position: 'bottom',
     offsetXPct: 0,
     offsetYPct: 0,
+    captionRotation: 0,
     box: false,
     animation: 'blur',
     overlay: 'leaves',
@@ -391,6 +392,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
   const progressPercent = computed(() => Math.round(progress.value * 100))
   const sizeLabel = computed(() => (controls.fontSizePct * 100).toFixed(1) + '%')
   const strokeLabel = computed(() => Math.round(controls.strokePct * 100) + '%')
+  const captionRotationLabel = computed(() => Math.round(controls.captionRotation) + '°')
   const lineHeightLabel = computed(() => controls.lineHeight.toFixed(2) + '×')
   const imageZoomLabel = computed(() => Math.round((selectedImage.value?.zoom || 1) * 100) + '%')
   const timeLabel = computed(() => scrub.value.toFixed(1) + 's')
@@ -413,6 +415,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     position: controls.position,
     offsetXPct: controls.offsetXPct,
     offsetYPct: controls.offsetYPct,
+    captionRotation: controls.captionRotation,
     box: controls.box,
     animation: controls.animation,
     overlay: controls.overlay,
@@ -512,6 +515,36 @@ export const useZtudioStore = defineStore('ztudio', () => {
   const clampOffset = v => (v < -1 ? -1 : v > 1 ? 1 : v)
 
   // Drag-to-reposition: offsets are fractions of frame width/height.
+  // Normalize an angle to (-180, 180], rounded to 0.1° — shared by every
+  // rotatable layer (image clip, caption, title, logo).
+  const normDeg = deg => {
+    let d = deg % 360
+    if (d > 180) {
+      d -= 360
+    } else if (d <= -180) {
+      d += 360
+    }
+    return Math.round(d * 10) / 10
+  }
+
+  // Caption size/rotation, driven by the preview gizmo and the Style sliders.
+  // Size clamps to the slider's range; rotation is static (not keyframed) and
+  // normalized to (-180, 180] like image rotation. The controls watcher handles
+  // the redraw and the preset→custom flip.
+  const CAPTION_SIZE_MIN = 0.03
+  const CAPTION_SIZE_MAX = 0.1
+  function setCaptionFontSize(pct) {
+    if (Number.isFinite(pct)) {
+      const clamped = Math.min(CAPTION_SIZE_MAX, Math.max(CAPTION_SIZE_MIN, pct))
+      controls.fontSizePct = Math.round(clamped * 10000) / 10000
+    }
+  }
+  function setCaptionRotation(deg) {
+    if (Number.isFinite(deg)) {
+      controls.captionRotation = normDeg(deg)
+    }
+  }
+
   function setCaptionOffset(xPct, yPct) {
     controls.offsetXPct = clampOffset(xPct)
     controls.offsetYPct = clampOffset(yPct)
@@ -519,6 +552,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
 
   function resetCaptionOffset() {
     setCaptionOffset(0, 0)
+    controls.captionRotation = 0
   }
 
   const clampZoom = v => (v < 0.5 ? 0.5 : v > 4 ? 4 : v)
@@ -549,13 +583,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
   function setImageRotation(deg) {
     const im = selectedImage.value
     if (im && Number.isFinite(deg)) {
-      let d = deg % 360
-      if (d > 180) {
-        d -= 360
-      } else if (d <= -180) {
-        d += 360
-      }
-      im.rotation = Math.round(d * 10) / 10
+      im.rotation = normDeg(deg)
       redraw()
     }
   }
@@ -705,6 +733,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       controls.position,
       controls.offsetXPct,
       controls.offsetYPct,
+      controls.captionRotation,
       controls.box,
     ],
     () => {
@@ -2249,6 +2278,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       color: '#ffffff',
       strokeColor: '#000000',
       strokePct: 0.08,
+      rotation: 0,
     }
     texts.value = [...texts.value, item]
     selectedTextId.value = item.id
@@ -2281,6 +2311,22 @@ export const useZtudioStore = defineStore('ztudio', () => {
     const s = Math.max(0, Math.min(start, MAX_AUDIO_SEC - MIN_TEXT_DUR))
     const e = Math.min(MAX_AUDIO_SEC, Math.max(end, s + MIN_TEXT_DUR))
     updateText(id, { start: r3(s), end: r3(e) })
+  }
+
+  // Title size/rotation from the preview gizmo and the inspector sliders. Size
+  // clamps to the slider's range; rotation is static, normalized like images.
+  const TEXT_SIZE_MIN = 0.03
+  const TEXT_SIZE_MAX = 0.18
+  function setTextFontSize(id, pct) {
+    if (Number.isFinite(pct)) {
+      const clamped = Math.min(TEXT_SIZE_MAX, Math.max(TEXT_SIZE_MIN, pct))
+      updateText(id, { fontSizePct: Math.round(clamped * 10000) / 10000 })
+    }
+  }
+  function setTextRotation(id, deg) {
+    if (Number.isFinite(deg)) {
+      updateText(id, { rotation: normDeg(deg) })
+    }
   }
 
   // Reposition a title by dragging it on the preview. x/y are the centre as
@@ -2323,6 +2369,10 @@ export const useZtudioStore = defineStore('ztudio', () => {
       logoBitmap.value = null
       logoName.value = ''
       rawLogo = null
+      // A removed logo can't stay the preview focus.
+      if (dragTarget.value === 'logo') {
+        dragTarget.value = 'caption'
+      }
       redraw()
       return true
     }
@@ -2361,6 +2411,38 @@ export const useZtudioStore = defineStore('ztudio', () => {
     // A window reaching the clip end collapses back to the "full" sentinel, so it
     // keeps spanning the video if a longer audio track is loaded later.
     logo.end = e >= dur - 1e-3 ? 0 : r3(e)
+  }
+
+  // Focus the logo layer (timeline clip / asset row click): the preview gizmo
+  // then resizes/rotates it, and the inspector shows its framing controls
+  // (bottom of the Image tab). Brings the logo on screen, WYSIWYG-style.
+  function selectLogo() {
+    if (!logoBitmap.value) {
+      return
+    }
+    dragTarget.value = 'logo'
+    inspectorTab.value = 'image'
+    const { start, end } = logoWindow.value
+    if (scrub.value < start || scrub.value >= end) {
+      seek(start)
+    }
+  }
+
+  // Logo size/rotation from the preview gizmo. Size clamps to the slider's
+  // range; rotation is normalized like every other layer. The `watch(logo,
+  // redraw)` handles the repaint.
+  const LOGO_SCALE_MIN = 0.05
+  const LOGO_SCALE_MAX = 0.5
+  function setLogoScale(pct) {
+    if (Number.isFinite(pct)) {
+      const clamped = Math.min(LOGO_SCALE_MAX, Math.max(LOGO_SCALE_MIN, pct))
+      logo.scalePct = Math.round(clamped * 10000) / 10000
+    }
+  }
+  function setLogoRotation(deg) {
+    if (Number.isFinite(deg)) {
+      logo.rotation = normDeg(deg)
+    }
   }
 
   function dismissResult() {
@@ -2757,6 +2839,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     progressPercent,
     sizeLabel,
     strokeLabel,
+    captionRotationLabel,
     lineHeightLabel,
     imageZoomLabel,
     timeLabel,
@@ -2778,6 +2861,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
     hasTexts,
     addText,
     updateText,
+    setTextFontSize,
+    setTextRotation,
     updateTextTime,
     setTextPos,
     removeText,
@@ -2790,10 +2875,15 @@ export const useZtudioStore = defineStore('ztudio', () => {
     logoResolved,
     loadLogo,
     setLogoTime,
+    selectLogo,
+    setLogoScale,
+    setLogoRotation,
     redraw,
     dragTarget,
     setCaptionOffset,
     resetCaptionOffset,
+    setCaptionFontSize,
+    setCaptionRotation,
     setImageZoom,
     setImageOffset,
     setImageRotation,

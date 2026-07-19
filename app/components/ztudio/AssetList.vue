@@ -85,6 +85,8 @@ const rows = computed(() => {
       key: 'logo',
       icon: StampIcon,
       label: store.logoPill.text,
+      selected: store.dragTarget === 'logo',
+      select: () => store.selectLogo(),
       remove: () => store.loadLogo(null),
     })
   }

@@ -269,6 +269,21 @@ describe('store: titles', () => {
     expect(store.previewDuration).toBe(10)
   })
 
+  it('title rotation normalizes and its size clamps to the slider range', async () => {
+    const store = await makeStore()
+    await withAudio(store, 30)
+    const item = store.addText()
+    expect(item.rotation).toBe(0)
+    store.setTextRotation(item.id, 270)
+    expect(store.texts[0].rotation).toBe(-90)
+    store.setTextRotation(item.id, -190)
+    expect(store.texts[0].rotation).toBe(170)
+    store.setTextFontSize(item.id, 0.5)
+    expect(store.texts[0].fontSizePct).toBe(0.18)
+    store.setTextFontSize(item.id, 0.001)
+    expect(store.texts[0].fontSizePct).toBe(0.03)
+  })
+
   it('removes a title', async () => {
     const store = await makeStore()
     await withAudio(store, 30)
@@ -508,6 +523,47 @@ describe('store: images', () => {
   })
 })
 
+describe('store: logo', () => {
+  const logoFile = () => ({ name: 'logo.png', type: 'image/png', _w: 200, _h: 100 })
+
+  it('selectLogo focuses the logo layer and opens the Image tab', async () => {
+    const store = await makeStore()
+    await withAudio(store, 20)
+    await store.loadLogo(logoFile())
+    store.inspectorTab = 'style'
+    store.selectLogo()
+    expect(store.dragTarget).toBe('logo')
+    expect(store.inspectorTab).toBe('image')
+  })
+
+  it('selectLogo without a logo is a no-op', async () => {
+    const store = await makeStore()
+    store.selectLogo()
+    expect(store.dragTarget).toBe('caption')
+  })
+
+  it('removing the logo drops the logo focus', async () => {
+    const store = await makeStore()
+    await withAudio(store, 20)
+    await store.loadLogo(logoFile())
+    store.selectLogo()
+    await store.loadLogo(null)
+    expect(store.dragTarget).toBe('caption')
+  })
+
+  it('logo rotation normalizes and scale clamps to the slider range', async () => {
+    const store = await makeStore()
+    store.setLogoRotation(270)
+    expect(store.logo.rotation).toBe(-90)
+    store.setLogoRotation(-190)
+    expect(store.logo.rotation).toBe(170)
+    store.setLogoScale(2)
+    expect(store.logo.scalePct).toBe(0.5)
+    store.setLogoScale(0.001)
+    expect(store.logo.scalePct).toBe(0.05)
+  })
+})
+
 describe('store: lanes', () => {
   it('hiding the image lane empties the render layer without touching the assets', async () => {
     const store = await makeStore()
@@ -563,6 +619,48 @@ describe('store: presets & style', () => {
     store.controls.fontSizePct = 0.077
     await nextTick() // let the controls watcher run
     expect(store.preset).toBe('custom')
+  })
+
+  it('setCaptionRotation normalizes to (-180, 180] and reaches the style', async () => {
+    const store = await makeStore()
+    store.setCaptionRotation(90)
+    expect(store.controls.captionRotation).toBe(90)
+    store.setCaptionRotation(270)
+    expect(store.controls.captionRotation).toBe(-90)
+    store.setCaptionRotation(-190)
+    expect(store.controls.captionRotation).toBe(170)
+    store.setCaptionRotation(180)
+    expect(store.controls.captionRotation).toBe(180)
+    expect(store.style.captionRotation).toBe(180)
+  })
+
+  it('rotating the caption flips the preset to custom', async () => {
+    const store = await makeStore()
+    store.applyPreset('clean')
+    await nextTick()
+    store.setCaptionRotation(15)
+    await nextTick()
+    expect(store.preset).toBe('custom')
+  })
+
+  it('setCaptionFontSize clamps to the slider range', async () => {
+    const store = await makeStore()
+    store.setCaptionFontSize(0.5)
+    expect(store.controls.fontSizePct).toBe(0.1)
+    store.setCaptionFontSize(0.001)
+    expect(store.controls.fontSizePct).toBe(0.03)
+    store.setCaptionFontSize(0.06)
+    expect(store.controls.fontSizePct).toBe(0.06)
+  })
+
+  it('resetCaptionOffset clears the rotation too', async () => {
+    const store = await makeStore()
+    store.setCaptionOffset(0.1, 0.1)
+    store.setCaptionRotation(45)
+    store.resetCaptionOffset()
+    expect(store.controls.offsetXPct).toBe(0)
+    expect(store.controls.offsetYPct).toBe(0)
+    expect(store.controls.captionRotation).toBe(0)
   })
 
   it('the normalized style reflects the current controls', async () => {

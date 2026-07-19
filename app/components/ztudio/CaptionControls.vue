@@ -70,6 +70,16 @@ function onFont(files) {
       />
     </ZtudioField>
 
+    <ZtudioField :label="$t('controls.captionRotation')" :value="store.captionRotationLabel">
+      <Slider
+        :model-value="[store.controls.captionRotation]"
+        :min="-180"
+        :max="180"
+        :step="1"
+        @update:model-value="store.setCaptionRotation($event[0])"
+      />
+    </ZtudioField>
+
     <ZtudioField :label="$t('controls.weight')">
       <ZtudioSelectField v-model="store.controls.fontWeight" :options="weightOptions" />
     </ZtudioField>
