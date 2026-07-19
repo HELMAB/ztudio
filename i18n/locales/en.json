@@ -27,6 +27,7 @@
     "tabSettings": "Settings",
     "import": "Import media",
     "assetsEmpty": "No media yet. Import audio, images, or captions to get started.",
+    "assetUnplaced": "not on timeline — drag it in",
     "status": "Project status",
     "dropHint": "Drop a file here or click to browse",
     "clear": "Remove file"
@@ -286,7 +287,12 @@
     "image": "Image",
     "caption": "Caption",
     "title": "Title",
-    "logo": "Logo"
+    "logo": "Logo",
+    "hideLane": "Hide layer",
+    "showLane": "Show layer",
+    "muteLane": "Mute voice",
+    "unmuteLane": "Unmute voice",
+    "empty": "Import media to get started — lanes appear as assets are added"
   },
   "keyframe": {
     "heading": "Keyframes",

@@ -100,14 +100,15 @@ test('ctrl+wheel over the track zooms the timeline', async ({ page }) => {
   await expect.poll(() => state(page, 'timelineZoom')).toBeGreaterThan(before)
 })
 
-test('dragging an image asset row onto the timeline re-places the clip', async ({ page }) => {
+test('an uploaded image stays off the timeline until dragged in, then becomes a clip', async ({
+  page,
+}) => {
   const panel = page.getByTestId('media-panel')
   await panel.getByRole('tab', { name: 'Assets', exact: true }).click()
-  // Import a second image: it gets a movable 3s slot at the playhead (the demo
-  // image spans the whole timeline) and is auto-selected.
+  // Importing only adds a library asset — the timeline keeps its single demo clip.
   await panel.getByTestId('assets-import').setInputFiles(DEMO.image)
-  await expect.poll(() => state(page, 'images.length')).toBe(2)
-  const clipId = await state(page, 'selectedImageId')
+  await expect.poll(() => state(page, 'imageAssets.length')).toBe(2)
+  expect(await state(page, 'images.length')).toBe(1)
 
   // HTML5 drag: a shared DataTransfer carries the asset id from the row's
   // dragstart to the timeline viewport's dragover/drop.
@@ -121,20 +122,16 @@ test('dragging an image asset row onto the timeline re-places the clip', async (
   await expect(page.getByTestId('timeline-drop-line')).toBeVisible()
   await viewport.dispatchEvent('drop', { dataTransfer: dt, clientX, clientY })
 
-  // The clip moved to ~60% of the duration, keeping its 3s length.
+  // The drop created a new 3s clip at ~60% of the duration and selected it.
   const dur = await state(page, 'previewDuration')
-  const clip = () =>
-    page.evaluate(
-      id =>
-        window.__ztudio.images
-          .map(im => ({ id: im.id, start: im.start, end: im.end }))
-          .find(im => im.id === id),
-      clipId,
-    )
-  await expect.poll(async () => (await clip()).start).toBeGreaterThan(dur * 0.4)
-  const placed = await clip()
+  await expect.poll(() => state(page, 'images.length')).toBe(2)
+  const placed = await page.evaluate(() => {
+    const z = window.__ztudio
+    const im = z.images.find(c => c.id === z.selectedImageId)
+    return { start: im.start, end: im.end }
+  })
+  expect(placed.start).toBeGreaterThan(dur * 0.4)
   expect(placed.end - placed.start).toBeCloseTo(3, 1)
-  expect(await state(page, 'selectedImageId')).toBe(clipId)
   // The drop line clears once the drop lands.
   await expect(page.getByTestId('timeline-drop-line')).toBeHidden()
 })
@@ -145,11 +142,11 @@ test('dropping a clip at the far edge extends the timeline; removing it shrinks 
   const panel = page.getByTestId('media-panel')
   await panel.getByRole('tab', { name: 'Assets', exact: true }).click()
   await panel.getByTestId('assets-import').setInputFiles(DEMO.image)
-  await expect.poll(() => state(page, 'images.length')).toBe(2)
+  await expect.poll(() => state(page, 'imageAssets.length')).toBe(2)
   const before = await state(page, 'previewDuration')
 
-  // Drop the new 3s clip at the right edge: it spills past the end and the
-  // timeline (and export range) grows to fit it.
+  // Drop the new asset at the right edge: the created 3s clip spills past the
+  // end and the timeline (and export range) grows to fit it.
   const dt = await page.evaluateHandle(() => new DataTransfer())
   await panel.getByTestId('asset-row').nth(2).dispatchEvent('dragstart', { dataTransfer: dt })
   const viewport = page.getByTestId('timeline-viewport')
@@ -165,6 +162,30 @@ test('dropping a clip at the far edge extends the timeline; removing it shrinks 
   // Removing the clip shrinks the timeline back to the audio length.
   await page.evaluate(() => window.__ztudio.removeImage(window.__ztudio.selectedImageId))
   await expect.poll(() => state(page, 'previewDuration')).toBe(before)
+})
+
+test('lanes exist only for loaded assets and carry visibility/mute controls', async ({ page }) => {
+  // The demo project loads all five asset types → five lanes.
+  for (const k of ['audio', 'images', 'captions', 'titles', 'logo']) {
+    await expect(page.getByTestId(`lane-${k}`)).toBeVisible()
+  }
+
+  // The eye toggle hides the layer from the render without touching the asset.
+  await page.getByTestId('lane-toggle-images').click()
+  await expect.poll(() => state(page, 'lanes.imagesHidden')).toBe(true)
+  expect(await page.evaluate(() => window.__ztudio.renderImages.length)).toBe(0)
+  expect(await state(page, 'images.length')).toBeGreaterThan(0)
+  await page.getByTestId('lane-toggle-images').click()
+  await expect.poll(() => state(page, 'lanes.imagesHidden')).toBe(false)
+
+  // The voice lane's volume toggle mutes it.
+  await page.getByTestId('lane-toggle-audio').click()
+  await expect.poll(() => state(page, 'lanes.audioMuted')).toBe(true)
+  await page.getByTestId('lane-toggle-audio').click()
+
+  // Removing an asset removes its lane.
+  await page.evaluate(() => window.__ztudio.loadSrt(null))
+  await expect(page.getByTestId('lane-captions')).toHaveCount(0)
 })
 
 test('the toolbar zoom slider changes the zoom', async ({ page }) => {

@@ -9,6 +9,7 @@ import { IMAGE_DRAG_MIME } from '@/lib/ztudio/config'
 // the music bed, which keeps its own uploader in the inspector's Audio tab (a
 // plain import can't tell voice from music); that tab also has the mix controls.
 const store = useZtudioStore()
+const { t } = useI18n()
 
 const input = ref(null)
 
@@ -57,16 +58,18 @@ const rows = computed(() => {
       remove: () => store.loadMusic(null),
     })
   }
-  for (const im of store.images) {
+  for (const a of store.imageAssets) {
+    // Clips placed from this asset (uploads stay unplaced until dragged in).
+    const clips = store.images.filter(im => im.assetId === a.id)
     out.push({
-      key: 'img' + im.id,
-      thumb: thumbFor(im.bitmap),
-      label: im.name,
-      meta: `${im.width}×${im.height}`,
-      selected: store.selectedImageId === im.id,
-      select: () => store.selectImage(im.id),
-      remove: () => store.removeImage(im.id),
-      dragId: im.id,
+      key: 'asset' + a.id,
+      thumb: thumbFor(a.bitmap),
+      label: a.name,
+      meta: `${a.width}×${a.height}` + (clips.length ? '' : ` · ${t('media.assetUnplaced')}`),
+      selected: clips.some(c => c.id === store.selectedImageId),
+      select: clips.length ? () => store.selectImage(clips[0].id) : undefined,
+      remove: () => store.removeImageAsset(a.id),
+      dragId: a.id,
     })
   }
   if (store.cues.length) {

@@ -86,8 +86,12 @@ export const useZtudioStore = defineStore('ztudio', () => {
   // Audio mixing controls: voice level + fades, music level + fades + loop, and
   // auto-ducking (music dips while the voice talks). Drives both preview and export.
   const audio = reactive({ ...AUDIO_DEFAULTS })
-  // The image track: a sorted array of slideshow clips, each with its own time
-  // range and framing. Replaces the former single image.
+  // The image library: uploads land here as unplaced assets. Nothing reaches the
+  // timeline until the user drags an asset in (addClipFromAsset) — or the demo /
+  // a restore places clips explicitly.
+  const imageAssets = ref([])
+  // The image track: a sorted array of slideshow clips, each referencing a
+  // library asset (assetId, shared bitmap) with its own time range and framing.
   const images = ref([])
   const selectedImageId = ref(null)
   const cues = ref([])
@@ -288,6 +292,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
   let kfCounter = 0
   let fontCounter = 0
   let imageCounter = 0
+  let assetCounter = 0
   // Decoded bitmaps kept by clip id for the whole session so undo/redo can
   // restore a removed image clip without re-decoding the file.
   const bitmapRegistry = new Map()
@@ -295,7 +300,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
   // can't be re-serialised, so we stash the original bytes to re-decode on resume).
   let rawAudio = null
   let rawMusic = null
-  const imageBlobs = new Map() // image clip id -> Blob
+  const assetBlobs = new Map() // image asset id -> Blob
   const persistedBlobs = new Map() // IDB key -> the blob currently written, to skip rewrites
   // Autosave: 'idle' until the first save, then 'saving' | 'saved' | 'error'.
   const autosaveStatus = ref('idle')
@@ -310,6 +315,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
   // Master gain that both voice and music route through during playback, so the
   // preview-monitor volume/mute can be applied (and updated live) in one place.
   let playMasterGain = null
+  // Voice-only gain, kept so the voice lane's mute toggle applies mid-playback.
+  let playVoiceGain = null
   let playStartClock = 0
   let playStartOffset = 0
 
@@ -438,6 +445,32 @@ export const useZtudioStore = defineStore('ztudio', () => {
     logoBitmap.value ? { bitmap: logoBitmap.value, ...logo } : null,
   )
 
+  // Per-lane controls in the timeline's header rail. Hiding a visual lane drops
+  // that layer from the preview AND the export (WYSIWYG); muting the voice lane
+  // silences it in playback and the export mix. Session-only view/mix state —
+  // like snapping or zoom, it isn't part of the document or undo history.
+  const lanes = reactive({
+    audioMuted: false,
+    imagesHidden: false,
+    captionsHidden: false,
+    titlesHidden: false,
+    logoHidden: false,
+  })
+  function toggleLaneHidden(key) {
+    lanes[key + 'Hidden'] = !lanes[key + 'Hidden']
+    redraw()
+  }
+  function toggleVoiceMuted() {
+    lanes.audioMuted = !lanes.audioMuted
+  }
+  // The layers as the renderer sees them (lane visibility applied). Every
+  // drawFrame caller — preview, hover thumb, thumbnail export, encoder — uses
+  // these, so a hidden lane is hidden everywhere.
+  const renderImages = computed(() => (lanes.imagesHidden ? [] : images.value))
+  const renderCues = computed(() => (lanes.captionsHidden ? [] : cues.value))
+  const renderTexts = computed(() => (lanes.titlesHidden ? [] : texts.value))
+  const renderLogo = computed(() => (lanes.logoHidden ? null : logoResolved.value))
+
   const audioPill = computed(() =>
     audioBuffer.value
       ? { ok: true, text: t('pill.audio', { time: fmt(audioBuffer.value.duration) }) }
@@ -450,8 +483,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
   )
   const hasMusic = computed(() => !!musicBuffer.value)
   const imagePill = computed(() =>
-    images.value.length
-      ? { ok: true, text: t('pill.images', { count: images.value.length }) }
+    imageAssets.value.length
+      ? { ok: true, text: t('pill.images', { count: imageAssets.value.length }) }
       : { ok: false, text: t('pill.noImage') },
   )
   const srtPill = computed(() =>
@@ -1086,28 +1119,54 @@ export const useZtudioStore = defineStore('ztudio', () => {
     images.value = [...images.value].sort((a, b) => a.start - b.start)
   }
 
-  // Append one decoded image as a slideshow clip. The first clip spans the whole
-  // timeline; later ones default to a 3s slot at the playhead so they don't hide
-  // earlier clips.
+  // Decode one upload into the assets library. Nothing is placed on the
+  // timeline — the user drags the asset in (or the demo/restore places it).
   async function addImageFile(file, name) {
     const bitmap = await createImageBitmap(file)
-    const dur = previewDuration.value
-    let start, end
-    if (!images.value.length) {
-      start = 0
-      end = dur
-    } else {
-      // A 3s slot at the playhead; near the timeline end it spills past and the
-      // timeline grows instead of squeezing the clip.
-      start = Math.min(Math.max(0, scrub.value), MAX_AUDIO_SEC - 3)
-      end = start + 3
-    }
-    const clip = {
-      id: ++imageCounter,
+    const asset = {
+      id: ++assetCounter,
       bitmap,
-      name: name || `image ${imageCounter}`,
+      name: name || `image ${assetCounter}`,
       width: bitmap.width,
       height: bitmap.height,
+    }
+    assetBlobs.set(asset.id, file)
+    imageAssets.value = [...imageAssets.value, asset]
+    log(
+      `Asset: ${asset.name} ${bitmap.width}×${bitmap.height} — drag it onto the timeline to use it.`,
+    )
+    return asset
+  }
+
+  async function addImages(files) {
+    const list = Array.from(files || [])
+    for (const file of list) {
+      try {
+        await addImageFile(file, file.name)
+      } catch (err) {
+        log('Image load failed: ' + (err?.message || err))
+      }
+    }
+    maybeReady()
+  }
+
+  // Place a library asset on the timeline as a new clip starting at t (the drop
+  // point). Each drop creates a fresh 3s clip, so one asset can be reused across
+  // the video; a drop near the end extends the timeline.
+  function addClipFromAsset(assetId, t) {
+    const asset = imageAssets.value.find(a => a.id === assetId)
+    if (!asset) {
+      return null
+    }
+    const start = Math.max(0, Math.min(t, MAX_AUDIO_SEC - MIN_IMAGE_DUR))
+    const end = Math.min(start + 3, MAX_AUDIO_SEC)
+    const clip = {
+      id: ++imageCounter,
+      assetId: asset.id,
+      bitmap: asset.bitmap,
+      name: asset.name,
+      width: asset.width,
+      height: asset.height,
       start: Math.round(start * 1000) / 1000,
       end: Math.round(end * 1000) / 1000,
       fit: 'contain',
@@ -1123,25 +1182,26 @@ export const useZtudioStore = defineStore('ztudio', () => {
       fadeIn: 0,
       fadeOut: 0,
     }
-    bitmapRegistry.set(clip.id, bitmap)
-    imageBlobs.set(clip.id, file)
+    bitmapRegistry.set(clip.id, asset.bitmap)
     images.value.push(clip)
     sortImages()
     selectedImageId.value = clip.id
-    log(
-      `Image: ${clip.name} ${bitmap.width}×${bitmap.height} (${fmt(clip.start)}–${fmt(clip.end)}).`,
-    )
+    log(`Clip: ${clip.name} at ${fmt(clip.start)}–${fmt(clip.end)}.`)
+    redraw()
+    maybeReady()
     return clip
   }
 
-  async function addImages(files) {
-    const list = Array.from(files || [])
-    for (const file of list) {
-      try {
-        await addImageFile(file, file.name)
-      } catch (err) {
-        log('Image load failed: ' + (err?.message || err))
-      }
+  // Delete a library asset along with any clips placed from it.
+  function removeImageAsset(id) {
+    imageAssets.value = imageAssets.value.filter(a => a.id !== id)
+    assetBlobs.delete(id)
+    images.value = images.value.filter(im => im.assetId !== id)
+    if (!images.value.some(im => im.id === selectedImageId.value)) {
+      selectedImageId.value = images.value.length ? images.value[0].id : null
+    }
+    if (!images.value.length) {
+      dragTarget.value = 'caption'
     }
     redraw()
     maybeReady()
@@ -1149,7 +1209,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
 
   function clearImages() {
     images.value = []
-    imageBlobs.clear()
+    imageAssets.value = []
+    assetBlobs.clear()
     selectedImageId.value = null
     dragTarget.value = 'caption'
     redraw()
@@ -1224,9 +1285,9 @@ export const useZtudioStore = defineStore('ztudio', () => {
     }
   }
 
+  // Remove a clip from the timeline; its library asset stays in the panel.
   function removeImage(id) {
     images.value = images.value.filter(im => im.id !== id)
-    imageBlobs.delete(id)
     if (selectedImageId.value === id) {
       selectedImageId.value = images.value.length ? images.value[0].id : null
     }
@@ -1254,9 +1315,6 @@ export const useZtudioStore = defineStore('ztudio', () => {
     const right = { ...im, id: ++imageCounter, start: t }
     im.end = t
     bitmapRegistry.set(right.id, im.bitmap)
-    if (imageBlobs.has(im.id)) {
-      imageBlobs.set(right.id, imageBlobs.get(im.id))
-    }
     images.value.push(right)
     sortImages()
     selectedImageId.value = right.id
@@ -1279,9 +1337,6 @@ export const useZtudioStore = defineStore('ztudio', () => {
     }
     const copy = { ...im, id: ++imageCounter, start: r3(start), end: r3(end) }
     bitmapRegistry.set(copy.id, im.bitmap)
-    if (imageBlobs.has(im.id)) {
-      imageBlobs.set(copy.id, imageBlobs.get(im.id))
-    }
     images.value.push(copy)
     sortImages()
     selectedImageId.value = copy.id
@@ -1314,20 +1369,6 @@ export const useZtudioStore = defineStore('ztudio', () => {
     im.end = Math.round(e * 1000) / 1000
     sortImages()
     redraw()
-  }
-
-  // Drop from the Assets panel onto the timeline: move the clip so it starts at
-  // t, keeping its duration, and focus it. A drop near the end may spill past
-  // the current timeline end — the timeline grows to fit.
-  function placeImageAt(id, t) {
-    const im = images.value.find(c => c.id === id)
-    if (!im) {
-      return
-    }
-    const len = Math.max(MIN_IMAGE_DUR, im.end - im.start)
-    const start = Math.max(0, Math.min(t, MAX_AUDIO_SEC - len))
-    updateImageTime(id, start, start + len)
-    selectImage(id)
   }
 
   async function loadSrt(file) {
@@ -1588,7 +1629,12 @@ export const useZtudioStore = defineStore('ztudio', () => {
         from,
         to,
         ...audio,
+        // A muted voice lane exports silent voice; ducking is pointless then.
+        ...(lanes.audioMuted ? { voiceGain: 0, ducking: false } : {}),
       })
+      if (lanes.audioMuted) {
+        log('Voice lane is muted; exporting without the voice track.')
+      }
       if (musicBuffer.value) {
         log(
           `Audio mix: voice ${audio.voiceGain.toFixed(2)}× + music ${audio.musicGain.toFixed(2)}×` +
@@ -1600,12 +1646,12 @@ export const useZtudioStore = defineStore('ztudio', () => {
         mixedAudio,
         from,
         to,
-        cues: cues.value,
+        cues: renderCues.value,
         style: style.value,
-        images: images.value,
+        images: renderImages.value,
         keyframes: keyframes.value,
-        texts: texts.value,
-        logo: logoResolved.value,
+        texts: renderTexts.value,
+        logo: renderLogo.value,
         fps: exportSettings.fps,
         qualityKey: quality.mbKey,
         mrBitrate: quality.mrBitrate,
@@ -1676,12 +1722,12 @@ export const useZtudioStore = defineStore('ztudio', () => {
       cv.width = w
       cv.height = h
       drawFrame(cv.getContext('2d'), w, h, scrub.value, {
-        images: images.value,
-        cues: cues.value,
+        images: renderImages.value,
+        cues: renderCues.value,
         style: style.value,
         keyframes: keyframes.value,
-        texts: texts.value,
-        logo: logoResolved.value,
+        texts: renderTexts.value,
+        logo: renderLogo.value,
       })
       const blob = await new Promise(resolve => cv.toBlob(resolve, 'image/png'))
       if (!blob) {
@@ -1738,6 +1784,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     playSource = null
     playMusicSource = null
     playMasterGain = null
+    playVoiceGain = null
   }
 
   function pause() {
@@ -1803,7 +1850,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
       playSource = ctx.createBufferSource()
       playSource.buffer = audioBuffer.value
       const voiceGain = ctx.createGain()
-      voiceGain.gain.value = audio.voiceGain
+      voiceGain.gain.value = lanes.audioMuted ? 0 : audio.voiceGain
+      playVoiceGain = voiceGain
       playSource.connect(voiceGain).connect(master)
       playSource.start(0, playStartOffset)
 
@@ -1878,6 +1926,16 @@ export const useZtudioStore = defineStore('ztudio', () => {
       playMasterGain.gain.value = g
     }
   })
+
+  // Same for the voice lane's mute toggle.
+  watch(
+    () => lanes.audioMuted,
+    m => {
+      if (playVoiceGain && playCtx) {
+        playVoiceGain.gain.value = m ? 0 : audio.voiceGain
+      }
+    },
+  )
 
   function seek(t) {
     pause()
@@ -2326,6 +2384,15 @@ export const useZtudioStore = defineStore('ztudio', () => {
       await loadAudio(audioBlob)
       const logoFile = new File([logoBlob], 'ztudio-logo.svg', { type: 'image/svg+xml' })
       await Promise.all([addImages([image]), loadSrt(srt), loadLogo(logoFile)])
+      // The demo arrives pre-placed: its image spans the whole video. User
+      // uploads stay in the assets library until dragged onto the timeline.
+      const demoAsset = imageAssets.value.at(-1)
+      if (demoAsset && !images.value.length) {
+        const clip = addClipFromAsset(demoAsset.id, 0)
+        if (clip) {
+          updateImageTime(clip.id, 0, previewDuration.value)
+        }
+      }
       // Seed a default title overlay so the Title track isn't empty on first run.
       if (!texts.value.length) {
         addText()
@@ -2342,7 +2409,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
   // in IndexedDB under stable keys: 'audio', 'music', and 'img:<id>').
   function projectDoc() {
     return {
-      v: 1,
+      v: 2,
       controls: { ...controls },
       audio: { ...audio },
       resolution: resolution.value,
@@ -2351,6 +2418,13 @@ export const useZtudioStore = defineStore('ztudio', () => {
       trimEnd: trimEnd.value,
       cues: cues.value.map(c => ({ ...c })),
       keyframes: keyframes.value.map(k => ({ ...k, values: { ...k.values } })),
+      // v2: the asset library persists separately; clips reference assets by id.
+      imageAssets: imageAssets.value.map(a => ({
+        id: a.id,
+        name: a.name,
+        width: a.width,
+        height: a.height,
+      })),
       images: images.value.map(stripBitmap),
       texts: texts.value.map(tx => ({ ...tx })),
       exportSettings: { ...exportSettings },
@@ -2390,10 +2464,10 @@ export const useZtudioStore = defineStore('ztudio', () => {
         await syncBlob('logo', rawLogo)
         desired.add('logo')
       }
-      for (const im of images.value) {
-        const blob = imageBlobs.get(im.id)
+      for (const asset of imageAssets.value) {
+        const blob = assetBlobs.get(asset.id)
         if (blob) {
-          const key = 'img:' + im.id
+          const key = 'img:' + asset.id
           await syncBlob(key, blob)
           desired.add(key)
         }
@@ -2423,6 +2497,9 @@ export const useZtudioStore = defineStore('ztudio', () => {
       logoBitmap.value,
       JSON.stringify(logo),
       JSON.stringify(exportSettings),
+      // Library membership isn't part of undo history, but unplaced uploads
+      // still need to autosave.
+      imageAssets.value.map(a => a.id).join(','),
     ],
     () => {
       if (initializing || restoring) {
@@ -2471,26 +2548,72 @@ export const useZtudioStore = defineStore('ztudio', () => {
           persistedBlobs.set('logo', blob)
         }
       }
-      const restored = []
-      let maxId = 0
-      for (const meta of doc.images || []) {
-        try {
-          const blob = await getBlob('img:' + meta.id)
-          if (!blob) {
+      if (doc.imageAssets) {
+        // v2 doc: restore the asset library, then attach each clip's bitmap
+        // through its assetId.
+        const assetBitmaps = new Map()
+        const restoredAssets = []
+        for (const meta of doc.imageAssets) {
+          try {
+            const blob = await getBlob('img:' + meta.id)
+            if (!blob) {
+              continue
+            }
+            const bitmap = await createImageBitmap(blob)
+            assetBlobs.set(meta.id, blob)
+            persistedBlobs.set('img:' + meta.id, blob)
+            assetBitmaps.set(meta.id, bitmap)
+            restoredAssets.push({ ...meta, bitmap })
+            assetCounter = Math.max(assetCounter, meta.id)
+          } catch (err) {
+            log('Could not restore an image asset: ' + (err?.message || err))
+          }
+        }
+        imageAssets.value = restoredAssets
+        const restored = []
+        for (const meta of doc.images || []) {
+          const bitmap = assetBitmaps.get(meta.assetId)
+          if (!bitmap) {
             continue
           }
-          const bitmap = await createImageBitmap(blob)
           bitmapRegistry.set(meta.id, bitmap)
-          imageBlobs.set(meta.id, blob)
-          persistedBlobs.set('img:' + meta.id, blob)
           restored.push({ ...meta, bitmap })
-          maxId = Math.max(maxId, meta.id)
-        } catch (err) {
-          log('Could not restore an image: ' + (err?.message || err))
+          imageCounter = Math.max(imageCounter, meta.id)
         }
+        images.value = restored
+      } else {
+        // v1 doc: clips carried their own blobs under img:<clip id>. Promote
+        // each to a library asset (same id) so the clip and its Assets-panel row
+        // share one bitmap going forward.
+        const restored = []
+        const restoredAssets = []
+        for (const meta of doc.images || []) {
+          try {
+            const blob = await getBlob('img:' + meta.id)
+            if (!blob) {
+              continue
+            }
+            const bitmap = await createImageBitmap(blob)
+            bitmapRegistry.set(meta.id, bitmap)
+            assetBlobs.set(meta.id, blob)
+            persistedBlobs.set('img:' + meta.id, blob)
+            restoredAssets.push({
+              id: meta.id,
+              bitmap,
+              name: meta.name,
+              width: meta.width,
+              height: meta.height,
+            })
+            restored.push({ ...meta, assetId: meta.id, bitmap })
+            imageCounter = Math.max(imageCounter, meta.id)
+            assetCounter = Math.max(assetCounter, meta.id)
+          } catch (err) {
+            log('Could not restore an image: ' + (err?.message || err))
+          }
+        }
+        imageAssets.value = restoredAssets
+        images.value = restored
       }
-      images.value = restored
-      imageCounter = Math.max(imageCounter, maxId)
 
       cues.value = (doc.cues || []).map(c => ({ ...c }))
       keyframes.value = (doc.keyframes || []).map(k => ({ ...k, values: { ...k.values } }))
@@ -2590,6 +2713,13 @@ export const useZtudioStore = defineStore('ztudio', () => {
     outputDuration,
     outputDurationLabel,
     playEnd,
+    lanes,
+    toggleLaneHidden,
+    toggleVoiceMuted,
+    renderImages,
+    renderCues,
+    renderTexts,
+    renderLogo,
     trimStartLabel,
     trimEndLabel,
     hasTrim,
@@ -2673,12 +2803,14 @@ export const useZtudioStore = defineStore('ztudio', () => {
     setImageFade,
     resetImageTransform,
     resetImageCrop,
+    imageAssets,
     addImages,
+    addClipFromAsset,
+    removeImageAsset,
     clearImages,
     removeImage,
     selectImage,
     updateImageTime,
-    placeImageAt,
     setTrim,
     resetTrim,
     keyframes,

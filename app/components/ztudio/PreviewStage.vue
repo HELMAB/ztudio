@@ -40,12 +40,12 @@ function paint() {
   el.height = h
   const ctx = el.getContext('2d')
   drawFrame(ctx, w, h, store.scrub, {
-    images: store.images,
-    cues: store.cues,
+    images: store.renderImages,
+    cues: store.renderCues,
     style: store.style,
     keyframes: store.keyframes,
-    texts: store.texts,
-    logo: store.logoResolved,
+    texts: store.renderTexts,
+    logo: store.renderLogo,
   })
   if (showSafeArea.value) {
     drawSafeArea(ctx, w, h)

@@ -7,6 +7,8 @@ import { drawFrame } from '@/lib/ztudio/renderer'
 import { captionAt } from '@/lib/ztudio/srt'
 import {
   DiamondPlusIcon,
+  EyeIcon,
+  EyeOffIcon,
   ImageIcon,
   MagnetIcon,
   MessageSquarePlusIcon,
@@ -15,12 +17,34 @@ import {
   ScanIcon,
   StampIcon,
   TypeIcon,
+  VideoIcon,
+  Volume2Icon,
+  VolumeXIcon,
   ZoomInIcon,
   ZoomOutIcon,
 } from '@lucide/vue'
 
 const store = useZtudioStore()
 const { t: tr } = useI18n()
+
+// Lanes exist only for loaded assets (OpenCut-style). The header rail shows each
+// lane's type icon plus its control: an eye toggle for visual layers, a volume
+// toggle for the voice track. The rail and the lane stack iterate the same list,
+// so the rows always line up.
+const LANE_META = {
+  audio: { icon: MusicIcon, label: 'timeline.audio' },
+  images: { icon: ImageIcon, label: 'timeline.image' },
+  captions: { icon: MessageSquareIcon, label: 'timeline.caption' },
+  titles: { icon: TypeIcon, label: 'timeline.title' },
+  logo: { icon: StampIcon, label: 'timeline.logo' },
+}
+const laneKeys = computed(() => [
+  ...(store.audioBuffer ? ['audio'] : []),
+  ...(store.images.length ? ['images'] : []),
+  ...(store.cues.length ? ['captions'] : []),
+  ...(store.texts.length ? ['titles'] : []),
+  ...(store.hasLogo ? ['logo'] : []),
+])
 
 const viewportEl = ref(null)
 const laneArea = ref(null)
@@ -234,12 +258,12 @@ function drawHoverThumb(t) {
     cv.height = th
   }
   drawFrame(cv.getContext('2d'), tw, th, t, {
-    images: store.images,
-    cues: store.cues,
+    images: store.renderImages,
+    cues: store.renderCues,
     style: store.style,
     keyframes: store.keyframes,
-    texts: store.texts,
-    logo: store.logoResolved,
+    texts: store.renderTexts,
+    logo: store.renderLogo,
   })
 }
 
@@ -461,7 +485,7 @@ function onAssetDrop(event) {
   store.clearSnap()
   const id = Number(event.dataTransfer.getData(IMAGE_DRAG_MIME))
   if (t != null && Number.isFinite(id)) {
-    store.placeImageAt(id, t)
+    store.addClipFromAsset(id, t)
   }
 }
 </script>
@@ -563,36 +587,59 @@ function onAssetDrop(event) {
     <div class="flex flex-1 min-h-0">
       <div class="w-16 sm:w-24 shrink-0 z-20 flex flex-col border-r border-border bg-card">
         <div class="h-6 shrink-0 border-b border-border" />
-        <div class="flex-1 flex flex-col">
+        <div class="flex-1 flex flex-col [&>div:last-child]:border-b-0">
           <div
-            class="flex-1 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 overflow-hidden font-mono text-[10px] uppercase text-muted-foreground border-b border-border"
+            v-for="k in laneKeys"
+            :key="k"
+            :data-testid="`lane-${k}`"
+            class="flex-1 flex items-center gap-1 px-1.5 sm:px-2 overflow-hidden border-b border-border text-muted-foreground"
           >
-            <MusicIcon class="size-3" />
-            {{ $t('timeline.audio') }}
+            <component
+              :is="LANE_META[k].icon"
+              class="size-3 shrink-0"
+              :aria-label="$t(LANE_META[k].label)"
+            />
+            <button
+              v-if="k === 'audio'"
+              type="button"
+              :data-testid="`lane-toggle-${k}`"
+              class="ml-auto rounded p-1 hover:bg-muted hover:text-foreground"
+              :class="store.lanes.audioMuted ? 'text-brand' : ''"
+              :aria-label="
+                store.lanes.audioMuted ? $t('timeline.unmuteLane') : $t('timeline.muteLane')
+              "
+              :aria-pressed="store.lanes.audioMuted"
+              :title="store.lanes.audioMuted ? $t('timeline.unmuteLane') : $t('timeline.muteLane')"
+              @click="store.toggleVoiceMuted()"
+            >
+              <VolumeXIcon v-if="store.lanes.audioMuted" class="size-3.5" />
+              <Volume2Icon v-else class="size-3.5" />
+            </button>
+            <button
+              v-else
+              type="button"
+              :data-testid="`lane-toggle-${k}`"
+              class="ml-auto rounded p-1 hover:bg-muted hover:text-foreground"
+              :class="store.lanes[k + 'Hidden'] ? 'text-brand' : ''"
+              :aria-label="
+                store.lanes[k + 'Hidden'] ? $t('timeline.showLane') : $t('timeline.hideLane')
+              "
+              :aria-pressed="store.lanes[k + 'Hidden']"
+              :title="store.lanes[k + 'Hidden'] ? $t('timeline.showLane') : $t('timeline.hideLane')"
+              @click="store.toggleLaneHidden(k)"
+            >
+              <EyeOffIcon v-if="store.lanes[k + 'Hidden']" class="size-3.5" />
+              <EyeIcon v-else class="size-3.5" />
+            </button>
           </div>
+          <!-- Empty project: the placeholder rail mirrors the empty drop lane. -->
           <div
-            class="flex-1 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 overflow-hidden font-mono text-[10px] uppercase text-muted-foreground border-b border-border"
+            v-if="!laneKeys.length"
+            class="flex-1 flex items-center justify-center gap-1.5 text-muted-foreground/50"
           >
-            <ImageIcon class="size-3" />
-            {{ $t('timeline.image') }}
-          </div>
-          <div
-            class="flex-1 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 overflow-hidden font-mono text-[10px] uppercase text-muted-foreground border-b border-border"
-          >
-            <MessageSquareIcon class="size-3" />
-            {{ $t('timeline.caption') }}
-          </div>
-          <div
-            class="flex-1 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 overflow-hidden font-mono text-[10px] uppercase text-muted-foreground border-b border-border"
-          >
-            <TypeIcon class="size-3" />
-            {{ $t('timeline.title') }}
-          </div>
-          <div
-            class="flex-1 flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 overflow-hidden font-mono text-[10px] uppercase text-muted-foreground"
-          >
-            <StampIcon class="size-3" />
-            {{ $t('timeline.logo') }}
+            <Volume2Icon class="size-3.5" />
+            <EyeIcon class="size-3.5" />
+            <VideoIcon class="size-3.5" />
           </div>
         </div>
       </div>
@@ -654,13 +701,15 @@ function onAssetDrop(event) {
 
           <div
             ref="laneArea"
-            class="relative flex-1 flex flex-col cursor-pointer"
+            class="relative flex-1 flex flex-col cursor-pointer [&>div:last-child]:border-b-0"
             @pointerdown="onLaneDown"
             @pointermove="onLaneHover"
             @pointerleave="onLaneLeave"
           >
             <div
+              v-if="store.audioBuffer"
               class="relative flex-1 border-b border-dashed border-border/80 transition-colors hover:bg-muted/30"
+              :class="store.lanes.audioMuted ? 'opacity-40' : ''"
             >
               <div
                 v-if="audioClip"
@@ -714,7 +763,9 @@ function onAssetDrop(event) {
             </div>
 
             <div
+              v-if="store.images.length"
               class="relative flex-1 border-b border-dashed border-border/80 transition-colors hover:bg-muted/30"
+              :class="store.lanes.imagesHidden ? 'opacity-40' : ''"
             >
               <ZtudioTimelineImageClip
                 v-for="c in imageClips"
@@ -728,7 +779,9 @@ function onAssetDrop(event) {
             </div>
 
             <div
+              v-if="store.cues.length"
               class="relative flex-1 border-b border-dashed border-border/80 transition-colors hover:bg-muted/30"
+              :class="store.lanes.captionsHidden ? 'opacity-40' : ''"
             >
               <ZtudioTimelineCaptionClip
                 v-for="c in captionClips"
@@ -742,7 +795,9 @@ function onAssetDrop(event) {
             </div>
 
             <div
+              v-if="store.texts.length"
               class="relative flex-1 border-b border-dashed border-border/80 transition-colors hover:bg-muted/30"
+              :class="store.lanes.titlesHidden ? 'opacity-40' : ''"
             >
               <ZtudioTimelineTitleClip
                 v-for="c in titleClips"
@@ -755,13 +810,28 @@ function onAssetDrop(event) {
               />
             </div>
 
-            <div class="relative flex-1 transition-colors hover:bg-muted/30">
+            <div
+              v-if="store.hasLogo"
+              class="relative flex-1 border-b border-dashed border-border/80 transition-colors hover:bg-muted/30"
+              :class="store.lanes.logoHidden ? 'opacity-40' : ''"
+            >
               <ZtudioTimelineLogoClip
-                v-if="store.hasLogo"
                 :start="store.logoWindow.start"
                 :end="store.logoWindow.end"
                 :px-per-second="pxPerSecond"
               />
+            </div>
+
+            <!-- Empty project: one dashed placeholder lane; real lanes appear as
+                 assets are imported or dragged in. -->
+            <div
+              v-if="!laneKeys.length"
+              data-testid="timeline-empty-lane"
+              class="flex-1 m-2 grid place-items-center rounded-md border border-dashed border-border"
+            >
+              <span class="px-2 text-center text-xs text-muted-foreground">
+                {{ $t('timeline.empty') }}
+              </span>
             </div>
           </div>
 
