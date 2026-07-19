@@ -162,6 +162,54 @@ test('the title gizmo rotates and resizes the selected title', async ({ page }) 
   await expect.poll(() => state(page, 'texts.0.fontSizePct')).toBeGreaterThan(before)
 })
 
+test('clicking a layer on the preview focuses it (topmost wins)', async ({ page }) => {
+  const canvas = page.getByTestId('preview-canvas')
+  const box = await canvas.boundingBox()
+
+  // The demo image fills the frame: clicking its pixels focuses the image layer.
+  expect(await state(page, 'dragTarget')).toBe('caption')
+  await canvas.click({
+    position: { x: Math.round(box.width / 2), y: Math.round(box.height / 2) },
+  })
+  await expect.poll(() => state(page, 'dragTarget')).toBe('image')
+
+  // The seeded title sits near the top (y = 0.16): clicking it wins over the image.
+  await canvas.click({
+    position: { x: Math.round(box.width / 2), y: Math.round(box.height * 0.16) },
+  })
+  await expect.poll(() => state(page, 'dragTarget')).toBe('title')
+
+  // The logo pins to the top-right; compute its centre from the store so the
+  // click lands regardless of the logo's aspect ratio.
+  const rel = await page.evaluate(() => {
+    const z = window.__ztudio
+    const { w, h } = z.dimensions
+    const lg = z.renderLogo
+    const scale = (w * lg.scalePct) / lg.bitmap.width
+    const lw = lg.bitmap.width * scale
+    const lh = lg.bitmap.height * scale
+    const m = Math.min(w, h) * lg.marginPct
+    return { x: (w - lw - m + lw / 2) / w, y: (m + lh / 2) / h }
+  })
+  await canvas.click({
+    position: { x: Math.round(box.width * rel.x), y: Math.round(box.height * rel.y) },
+  })
+  await expect.poll(() => state(page, 'dragTarget')).toBe('logo')
+
+  // Mid-cue, clicking the caption text near the bottom focuses the caption
+  // layer and selects that cue — without moving the playhead.
+  await page.evaluate(() => {
+    const z = window.__ztudio
+    const cue = z.cues[0]
+    z.seek((cue.start + cue.end) / 2)
+  })
+  await canvas.click({
+    position: { x: Math.round(box.width / 2), y: Math.round(box.height * 0.88) },
+  })
+  await expect.poll(() => state(page, 'dragTarget')).toBe('caption')
+  expect(await state(page, 'selectedCueIndex')).toBe(0)
+})
+
 test('the logo gizmo rotates and resizes the logo', async ({ page }) => {
   // Focus the logo layer (as the timeline clip / asset row click does).
   await page.evaluate(() => window.__ztudio.selectLogo())

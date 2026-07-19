@@ -551,6 +551,20 @@ describe('store: logo', () => {
     expect(store.dragTarget).toBe('caption')
   })
 
+  it('focusCaptionLayer selects the on-screen cue without moving the playhead', async () => {
+    const store = await makeStore()
+    await withAudio(store, 20)
+    store.addCaption('a', 2, 4)
+    store.seek(3)
+    store.selectText(store.addText().id)
+    expect(store.dragTarget).toBe('title')
+    store.focusCaptionLayer()
+    expect(store.dragTarget).toBe('caption')
+    expect(store.selectedTextId).toBeNull()
+    expect(store.selectedCueIndex).toBe(0)
+    expect(store.scrub).toBe(3)
+  })
+
   it('logo rotation normalizes and scale clamps to the slider range', async () => {
     const store = await makeStore()
     store.setLogoRotation(270)

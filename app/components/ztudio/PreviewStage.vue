@@ -14,7 +14,14 @@ import {
   SkipForwardIcon,
   SquareDashedIcon,
 } from '@lucide/vue'
-import { captionBox, captionCenter, drawFrame, logoRect, titleBox } from '@/lib/ztudio/renderer'
+import {
+  captionBox,
+  captionCenter,
+  drawFrame,
+  logoRect,
+  pointInBox,
+  titleBox,
+} from '@/lib/ztudio/renderer'
 import { imageDrawRect } from '@/lib/ztudio/images'
 import { imageFramingAt } from '@/lib/ztudio/keyframes'
 import { SAFE_AREA_PCT } from '@/lib/ztudio/config'
@@ -436,10 +443,67 @@ function cancelTime() {
 // size, so the offset is resolution-agnostic.
 let drag = null
 
+// What layer sits under a canvas point, topmost first (matching draw order:
+// logo over titles over the caption over the image). Hidden lanes aren't
+// clickable — you can't focus what isn't drawn. Null over empty background.
+function hitLayerAt(px, py) {
+  const { w, h } = store.dimensions
+  const ctx = canvas.value.getContext('2d')
+  const lg = store.renderLogo
+  if (lg) {
+    const { start, end } = store.logoWindow
+    if (store.scrub >= start && store.scrub < end) {
+      const r = logoRect(w, h, lg)
+      if (pointInBox(px, py, r.cx, r.cy, r.lw, r.lh, r.rotation)) {
+        return { kind: 'logo' }
+      }
+    }
+  }
+  const titles = store.renderTexts.filter(tx => store.scrub >= tx.start && store.scrub < tx.end)
+  for (let i = titles.length - 1; i >= 0; i--) {
+    const box = titleBox(ctx, w, h, titles[i])
+    if (box && pointInBox(px, py, box.cx, box.cy, box.bw, box.bh, box.rotation)) {
+      return { kind: 'title', tx: titles[i] }
+    }
+  }
+  if (!store.lanes.captionsHidden && store.currentCaption) {
+    const box = captionBox(ctx, w, h, store.currentCaption, store.style)
+    if (box && pointInBox(px, py, box.cx, box.cy, box.bw, box.bh, box.rotation)) {
+      return { kind: 'caption' }
+    }
+  }
+  const img = store.activeImage
+  if (img && !store.lanes.imagesHidden) {
+    const frame = imageFramingAt(img, store.keyframes, store.scrub)
+    const r = imageDrawRect(w, h, img, frame)
+    if (pointInBox(px, py, r.cx, r.cy, r.dw, r.dh, r.rotation)) {
+      return { kind: 'image', img }
+    }
+  }
+  return null
+}
+
 function onPointerDown(e) {
   const el = canvas.value
   if (!el) {
     return
+  }
+
+  // Click-to-focus: pressing on a layer's pixels focuses that layer first, so
+  // the gizmo and the drag land on what was clicked. Over empty background the
+  // current focus (and its drag behaviour) is kept.
+  const { px, py } = gizmoPoint(e)
+  const hit = hitLayerAt(px, py)
+  if (hit) {
+    if (hit.kind === 'logo') {
+      store.selectLogo()
+    } else if (hit.kind === 'title') {
+      store.selectText(hit.tx.id)
+    } else if (hit.kind === 'image') {
+      store.selectImage(hit.img.id)
+    } else if (store.dragTarget !== 'caption') {
+      store.focusCaptionLayer()
+    }
   }
 
   // The logo is corner-pinned (no free positioning), so with the logo focused a

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { captionBox, captionCenter, logoRect, titleBox } from '@/lib/ztudio/renderer'
+import { captionBox, captionCenter, logoRect, pointInBox, titleBox } from '@/lib/ztudio/renderer'
 
 // captionCenter is pure geometry (no canvas), driven by the normalized style.
 const baseStyle = {
@@ -154,5 +154,22 @@ describe('logoRect', () => {
   it('reports the rotation for the gizmo', () => {
     expect(logoRect(W, H, { ...base, rotation: 33 }).rotation).toBe(33)
     expect(logoRect(W, H, base).rotation).toBe(0)
+  })
+})
+
+describe('pointInBox', () => {
+  it('hits inside and misses outside an axis-aligned box', () => {
+    expect(pointInBox(100, 100, 100, 100, 40, 20, 0)).toBe(true)
+    expect(pointInBox(119, 109, 100, 100, 40, 20, 0)).toBe(true)
+    expect(pointInBox(121, 100, 100, 100, 40, 20, 0)).toBe(false)
+    expect(pointInBox(100, 111, 100, 100, 40, 20, 0)).toBe(false)
+  })
+
+  it('respects the box rotation', () => {
+    // A point below the un-rotated wide box falls inside once the box rotates
+    // 90° (its long side becomes vertical).
+    expect(pointInBox(100, 125, 100, 100, 60, 20, 0)).toBe(false)
+    expect(pointInBox(100, 125, 100, 100, 60, 20, 90)).toBe(true)
+    expect(pointInBox(125, 100, 100, 100, 60, 20, 90)).toBe(false)
   })
 })

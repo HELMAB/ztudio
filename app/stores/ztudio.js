@@ -2413,6 +2413,18 @@ export const useZtudioStore = defineStore('ztudio', () => {
     logo.end = e >= dur - 1e-3 ? 0 : r3(e)
   }
 
+  // Focus the caption layer from a preview click: selects the cue on screen
+  // (when there is one) without moving the playhead — unlike goToCue, which
+  // jumps to the cue start.
+  function focusCaptionLayer() {
+    dragTarget.value = 'caption'
+    selectedTextId.value = null
+    const idx = cues.value.findIndex(c => scrub.value >= c.start && scrub.value < c.end)
+    if (idx >= 0) {
+      selectedCueIndex.value = idx
+    }
+  }
+
   // Focus the logo layer (timeline clip / asset row click): the preview gizmo
   // then resizes/rotates it, and the inspector shows its framing controls
   // (bottom of the Image tab). Brings the logo on screen, WYSIWYG-style.
@@ -2876,6 +2888,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
     loadLogo,
     setLogoTime,
     selectLogo,
+    focusCaptionLayer,
     setLogoScale,
     setLogoRotation,
     redraw,

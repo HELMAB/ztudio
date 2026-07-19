@@ -239,6 +239,18 @@ export function logoRect(w, h, logo) {
   return { x, y, lw, lh, cx: x + lw / 2, cy: y + lh / 2, rotation: logo.rotation || 0 }
 }
 
+// True when the point (px, py) falls inside a box centred on (cx, cy) of size
+// bw×bh rotated by `rotation` degrees — the hit test behind click-to-focus on
+// the preview (boxes come from imageDrawRect/captionBox/titleBox/logoRect).
+export function pointInBox(px, py, cx, cy, bw, bh, rotation) {
+  const rad = (-(rotation || 0) * Math.PI) / 180
+  const dx = px - cx
+  const dy = py - cy
+  const rx = dx * Math.cos(rad) - dy * Math.sin(rad)
+  const ry = dx * Math.sin(rad) + dy * Math.cos(rad)
+  return Math.abs(rx) <= bw / 2 && Math.abs(ry) <= bh / 2
+}
+
 // Watermark/logo pinned to a corner, visible only within its [start, end) window
 // (end === 0 means the whole video).
 function drawLogo(ctx, w, h, t, logo) {
