@@ -144,7 +144,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
 <template>
   <div
-    class="flex flex-col h-dvh w-full overflow-hidden bg-background text-foreground font-sans antialiased pt-[env(safe-area-inset-top)]"
+    class="flex flex-col h-dvh w-full overflow-hidden bg-background text-foreground font-sans antialiased pt-[env(safe-area-inset-top)] touch-manipulation"
   >
     <ZtudioTopBar />
     <ZtudioDesktopWorkspace v-if="isDesktop" />
