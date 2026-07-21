@@ -226,7 +226,7 @@
     "dragHint": "Drag to reposition the caption · double-click to reset",
     "dragImageHint": "Drag to pan the image · scroll to zoom · double-click to reset",
     "dragTitleHint": "Drag to position the title · double-click to center",
-    "dragLogoHint": "Use the corner handles to resize the logo, the round handle to rotate · double-click resets the rotation",
+    "dragLogoHint": "Drag to move the logo · corner handles resize, the round handle rotates · double-click resets",
     "fullscreen": "Fullscreen",
     "exitFullscreen": "Exit fullscreen",
     "safeArea": "Safe area guide",

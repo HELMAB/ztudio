@@ -250,3 +250,81 @@ test('the logo gizmo rotates and resizes the logo', async ({ page }) => {
   await page.mouse.up()
   await expect.poll(() => state(page, 'logo.scalePct')).toBeGreaterThan(before)
 })
+
+test('dragging the logo on the preview moves it off its corner anchor', async ({ page }) => {
+  await page.evaluate(() => window.__ztudio.selectLogo())
+  await expect.poll(() => state(page, 'dragTarget')).toBe('logo')
+  // Wait for the gizmo to render so the canvas layout has settled before we read
+  // its box and drive raw mouse coordinates against it.
+  await expect(page.getByTestId('preview-gizmo')).toBeVisible()
+  expect(await state(page, 'logo.offsetXPct')).toBe(0)
+  expect(await state(page, 'logo.offsetYPct')).toBe(0)
+
+  const canvas = page.getByTestId('preview-canvas')
+  const box = await canvas.boundingBox()
+  // Logo centre in display coords (top-right corner by default).
+  const rel = await page.evaluate(() => {
+    const z = window.__ztudio
+    const { w, h } = z.dimensions
+    const lg = z.renderLogo
+    const scale = (w * lg.scalePct) / lg.bitmap.width
+    const lw = lg.bitmap.width * scale
+    const lh = lg.bitmap.height * scale
+    const m = Math.min(w, h) * lg.marginPct
+    return { x: (w - lw - m + lw / 2) / w, y: (m + lh / 2) / h }
+  })
+  // Drag from the logo toward the centre of the frame: left and down → negative
+  // X offset, positive Y offset off the top-right anchor. Hover the canvas at the
+  // logo (element-relative, so Playwright auto-waits for a stable, actionable
+  // target) before pressing, then drag with raw moves.
+  await canvas.hover({ position: { x: box.width * rel.x, y: box.height * rel.y } })
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width * 0.4, box.y + box.height * 0.5, { steps: 6 })
+  await page.mouse.up()
+
+  await expect.poll(() => state(page, 'logo.offsetXPct')).toBeLessThan(0)
+  await expect.poll(() => state(page, 'logo.offsetYPct')).toBeGreaterThan(0)
+
+  // Double-click resets the transform back to the corner anchor.
+  await canvas.dblclick({
+    position: { x: Math.round(box.width * 0.4), y: Math.round(box.height * 0.5) },
+  })
+  await expect.poll(() => state(page, 'logo.offsetXPct')).toBe(0)
+  await expect.poll(() => state(page, 'logo.offsetYPct')).toBe(0)
+})
+
+test('dragging the logo near the frame centre snaps it onto the mid-axes', async ({ page }) => {
+  await page.evaluate(() => window.__ztudio.selectLogo())
+  await expect.poll(() => state(page, 'dragTarget')).toBe('logo')
+  await expect(page.getByTestId('preview-gizmo')).toBeVisible()
+
+  const canvas = page.getByTestId('preview-canvas')
+  const box = await canvas.boundingBox()
+  // The logo's corner-anchored centre (offset 0) as a fraction of the frame, and
+  // the offset that would land that centre on the frame centre.
+  const rel = await page.evaluate(() => {
+    const z = window.__ztudio
+    const { w, h } = z.dimensions
+    const lg = z.renderLogo
+    const scale = (w * lg.scalePct) / lg.bitmap.width
+    const lw = lg.bitmap.width * scale
+    const lh = lg.bitmap.height * scale
+    const m = Math.min(w, h) * lg.marginPct
+    return { x: (w - lw - m + lw / 2) / w, y: (m + lh / 2) / h }
+  })
+
+  // Drag the logo centre to just shy of the frame centre — inside the snap radius
+  // (0.012 of the frame) so it locks onto both mid-axes.
+  await canvas.hover({ position: { x: box.width * rel.x, y: box.height * rel.y } })
+  await page.mouse.down()
+  await page.mouse.move(
+    box.x + box.width * 0.5 + box.width * 0.005,
+    box.y + box.height * 0.5 + box.height * 0.005,
+    { steps: 8 },
+  )
+  await page.mouse.up()
+
+  // The offset snapped to the exact centre offset (0.5 − corner-anchored centre).
+  expect(await state(page, 'logo.offsetXPct')).toBeCloseTo(0.5 - rel.x, 5)
+  expect(await state(page, 'logo.offsetYPct')).toBeCloseTo(0.5 - rel.y, 5)
+})

@@ -225,8 +225,10 @@ function drawTextOverlays(ctx, w, h, t, texts) {
 }
 
 // Placement of the logo in frame pixels: sized as a fraction of the frame width
-// with a margin off the shorter edge, pinned to its corner. Shared by drawLogo
-// and the preview's selection gizmo so the box always hugs the drawn pixels.
+// with a margin off the shorter edge, anchored to its corner and then nudged by
+// offsetXPct/offsetYPct (fraction of the frame) so it can be dragged anywhere.
+// Shared by drawLogo and the preview's selection gizmo so the box always hugs the
+// drawn pixels.
 export function logoRect(w, h, logo) {
   const bmp = logo.bitmap
   const scale = (w * (logo.scalePct || 0.18)) / bmp.width
@@ -234,8 +236,8 @@ export function logoRect(w, h, logo) {
   const lh = bmp.height * scale
   const m = Math.min(w, h) * (logo.marginPct ?? 0.04)
   const pos = logo.position || 'topRight'
-  const x = pos.includes('Right') ? w - lw - m : m
-  const y = pos.startsWith('bottom') ? h - lh - m : m
+  const x = (pos.includes('Right') ? w - lw - m : m) + w * (logo.offsetXPct || 0)
+  const y = (pos.startsWith('bottom') ? h - lh - m : m) + h * (logo.offsetYPct || 0)
   return { x, y, lw, lh, cx: x + lw / 2, cy: y + lh / 2, rotation: logo.rotation || 0 }
 }
 

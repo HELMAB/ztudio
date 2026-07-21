@@ -321,6 +321,13 @@ function drawGuides(ctx, w, h) {
     const tx = store.selectedText
     xCentered = !!tx && (tx.x ?? 0.5) === 0.5
     yCentered = !!tx && (tx.y ?? 0.5) === 0.5
+  } else if (store.dragTarget === 'logo') {
+    // Corner-anchored, so "centred" means the logo's drawn centre lands on the
+    // frame's mid-axis — not that its offset is zero.
+    const lg = store.renderLogo
+    const r = lg ? logoRect(w, h, lg) : null
+    xCentered = !!r && Math.abs(r.cx - w / 2) < 1
+    yCentered = !!r && Math.abs(r.cy - h / 2) < 1
   } else {
     const c = captionCenter(w, h, store.currentCaption, store.style)
     xCentered = store.controls.offsetXPct === 0
@@ -506,9 +513,29 @@ function onPointerDown(e) {
     }
   }
 
-  // The logo is corner-pinned (no free positioning), so with the logo focused a
-  // canvas drag is a no-op — its gizmo handles do the resizing/rotating.
+  // Logo drag: nudge the logo off its corner anchor. Only draggable while it's
+  // actually drawn (present, lane visible, playhead inside its window); otherwise
+  // there's nothing on screen to move, so the drag is a no-op. The gizmo handles
+  // still drive resize/rotate.
   if (store.dragTarget === 'logo') {
+    const lg = store.renderLogo
+    if (!lg) {
+      return
+    }
+    const { start, end } = store.logoWindow
+    if (store.scrub < start || store.scrub >= end) {
+      return
+    }
+    el.setPointerCapture(e.pointerId)
+    drag = {
+      startX: e.clientX,
+      startY: e.clientY,
+      rect: el.getBoundingClientRect(),
+      logo: true,
+      offX: store.logo.offsetXPct || 0,
+      offY: store.logo.offsetYPct || 0,
+    }
+    dragging.value = true
     return
   }
 
@@ -566,6 +593,19 @@ function onPointerDown(e) {
   dragging.value = true
 }
 
+// Offsets (fraction of frame) that land the logo's centre on the frame centre —
+// the snap target that lights the alignment guides, computed from the corner
+// anchor (offset 0) since the offset shifts the drawn centre one-for-one.
+function logoCenterOffset() {
+  const lg = store.renderLogo
+  if (!lg) {
+    return null
+  }
+  const { w, h } = store.dimensions
+  const r = logoRect(w, h, { ...lg, offsetXPct: 0, offsetYPct: 0 })
+  return { x: 0.5 - r.cx / w, y: 0.5 - r.cy / h }
+}
+
 // Offset (fraction of height) that lands the caption block centre on h/2.
 function verticalCenterOffset() {
   const text = store.currentCaption
@@ -604,6 +644,24 @@ function onPointerMove(e) {
       y = 0
     }
     store.setImageOffset(x, y)
+    return
+  }
+
+  if (drag.logo) {
+    // Snap the logo's centre onto the frame's mid-axes (lighting the guides),
+    // like image/title. Also snap back to the exact corner anchor (offset 0).
+    const ctr = logoCenterOffset()
+    if (ctr && Math.abs(x - ctr.x) < SNAP) {
+      x = ctr.x
+    } else if (Math.abs(x) < SNAP) {
+      x = 0
+    }
+    if (ctr && Math.abs(y - ctr.y) < SNAP) {
+      y = ctr.y
+    } else if (Math.abs(y) < SNAP) {
+      y = 0
+    }
+    store.setLogoOffset(x, y)
     return
   }
 
@@ -653,7 +711,7 @@ function onResetDrag() {
       store.setTextRotation(tx.id, 0)
     }
   } else if (store.dragTarget === 'logo') {
-    store.setLogoRotation(0)
+    store.resetLogoTransform()
   } else {
     store.resetCaptionOffset()
   }

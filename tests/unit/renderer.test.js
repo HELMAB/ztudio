@@ -155,6 +155,16 @@ describe('logoRect', () => {
     expect(logoRect(W, H, { ...base, rotation: 33 }).rotation).toBe(33)
     expect(logoRect(W, H, base).rotation).toBe(0)
   })
+
+  it('nudges off the corner anchor by offsetXPct/offsetYPct', () => {
+    const anchored = logoRect(W, H, base)
+    const moved = logoRect(W, H, { ...base, offsetXPct: -0.2, offsetYPct: 0.3 })
+    expect(moved.x).toBeCloseTo(anchored.x + W * -0.2, 6)
+    expect(moved.y).toBeCloseTo(anchored.y + H * 0.3, 6)
+    // cx/cy track the shifted box.
+    expect(moved.cx).toBeCloseTo(moved.x + moved.lw / 2, 6)
+    expect(moved.cy).toBeCloseTo(moved.y + moved.lh / 2, 6)
+  })
 })
 
 describe('pointInBox', () => {

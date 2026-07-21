@@ -2456,6 +2456,21 @@ export const useZtudioStore = defineStore('ztudio', () => {
       logo.rotation = normDeg(deg)
     }
   }
+  // Nudge the logo off its corner anchor (fraction of the frame) from a preview
+  // drag. Clamped to the frame so the logo can't be dragged fully out of view.
+  function setLogoOffset(xPct, yPct) {
+    if (Number.isFinite(xPct)) {
+      logo.offsetXPct = clampOffset(xPct)
+    }
+    if (Number.isFinite(yPct)) {
+      logo.offsetYPct = clampOffset(yPct)
+    }
+  }
+  function resetLogoTransform() {
+    logo.offsetXPct = 0
+    logo.offsetYPct = 0
+    logo.rotation = 0
+  }
 
   function dismissResult() {
     if (result.value?.url) {
@@ -2891,6 +2906,8 @@ export const useZtudioStore = defineStore('ztudio', () => {
     focusCaptionLayer,
     setLogoScale,
     setLogoRotation,
+    setLogoOffset,
+    resetLogoTransform,
     redraw,
     dragTarget,
     setCaptionOffset,

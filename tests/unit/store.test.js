@@ -576,6 +576,28 @@ describe('store: logo', () => {
     store.setLogoScale(0.001)
     expect(store.logo.scalePct).toBe(0.05)
   })
+
+  it('setLogoOffset nudges the logo and clamps to the frame', async () => {
+    const store = await makeStore()
+    expect(store.logo.offsetXPct).toBe(0)
+    expect(store.logo.offsetYPct).toBe(0)
+    store.setLogoOffset(-0.3, 0.25)
+    expect(store.logo.offsetXPct).toBe(-0.3)
+    expect(store.logo.offsetYPct).toBe(0.25)
+    store.setLogoOffset(5, -5)
+    expect(store.logo.offsetXPct).toBe(1)
+    expect(store.logo.offsetYPct).toBe(-1)
+  })
+
+  it('resetLogoTransform clears offset and rotation', async () => {
+    const store = await makeStore()
+    store.setLogoOffset(0.4, -0.2)
+    store.setLogoRotation(90)
+    store.resetLogoTransform()
+    expect(store.logo.offsetXPct).toBe(0)
+    expect(store.logo.offsetYPct).toBe(0)
+    expect(store.logo.rotation).toBe(0)
+  })
 })
 
 describe('store: lanes', () => {
