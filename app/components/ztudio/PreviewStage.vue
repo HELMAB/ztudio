@@ -803,10 +803,12 @@ function onResetDrag() {
       </svg>
     </div>
 
-    <!-- Transport bar: timecode left, playback centred, utilities right (three-zone
-         grid on sm+; wraps into a single flow on narrow screens). -->
+    <!-- Transport bar: timecode left, playback centred, utilities right — a three-zone
+         grid at every width. On mobile the secondary controls (skip-to-ends, thumbnail,
+         safe-area) drop out so the essentials keep one balanced row down to ~320px. -->
     <div
-      class="shrink-0 flex flex-wrap items-center gap-x-3 gap-y-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-card border-t border-border sm:grid sm:grid-cols-[1fr_auto_1fr]"
+      data-testid="transport-bar"
+      class="shrink-0 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-card border-t border-border sm:gap-x-3"
     >
       <div class="flex min-w-0 items-center gap-2">
         <span class="font-mono text-xs tabular-nums shrink-0 text-muted-foreground">
@@ -852,7 +854,7 @@ function onResetDrag() {
         <Button
           size="icon"
           variant="ghost"
-          class="size-7 text-muted-foreground"
+          class="hidden size-7 text-muted-foreground sm:inline-flex"
           :aria-label="$t('transport.start')"
           :title="$t('transport.start')"
           @click="store.seek(0)"
@@ -871,7 +873,7 @@ function onResetDrag() {
         </Button>
         <Button
           size="icon"
-          class="rounded-full"
+          class="size-10 rounded-full sm:size-9"
           :aria-label="store.isPlaying ? $t('actions.pause') : $t('actions.play')"
           @click="store.togglePlay()"
         >
@@ -891,7 +893,7 @@ function onResetDrag() {
         <Button
           size="icon"
           variant="ghost"
-          class="size-7 text-muted-foreground"
+          class="hidden size-7 text-muted-foreground sm:inline-flex"
           :aria-label="$t('transport.end')"
           :title="$t('transport.end')"
           @click="store.seek(store.previewDuration)"
@@ -913,12 +915,12 @@ function onResetDrag() {
         </Button>
       </div>
 
-      <div class="ml-auto flex items-center gap-1 sm:justify-self-end">
+      <div class="flex items-center gap-1 justify-self-end">
         <ZtudioVolumeControl />
         <Button
           size="icon"
           variant="ghost"
-          class="shrink-0 text-muted-foreground"
+          class="hidden shrink-0 text-muted-foreground sm:inline-flex"
           :disabled="store.busy"
           :aria-label="$t('actions.thumbnail')"
           :title="$t('actions.thumbnailHint')"
@@ -930,7 +932,7 @@ function onResetDrag() {
         <Button
           size="icon"
           variant="ghost"
-          class="shrink-0"
+          class="hidden shrink-0 sm:inline-flex"
           :class="showSafeArea ? 'text-brand bg-brand-muted' : 'text-muted-foreground'"
           :aria-label="$t('preview.safeArea')"
           :aria-pressed="showSafeArea"
