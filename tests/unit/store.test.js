@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { nextTick } from 'vue'
 import { makeStore, audioFile, imageFile, stubAudioContext } from './helpers/store'
 
-const srt = (...blocks) => ({ text: async () => blocks.join('\n\n') })
+// loadSrt reads bytes (for encoding detection), so stubs expose arrayBuffer().
+const srtBytes = text => ({ arrayBuffer: async () => new TextEncoder().encode(text).buffer })
+const srt = (...blocks) => srtBytes(blocks.join('\n\n'))
 const CUE = (n, a, b) => `${n}\n00:00:0${a},000 --> 00:00:0${b},000\nline ${n}`
 
 let audioCtl
@@ -800,7 +802,7 @@ describe('store: importFiles routing', () => {
   it('routes a mixed set: first audio → voice, second → music, images → assets, .srt → cues', async () => {
     const store = await makeStore()
     audioCtl.setNextDuration(10)
-    const srtFile = { name: 'caption.srt', text: async () => CUE(1, 1, 2) }
+    const srtFile = { name: 'caption.srt', ...srtBytes(CUE(1, 1, 2)) }
     await store.importFiles([audioFile(10), imageFile('a.png'), srtFile, audioFile(8)])
     expect(store.audioBuffer).toBeTruthy()
     expect(store.hasMusic).toBe(true)

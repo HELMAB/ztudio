@@ -1,5 +1,40 @@
 const TC = /(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})\s*-->\s*(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})/
 
+// Decode a subtitle file's bytes to text with encoding detection. `File.text()`
+// always assumes UTF-8, but many tools export .srt as UTF-16 (Windows "Save as
+// Unicode", several subtitle editors); read as UTF-8 those become garbage and
+// parse to zero cues. Detect a BOM first, then fall back to a NUL-byte heuristic
+// for BOM-less UTF-16 (ASCII timecodes leave a 0x00 beside every character).
+export function decodeSubtitleText(buffer) {
+  const bytes = new Uint8Array(buffer)
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) {
+    return new TextDecoder('utf-16le').decode(bytes)
+  }
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) {
+    return new TextDecoder('utf-16be').decode(bytes)
+  }
+  const n = Math.min(bytes.length, 512)
+  let evenNul = 0
+  let oddNul = 0
+  for (let i = 0; i < n; i++) {
+    if (bytes[i] === 0) {
+      if (i % 2 === 0) {
+        evenNul++
+      } else {
+        oddNul++
+      }
+    }
+  }
+  if (oddNul > n / 8 && oddNul > evenNul * 4) {
+    return new TextDecoder('utf-16le').decode(bytes)
+  }
+  if (evenNul > n / 8 && evenNul > oddNul * 4) {
+    return new TextDecoder('utf-16be').decode(bytes)
+  }
+  // TextDecoder('utf-8') strips a UTF-8 BOM; parseSRT also drops a leading U+FEFF.
+  return new TextDecoder('utf-8').decode(bytes)
+}
+
 export function parseSRT(text) {
   const normalised = text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n')
   const cues = []

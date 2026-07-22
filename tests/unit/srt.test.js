@@ -3,11 +3,26 @@ import {
   activeWordIndex,
   captionAt,
   cueAt,
+  decodeSubtitleText,
   parseSRT,
   splitWords,
   wordBoundaryTimes,
   wordCount,
 } from '@/lib/ztudio/srt'
+
+// Encode a string to UTF-16 bytes (with a BOM unless bom:false) — mirrors what
+// Windows subtitle tools produce and what File.arrayBuffer() would hand back.
+const utf16Bytes = (text, { be = false, bom = true } = {}) => {
+  const units = (bom ? '﻿' : '') + text
+  const buf = new Uint8Array(units.length * 2)
+  for (let i = 0; i < units.length; i++) {
+    const code = units.charCodeAt(i)
+    buf[i * 2 + (be ? 0 : 1)] = code >> 8
+    buf[i * 2 + (be ? 1 : 0)] = code & 0xff
+  }
+  return buf.buffer
+}
+const utf8Bytes = text => new TextEncoder().encode(text).buffer
 
 describe('parseSRT', () => {
   it('parses a basic cue with comma millisecond separators', () => {
@@ -134,5 +149,34 @@ describe('wordBoundaryTimes', () => {
 
   it('returns no boundaries for a single word', () => {
     expect(wordBoundaryTimes({ start: 0, end: 2, text: 'solo' })).toEqual([])
+  })
+})
+
+describe('decodeSubtitleText', () => {
+  const SAMPLE = '1\n00:00:01,000 --> 00:00:04,000\nHello'
+
+  it('decodes plain UTF-8', () => {
+    expect(decodeSubtitleText(utf8Bytes(SAMPLE))).toBe(SAMPLE)
+  })
+
+  it('strips a UTF-8 BOM', () => {
+    expect(decodeSubtitleText(utf8Bytes('﻿' + SAMPLE))).toBe(SAMPLE)
+  })
+
+  it('decodes UTF-16LE with a BOM into parseable text', () => {
+    expect(parseSRT(decodeSubtitleText(utf16Bytes(SAMPLE)))).toHaveLength(1)
+  })
+
+  it('decodes UTF-16BE with a BOM into parseable text', () => {
+    expect(parseSRT(decodeSubtitleText(utf16Bytes(SAMPLE, { be: true })))).toHaveLength(1)
+  })
+
+  it('detects BOM-less UTF-16LE from the NUL-byte pattern', () => {
+    expect(parseSRT(decodeSubtitleText(utf16Bytes(SAMPLE, { bom: false })))).toHaveLength(1)
+  })
+
+  it('preserves Khmer text through UTF-16 decoding', () => {
+    const km = '1\n00:00:01,000 --> 00:00:04,000\nសួស្តី'
+    expect(decodeSubtitleText(utf16Bytes(km))).toContain('សួស្តី')
   })
 })

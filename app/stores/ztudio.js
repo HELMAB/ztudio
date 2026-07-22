@@ -12,7 +12,7 @@ import {
 } from '@/lib/ztudio/config'
 import { AUDIO_DEFAULTS, renderMix } from '@/lib/ztudio/audio'
 import { KHMER_FONTS } from '@/lib/ztudio/khmer-fonts'
-import { captionAt, parseSRT } from '@/lib/ztudio/srt'
+import { captionAt, decodeSubtitleText, parseSRT } from '@/lib/ztudio/srt'
 import { imageAt } from '@/lib/ztudio/images'
 import { drawFrame } from '@/lib/ztudio/renderer'
 import {
@@ -1409,7 +1409,7 @@ export const useZtudioStore = defineStore('ztudio', () => {
       maybeReady()
       return
     }
-    cues.value = parseSRT(await file.text())
+    cues.value = parseSRT(decodeSubtitleText(await file.arrayBuffer()))
     selectedCueIndex.value = null
     log(`Parsed ${cues.value.length} cues, spanning ${srtSpan.value.toFixed(1)}s.`)
     if (!cues.value.length) {
