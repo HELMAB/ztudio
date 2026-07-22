@@ -110,7 +110,6 @@ function onDragStart(event, r) {
       ref="input"
       type="file"
       multiple
-      accept="audio/*,image/*,.srt,.ttf,.otf"
       class="sr-only"
       data-testid="assets-import"
       @change="onImport"
